@@ -1,3 +1,8 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 22/12/25
+"""
 import rhinoscriptsyntax as rs
 import Rhino.Geometry as rg
 import math
