@@ -3,143 +3,107 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
 
-def get_material_from_index(mat_index):
+def get_first_material_by_name(name):
     """
-    Récupère l'objet Material RhinoCommon de manière sécurisée.
+    Parcourt la table des materiaux et renvoie le premier 
+    objet Material dont le nom correspond exactement.
     """
-    if mat_index < 0:
-        return None
-    
-    # Vérification pour éviter les erreurs d'index hors limites
-    if mat_index >= len(sc.doc.Materials):
-        return None
-        
-    return sc.doc.Materials[mat_index]
+    if not name: return None
+    for mat in sc.doc.Materials:
+        if mat.Name == name:
+            return mat
+    return None
 
-def analyze_object_materials(obj_id, source_desc, materials_dict):
+def analyze_object_material_names(obj_id, source_desc, names_dict):
     """
-    Cherche le matériau sur l'objet ET sur son calque.
-    Met à jour le dictionnaire materials_dict.
+    Trouve les NOMS des materiaux (objet et calque) et les stocke
+    dans names_dict avec leur justification.
     """
     
-    # --- 1. Matériau assigné directement à l'objet ---
+    # 1. Materiau de l'objet
     mat_index = rs.ObjectMaterialIndex(obj_id)
     if mat_index > -1:
-        mat = get_material_from_index(mat_index)
-        if mat:
-            mat_id = mat.Id
-            if mat_id not in materials_dict:
-                materials_dict[mat_id] = {'obj': mat, 'sources': []}
-            
-            # Utilisation de .format() au lieu de f-string
+        # On recupere le nom via l'index actuel
+        temp_mat = sc.doc.Materials[mat_index]
+        if temp_mat and temp_mat.Name:
+            mat_name = temp_mat.Name
+            if mat_name not in names_dict:
+                names_dict[mat_name] = []
             msg = "Materiau direct de {}".format(source_desc)
-            materials_dict[mat_id]['sources'].append(msg)
+            names_dict[mat_name].append(msg)
 
-    # --- 2. Matériau du calque de l'objet ---
+    # 2. Materiau du calque
     layer_name = rs.ObjectLayer(obj_id)
     layer_mat_index = rs.LayerMaterialIndex(layer_name)
-    
     if layer_mat_index > -1:
-        mat = get_material_from_index(layer_mat_index)
-        if mat:
-            mat_id = mat.Id
-            if mat_id not in materials_dict:
-                materials_dict[mat_id] = {'obj': mat, 'sources': []}
-            
-            # Utilisation de .format() au lieu de f-string
+        temp_mat = sc.doc.Materials[layer_mat_index]
+        if temp_mat and temp_mat.Name:
+            mat_name = temp_mat.Name
+            if mat_name not in names_dict:
+                names_dict[mat_name] = []
             msg = "Calque '{}' de {}".format(layer_name, source_desc)
-            materials_dict[mat_id]['sources'].append(msg)
+            names_dict[mat_name].append(msg)
 
 def main():
-    # 1. Sélection de l'objet
     guid = rs.GetObject("Selectionnez un objet", preselect=True)
-    if not guid:
-        return
+    if not guid: return
 
-    # Dictionnaire de stockage : { ID_Materiau : { 'obj': Material, 'sources': [] } }
-    found_materials = {}
+    # names_dict : { "NomDuMateriau" : ["Source 1", "Source 2"] }
+    names_dict = {}
 
-    # 2. Analyse de l'objet principal
-    analyze_object_materials(guid, "l'objet selectionne", found_materials)
+    # Analyse de l'objet principal
+    analyze_object_material_names(guid, "l'objet selectionne", names_dict)
 
-    # 3. Gestion des Blocs (Block Instance)
+    # Analyse du bloc
     if rs.IsBlockInstance(guid):
         block_name = rs.BlockInstanceName(guid)
-        # Récupère les objets qui composent le bloc
         block_objects = rs.BlockObjects(block_name)
-        
         if block_objects:
             for block_obj in block_objects:
-                # Tentative de récupérer le nom, sinon on utilise l'ID
-                sub_name = rs.ObjectName(block_obj)
-                if not sub_name:
-                    sub_name = str(block_obj)
-                
-                # Description sans f-string
+                sub_name = rs.ObjectName(block_obj) or str(block_obj)
                 desc = "objet '{}' dans le bloc '{}'".format(sub_name, block_name)
-                analyze_object_materials(block_obj, desc, found_materials)
+                analyze_object_material_names(block_obj, desc, names_dict)
 
-    # 4. Si aucun matériau n'est trouvé
-    if not found_materials:
-        rs.MessageBox("Aucun materiau specifique trouve (tout est en 'Par Defaut').", 64)
+    if not names_dict:
+        rs.MessageBox("Aucun materiau nomme trouve.", 64)
         return
 
-    # 5. Itération sur les matériaux trouvés
     KEY_NAME = "VolumicMass"
     
-    # On itère sur les clés du dictionnaire
-    for mat_id in found_materials:
-        entry = found_materials[mat_id]
-        mat = entry['obj']
-        sources_list = entry['sources']
-        mat_name = mat.Name
+    # Parcourir chaque nom unique trouve
+    for mat_name in names_dict:
+        # Trouver la premiere occurrence reelle dans la base Rhino
+        target_mat = get_first_material_by_name(mat_name)
         
-        # Récupération UserString
-        current_val = mat.GetUserString(KEY_NAME)
-        
-        if current_val:
-            display_val = current_val
-        else:
-            display_val = "Non definie"
-        
-        # Construction du message pour l'utilisateur
-        # On joint la liste des sources avec des retours à la ligne
-        sources_str = "\n- ".join(sources_list)
-        
-        # Construction du message complet avec .format()
-        prompt_msg = "Materiau : {}\nTrouve via :\n- {}\n\nMasse volumique actuelle : {} kg/m3\nEntrez la nouvelle valeur :".format(mat_name, sources_str, display_val)
-        
-        # Titre de la fenêtre
-        title_msg = "Config: {}".format(mat_name)
-
-        # Boîte de dialogue
-        default_str = ""
-        if current_val:
-            default_str = current_val
+        if not target_mat:
+            continue
             
-        new_val_str = rs.StringBox(prompt_msg, default_value=default_str, title=title_msg)
-
-        # Si Annuler est pressé ou si vide
-        if new_val_str is None:
-            continue
+        sources_list = names_dict[mat_name]
         
-        if str(new_val_str).strip() == "":
-            continue
+        # Recuperation de la valeur existante sur cette occurrence
+        current_val = target_mat.GetUserString(KEY_NAME)
+        display_val = current_val if current_val else "Non definie"
+        
+        sources_str = "\n- ".join(sources_list)
+        prompt_msg = "Materiau : {}\nOrigines :\n- {}\n\nMasse volumique : {} kg/m3\nNouvelle valeur :".format(mat_name, sources_str, display_val)
+        
+        new_val_str = rs.StringBox(prompt_msg, default_value=current_val or "", title="Masse Volumique")
 
-        # Validation et Enregistrement
+        if new_val_str is None: continue
+        if str(new_val_str).strip() == "": continue
+
         try:
             val_float = float(new_val_str)
             
-            # Mise à jour RhinoCommon
-            mat.SetUserString(KEY_NAME, str(val_float))
-            mat.CommitChanges() # Indispensable pour valider le changement
+            # Mise a jour de la PREMIERE occurrence trouvee
+            target_mat.SetUserString(KEY_NAME, str(val_float))
+            target_mat.CommitChanges()
             
-            print("Succes : Materiau '{}' mis a jour a {} kg/m3".format(mat_name, val_float))
-            
+            print("Succes : Materiau '{}' mis a jour ({} kg/m3)".format(mat_name, val_float))
         except ValueError:
-            rs.MessageBox("Erreur : Valeur non numerique. Ignore.", 48)
+            rs.MessageBox("Nombre invalide.", 48)
 
-    rs.MessageBox("Traitement termine.", 64)
+    rs.MessageBox("Mise a jour terminee.", 64)
 
 if __name__ == "__main__":
     main()
