@@ -1,139 +1,145 @@
-"""
-Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
-Version: 1.0
-Date: 22/12/25
-"""
-"""
-Script pour gérer la masse volumique (VolumicMass) des matériaux
-d'un objet sélectionné, de son calque et de ses définitions de bloc.
-"""
-
+# -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
 
-
-def get_material_object(mat_index):
-    """Récupère l'objet Material RhinoCommon via son index."""
+def get_material_from_index(mat_index):
+    """
+    Récupère l'objet Material RhinoCommon de manière sécurisée.
+    """
     if mat_index < 0:
         return None
+    
+    # Vérification pour éviter les erreurs d'index hors limites
+    if mat_index >= len(sc.doc.Materials):
+        return None
+        
     return sc.doc.Materials[mat_index]
 
-
-def analyze_object_materials(obj_id, source_description, materials_dict):
+def analyze_object_materials(obj_id, source_desc, materials_dict):
     """
-    Analyse un objet pour trouver son matériau direct et celui de son calque.
-    Remplit le dictionnaire materials_dict.
+    Cherche le matériau sur l'objet ET sur son calque.
+    Met à jour le dictionnaire materials_dict.
     """
     
-    # 1. Matériau de l'objet (s'il est assigné spécifiquement)
+    # --- 1. Matériau assigné directement à l'objet ---
     mat_index = rs.ObjectMaterialIndex(obj_id)
     if mat_index > -1:
-        mat = get_material_object(mat_index)
+        mat = get_material_from_index(mat_index)
         if mat:
-            if mat.Id not in materials_dict:
-                materials_dict[mat.Id] = {'obj': mat, 'sources': []}
-            materials_dict[mat.Id]['sources'].append("Matériau direct de {}".format(source_description))
+            mat_id = mat.Id
+            if mat_id not in materials_dict:
+                materials_dict[mat_id] = {'obj': mat, 'sources': []}
+            
+            # Utilisation de .format() au lieu de f-string
+            msg = "Materiau direct de {}".format(source_desc)
+            materials_dict[mat_id]['sources'].append(msg)
 
-
-    # 2. Matériau du calque de l'objet
+    # --- 2. Matériau du calque de l'objet ---
     layer_name = rs.ObjectLayer(obj_id)
     layer_mat_index = rs.LayerMaterialIndex(layer_name)
+    
     if layer_mat_index > -1:
-        mat = get_material_object(layer_mat_index)
+        mat = get_material_from_index(layer_mat_index)
         if mat:
-            if mat.Id not in materials_dict:
-                materials_dict[mat.Id] = {'obj': mat, 'sources': []}
-            materials_dict[mat.Id]['sources'].append("Matériau du calque '{}' de {}".format(layer_name, source_description))
-
+            mat_id = mat.Id
+            if mat_id not in materials_dict:
+                materials_dict[mat_id] = {'obj': mat, 'sources': []}
+            
+            # Utilisation de .format() au lieu de f-string
+            msg = "Calque '{}' de {}".format(layer_name, source_desc)
+            materials_dict[mat_id]['sources'].append(msg)
 
 def main():
-    # 1. Sélectionner un objet
-    guid = rs.GetObject("Sélectionnez un objet pour définir la masse volumique", preselect=True)
+    # 1. Sélection de l'objet
+    guid = rs.GetObject("Selectionnez un objet", preselect=True)
     if not guid:
         return
 
-
-    # Dictionnaire pour stocker les matériaux uniques trouvés
-    # Clé : ID du matériau, Valeur : { 'obj': RhinoMaterial, 'sources': [liste des origines] }
+    # Dictionnaire de stockage : { ID_Materiau : { 'obj': Material, 'sources': [] } }
     found_materials = {}
 
+    # 2. Analyse de l'objet principal
+    analyze_object_materials(guid, "l'objet selectionne", found_materials)
 
-    # 2. Analyser l'objet principal sélectionné
-    analyze_object_materials(guid, "l'objet sélectionné", found_materials)
-
-
-    # 3. Si c'est un bloc, itérer dans sa définition
+    # 3. Gestion des Blocs (Block Instance)
     if rs.IsBlockInstance(guid):
         block_name = rs.BlockInstanceName(guid)
+        # Récupère les objets qui composent le bloc
         block_objects = rs.BlockObjects(block_name)
         
         if block_objects:
             for block_obj in block_objects:
-                # Nom de l'objet ou son ID pour l'affichage
-                sub_name = rs.ObjectName(block_obj) or str(block_obj)
-                origin_desc = "objet '{}' dans le bloc '{block_name}'"
-                analyze_object_materials(block_obj, origin_desc, found_materials)
+                # Tentative de récupérer le nom, sinon on utilise l'ID
+                sub_name = rs.ObjectName(block_obj)
+                if not sub_name:
+                    sub_name = str(block_obj)
+                
+                # Description sans f-string
+                desc = "objet '{}' dans le bloc '{}'".format(sub_name, block_name)
+                analyze_object_materials(block_obj, desc, found_materials)
 
-
-    # 4. Vérifier si on a trouvé des matériaux
+    # 4. Si aucun matériau n'est trouvé
     if not found_materials:
-        rs.MessageBox("Aucun matériau spécifique trouvé sur cet objet, son calque ou dans le bloc (tout est en 'Par Défaut').", 64)
+        rs.MessageBox("Aucun materiau specifique trouve (tout est en 'Par Defaut').", 64)
         return
 
-
-    # 5. Boucle d'interaction avec l'utilisateur pour chaque matériau trouvé
+    # 5. Itération sur les matériaux trouvés
     KEY_NAME = "VolumicMass"
     
-    for mat_id, data in found_materials.items():
-        mat = data['obj']
-        sources = data['sources']
+    # On itère sur les clés du dictionnaire
+    for mat_id in found_materials:
+        entry = found_materials[mat_id]
+        mat = entry['obj']
+        sources_list = entry['sources']
         mat_name = mat.Name
         
-        # Récupération de la valeur actuelle (UserString)
+        # Récupération UserString
         current_val = mat.GetUserString(KEY_NAME)
-        display_val = current_val if current_val else "Non définie"
         
-        # Création du message de justification
-        msg_sources = "\n- ".join(sources)
-        prompt_msg = (
-            "Matériau : " + mat_name + "\n"
-            "Trouvé via :\n- " + msg_sources + "\n\n"
-            "Masse volumique actuelle : " + display_val + " kg/m3\n"
-            "Entrez la nouvelle valeur (laisser vide pour ne pas changer) :"
-        )
+        if current_val:
+            display_val = current_val
+        else:
+            display_val = "Non definie"
+        
+        # Construction du message pour l'utilisateur
+        # On joint la liste des sources avec des retours à la ligne
+        sources_str = "\n- ".join(sources_list)
+        
+        # Construction du message complet avec .format()
+        prompt_msg = "Materiau : {}\nTrouve via :\n- {}\n\nMasse volumique actuelle : {} kg/m3\nEntrez la nouvelle valeur :".format(mat_name, sources_str, display_val)
+        
+        # Titre de la fenêtre
+        title_msg = "Config: {}".format(mat_name)
 
+        # Boîte de dialogue
+        default_str = ""
+        if current_val:
+            default_str = current_val
+            
+        new_val_str = rs.StringBox(prompt_msg, default_value=default_str, title=title_msg)
 
-        # Demander à l'utilisateur
-        new_val_str = rs.StringBox(prompt_msg, default_value=current_val if current_val else "", title="Config: {}".format(mat_name))
-
-
-        # Si l'utilisateur annule ou laisse vide (et que ce n'est pas pour effacer), on passe
+        # Si Annuler est pressé ou si vide
         if new_val_str is None:
-            continue # Annulé
+            continue
         
-        if new_val_str.strip() == "":
-             # Optionnel : Si l'utilisateur vide le champ, on pourrait vouloir supprimer la clé.
-             # Ici, on choisit de ne rien faire si vide pour éviter les erreurs.
-             continue
+        if str(new_val_str).strip() == "":
+            continue
 
-
-        # Validation numérique
+        # Validation et Enregistrement
         try:
             val_float = float(new_val_str)
             
-            # Mise à jour
+            # Mise à jour RhinoCommon
             mat.SetUserString(KEY_NAME, str(val_float))
-            mat.CommitChanges() # Important pour sauvegarder dans RhinoCommon
+            mat.CommitChanges() # Indispensable pour valider le changement
             
-            rs.Print("Succès : {} -> {} = {} kg/m3".format(mat_name, KEY_NAME, val_float))
+            print("Succes : Materiau '{}' mis a jour a {} kg/m3".format(mat_name, val_float))
             
         except ValueError:
-            rs.MessageBox(f"Erreur : '{}' n'est pas un nombre valide. Modification ignorée pour {}.".format(new_val_str, mat_name), 48)
+            rs.MessageBox("Erreur : Valeur non numerique. Ignore.", 48)
 
-
-    rs.MessageBox("Traitement des matériaux terminé. Vérifiez la ligne de commande pour l'historique.", 64)
-
+    rs.MessageBox("Traitement termine.", 64)
 
 if __name__ == "__main__":
     main()
