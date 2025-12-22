@@ -49,22 +49,22 @@ def loadModuleAliases():
             "showKeyValue" : '_NoEcho !_PropertiesPage _Pause T'
     }
     module_aliases_dev = {
-            "editBlockXform" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/block/editBlockXform.py"',
+            "editBlockXform" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/editBlockXform.py"',
             #cplane
-            "cPlaneFromBFitPoints" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/cplane/cPlaneFromBFitPoints.py"',
+            "cPlaneFromBFitPoints" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/cplane/cPlaneFromBFitPoints.py"',
             #insert
-            "insertCircleFromBFitPoints" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/insert/insertCircleFromBFitPoints.py"',
+            "insertCircleFromBFitPoints" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertCircleFromBFitPoints.py"',
             #IO
-            "importYaskawaJBI" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/IO/importYaskawaJBI.py"',
+            "importYaskawaJBI" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/IO/importYaskawaJBI.py"',
             #layer
-            "changeLayerInBlocks" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/layer/changeLayerInBlocks.py"',
-            "showLayer" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/layer/showLayer.py"',
-            "hideLayer" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/layer/hideLayer.py"',
+            "changeLayerInBlocks" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/changeLayerInBlocks.py"',
+            "showLayer" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/showLayer.py"',
+            "hideLayer" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/hideLayer.py"',
             #material
-            "setMaterialData" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/material/setMaterialData.py"',
+            "setMaterialData" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/material/setMaterialData.py"',
             #utilities#
-            "openPluginFolder" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/utilities/openPluginFolder.py"',
-            "openRemotePanel" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Robot (469e4f73-a1ab-4870-bee1-577ca6a982aa)/dev/utilities/openRemotePanel.py"'
+            "openPluginFolder" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/utilities/openPluginFolder.py"',
+            "openRemotePanel" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/utilities/openRemotePanel.py"'
     }
     
     module_aliases_stable = {
