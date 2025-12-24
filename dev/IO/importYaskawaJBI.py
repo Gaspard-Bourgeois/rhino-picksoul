@@ -52,8 +52,10 @@ def import_jbi_final():
 
     # --- 2. Gestion des Calques ---
     full_path = "{}::{}".format(folder_name, job_name) if folder_name else job_name
-    if rs.IsLayer(full_path):
-        rs.MessageBox("Erreur : Le programme '{}' existe déjà.".format(full_path), 16)
+    
+    # Vérification anti-doublon basique (calque ou bloc existant)
+    if rs.IsLayer(full_path) or rs.IsBlock(job_name):
+        rs.MessageBox("Erreur : Le programme '{}' existe déjà (Calque ou Bloc).".format(full_path), 16)
         return
 
     if folder_name:
@@ -151,22 +153,41 @@ def import_jbi_final():
         rs.AddRectangle(rg.Plane(inst_data[0]['pos'], rg.Vector3d.ZAxis), 5, 5)
         rs.AddSphere(inst_data[-1]['pos'], 3)
 
-    # --- 7. Création du Texte PROGRAM (L'objet de contrôle) ---
+    # --- 7. Création du Bloc Programme et de son Instance (MODIFIÉ) ---
+    
+    # 7.1 Préparation du calque de définition interne
+    def_layer = "_curve_arcon_arcof_def"
+    if not rs.IsLayer(def_layer):
+        rs.AddLayer(def_layer, (100, 100, 100))
+    
+    # 7.2 Création du texte sur ce calque spécifique
+    rs.CurrentLayer(def_layer)
+    # On crée le texte à l'origine [0,0,0] qui sera l'origine locale du bloc
+    raw_text_id = rs.AddText("".join(lines), [0,0,0], height=10.0)
+    
+    # 7.3 Création de la définition du bloc (si elle n'existe pas déjà, gérée en étape 2)
+    # delete_input=True enlève le texte du modèle pour le mettre DANS le bloc
+    if not rs.IsBlock(job_name):
+        rs.AddBlock([raw_text_id], [0,0,0], job_name, delete_input=True)
+    
+    # 7.4 Insertion de l'instance du bloc sur le calque principal
     rs.CurrentLayer(main_lyr)
-    prog_text_id = rs.AddText("".join(lines), [0,0,0], height=10.0)
-    rs.ObjectName(prog_text_id, job_name)
+    # On insère l'instance à [0,0,0] monde
+    instance_id = rs.InsertBlock(job_name, [0,0,0])
+    rs.ObjectName(instance_id, job_name)
     
-    # UserStrings critiques pour le script d'analyse suivant
-    rs.SetUserText(prog_text_id, "type", "program")
-    rs.SetUserText(prog_text_id, "uuid_origin", str(prog_text_id))
+    # 7.5 Application des UserStrings critiques sur l'INSTANCE du bloc
+    rs.SetUserText(instance_id, "type", "program")
+    # L'uuid_origin réfère maintenant à l'instance du bloc
+    rs.SetUserText(instance_id, "uuid_origin", str(instance_id))
     
-    # On stocke l'ordre des courbes
+    # On stocke l'ordre des courbes sur l'instance
     for i, crv_uuid in enumerate(created_curves_uuids):
-        rs.SetUserText(prog_text_id, "Crv_{}".format(i), crv_uuid)
+        rs.SetUserText(instance_id, "Crv_{}".format(i), crv_uuid)
 
     rs.EnableRedraw(True)
     rs.Redraw()
-    print("Importation de {} terminée. {} courbes séquencées.".format(job_name, len(created_curves_uuids)))
+    print("Importation de {} terminée. Bloc créé. {} courbes séquencées.".format(job_name, len(created_curves_uuids)))
 
 if __name__ == "__main__":
     import_jbi_final()
