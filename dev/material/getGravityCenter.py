@@ -1,5 +1,8 @@
-# -*- coding: utf-8 -*-
 """
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 05/01/26
+
 Script calcul Centre de Gravité (COG)
 Pondéré par la masse (Volume * Densité)
 Insère un point au résultat.
@@ -56,7 +59,10 @@ def calculate_moments_recursive(obj_id, xform, data_accum, scale_factor):
             for child in block_objs:
                 calculate_moments_recursive(child, total_xform, data_accum, scale_factor)
         return
-
+    
+    if rs.IsPoint(obj_id):
+        return
+        
     if rs.IsPolysurfaceClosed(obj_id) or rs.IsSurfaceClosed(obj_id) or rs.IsMeshClosed(obj_id):
         rho = get_obj_density(obj_id)
         if rho <= 0: return 
@@ -107,7 +113,8 @@ def main():
     total_mass = data[0]
 
     if total_mass <= 0:
-        rs.MessageBox("Masse totale nulle ou matériaux non définis.", 48)
+        # rs.MessageBox("Masse totale nulle ou matériaux non définis.", 48)
+        print("Masse totale nulle ou matériaux non définis.")
         return
 
     # COG = Somme(Moments) / Masse Totale
@@ -121,13 +128,15 @@ def main():
     pt_id = sc.doc.Objects.AddPoint(cog_pt)
     rs.ObjectName(pt_id, "COG_Result")
     rs.ObjectColor(pt_id, (255, 0, 0)) # Rouge
+    rs.UnselectAllObjects()
     rs.SelectObject(pt_id)
     
     msg = "Masse totale considérée : {:.3f} kg\n".format(total_mass)
-    msg += "Centre de Gravité créé à :\nX: {:.2f}\nY: {:.2f}\nZ: {:.2f}".format(cog_x, cog_y, cog_z)
-    
-    rs.MessageBox(msg, 64, "COG Calculé")
-    print("Point inséré : {}".format(pt_id))
+    msg += "1 point inséré\n"
+    msg += "Centre de Gravité créé à :\n XYZ : {:.2f}, {:.2f}, {:.2f}".format(cog_x, cog_y, cog_z)
+    # rs.MessageBox(msg, 64, "COG Calculé")
+    print(str(msg))
+    # print("Point inséré : {}".format(pt_id))
 
 if __name__ == "__main__":
     main()
