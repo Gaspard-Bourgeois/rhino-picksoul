@@ -1,5 +1,8 @@
-# -*- coding: utf-8 -*-
 """
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 05/01/26
+
 Script calcul Masse Totale + Sous-totaux par matériau
 Compatible avec la structure de données 'VolumicMass' (kg/m3)
 Gère les blocs et les unités du document.
@@ -151,13 +154,13 @@ def main():
     total_mass = sum(stats.values())
     
     # Construction du message
-    msg = "MASSE TOTALE : {:.3f} kg\n\nDétails par matériau :\n".format(total_mass)
-    msg += "-" * 30 + "\n"
+    msg = "MASSE TOTALE : {:.3f} kg\n".format(total_mass)
+    msg += "-" * 10 + "Par matériaux" + "-" * 10 + "\n"
     
     for name, mass in stats.items():
         msg += "{}: {:.3f} kg\n".format(name, mass)
 
-    rs.MessageBox(msg, 64, "Résultats Masse")
+    # rs.MessageBox(msg, 64, "Résultats Masse")
     print(msg)
 
 if __name__ == "__main__":
