@@ -14,7 +14,7 @@ def get_transform_between_curves(crv_orig, crv_copy):
 
 def analyze_and_rebuild_from_text():
     # 1. Sélection des objets programmes (Textes avec type=program)
-    all_texts = rs.ObjectsByType(rs.filter.annotation)
+    all_texts = rs.ObjectsByType(rs.filter.instance)
     prog_texts = [t for t in all_texts if rs.GetUserText(t, "type") == "program"]
     
     if not prog_texts:
