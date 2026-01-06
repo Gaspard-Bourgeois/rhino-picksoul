@@ -93,4 +93,73 @@ def import_jbi_final():
                 rs.ObjectName(inst_id, str(idx))
                 
                 # UserText
-                rs.SetUserText(
+                rs.SetUserText(inst_id, "uuid_origin", str(inst_id))
+                rs.SetUserText(inst_id, "ID_C", c_id)
+                if bc_id: rs.SetUserText(inst_id, "BC", bc_id)
+                rs.SetUserText(inst_id, "Type", m_type)
+                if v_val: rs.SetUserText(inst_id, v_type, v_val)
+                if pl_val: rs.SetUserText(inst_id, "PL", pl_val)
+                if comment: rs.SetUserText(inst_id, "Comment", comment.strip())
+                
+                # STOCKAGE DE L'ÉTAT ACTUEL
+                current_state = "ARCON" if ctx['arcon'] else "ARCOF"
+                rs.SetUserText(inst_id, "State", current_state)
+                
+                inst_data.append({'idx': str(idx), 'pos': pt, 'arcon': ctx['arcon'], 'uuid': str(inst_id)})
+                idx += 1
+
+    # Création des Trajectoires
+    rs.CurrentLayer(traj_lyr)
+    created_crv_uuids = []
+    
+    if len(inst_data) > 1:
+        def build_t(data, state):
+            if len(data) < 2: return
+            pid = rs.AddPolyline([d['pos'] for d in data])
+            pref = "ARCON" if state else "ARCOF"
+            rs.ObjectName(pid, "{} {}-{}".format(pref, data[0]['idx'], data[-1]['idx']))
+            rs.ObjectColor(pid, (255,0,0) if state else (150,150,150))
+            rs.SetUserText(pid, "uuid_origin", str(pid))
+            for i, d in enumerate(data):
+                rs.SetUserText(pid, "Pt_{}".format(i), d['idx'])
+                rs.SetUserText(pid, "UUID_{}".format(i), d['uuid'])
+            created_crv_uuids.append(str(pid))
+
+        seg = [inst_data[0]]
+        last_s = inst_data[0]['arcon']
+        for i in range(1, len(inst_data)):
+            if inst_data[i]['arcon'] != last_s:
+                build_t(seg, last_s)
+                seg = [inst_data[i-1], inst_data[i]]
+                last_s = inst_data[i]['arcon']
+            else: seg.append(inst_data[i])
+        build_t(seg, last_s)
+
+    # Start/End
+    if inst_data:
+        rs.CurrentLayer(main_lyr)
+        rs.InsertBlock("Start", inst_data[0]['pos'])
+        rs.InsertBlock("End", inst_data[-1]['pos'])
+
+    # Bloc Program (Restoration du texte complet)
+    def_lyr = "_program_def"
+    if not rs.IsLayer(def_lyr): rs.AddLayer(def_lyr)
+    rs.CurrentLayer(def_lyr)
+    
+    full_text = "".join(lines) # Texte complet
+    txt_id = rs.AddText(full_text, [0,0,0], 2.0)
+    
+    b_name = "PROG_" + job_name
+    if rs.IsBlock(b_name): rs.DeleteBlock(b_name)
+    rs.AddBlock([txt_id], [0,0,0], b_name, True)
+    
+    rs.CurrentLayer(main_lyr)
+    prog_inst = rs.InsertBlock(b_name, [0,0,0])
+    rs.SetUserText(prog_inst, "type", "program")
+    # On stocke l'ordre des courbes pour le rebuild
+    for i, u in enumerate(created_crv_uuids): rs.SetUserText(prog_inst, "Crv_{}".format(i), u)
+
+    rs.EnableRedraw(True)
+
+if __name__ == "__main__":
+    import_jbi_final()
