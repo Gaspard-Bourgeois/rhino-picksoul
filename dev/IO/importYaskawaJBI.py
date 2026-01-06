@@ -67,18 +67,22 @@ def import_jbi_final():
     in_nop = False
     idx = 0
 
-    pattern = r"(MOVL|MOVJ|SMOVL)\s+(C\d+)(?:\s+(BC\d+))?(?:\s+(V|VJ)=([\d\.]+))?(?:\s+PL=(\d+))?"
+    # Regex modifiée pour inclure les commentaires (group 7)
+    pattern = r"(MOVL|MOVJ|SMOVL)\s+(C\d+)(?:\s+(BC\d+))?(?:\s+(V|VJ)=([\d\.]+))?(?:\s+PL=(\d+))?(?:\s*//(.*))?"
 
     for line in lines:
         raw = line.strip()
         if raw == "NOP": in_nop = True; continue
         if not in_nop or raw == "END": continue
+        
+        # Détection d'état avant le mouvement
         if "ARCON" in raw: ctx['arcon'] = True
         elif "ARCOF" in raw: ctx['arcon'] = False
         
         m = re.search(pattern, raw)
         if m:
-            m_type, c_id, bc_id, v_type, v_val, pl_val = m.groups()
+            m_type, c_id, bc_id, v_type, v_val, pl_val, comment = m.groups()
+            
             if c_id in pos_dict:
                 p = pos_dict[c_id]
                 pt = origin_plane.PointAt(p[0], p[1], p[2])
@@ -93,6 +97,10 @@ def import_jbi_final():
                 rs.SetUserText(inst_id, "Type", m_type)
                 if v_val: rs.SetUserText(inst_id, v_type, v_val)
                 if pl_val: rs.SetUserText(inst_id, "PL", pl_val)
+                
+                # NOUVEAU: Stockage du commentaire et de l'état
+                if comment: rs.SetUserText(inst_id, "Comment", comment.strip())
+                rs.SetUserText(inst_id, "State", "ARCON" if ctx['arcon'] else "ARCOF")
                 
                 inst_data.append({'idx': str(idx), 'pos': pt, 'arcon': ctx['arcon'], 'uuid': str(inst_id)})
                 idx += 1
@@ -141,6 +149,7 @@ def import_jbi_final():
     rs.CurrentLayer(main_lyr)
     prog_inst = rs.InsertBlock(b_name, [0,0,0])
     rs.SetUserText(prog_inst, "type", "program")
+    # On stocke l'ordre des courbes originales
     for i, u in enumerate(created_uuids): rs.SetUserText(prog_inst, "Crv_{}".format(i), u)
 
     rs.EnableRedraw(True)
