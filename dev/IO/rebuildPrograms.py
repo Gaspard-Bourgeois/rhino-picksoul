@@ -210,4 +210,47 @@ def analyze_and_rebuild():
         rs.SetUserText(pid, "State", st)
         
         # On prépare la data pour les courbes (compatible avec logique Import)
-        #
+        # arcon (bool) pour le script de courbe
+        is_arcon = (st == "ARCON")
+        new_inst_data.append({'idx': str(idx_counter), 'pos': p_data['pos'], 'arcon': is_arcon, 'uuid': str(pid)})
+        idx_counter += 1
+
+    # Start / End
+    if new_inst_data:
+        rs.InsertBlock("Start", new_inst_data[0]['pos'])
+        rs.InsertBlock("End", new_inst_data[-1]['pos'])
+
+    # 6. Reconstruction des Courbes (COPIE EXACTE LOGIQUE IMPORT)
+    if not rs.IsLayer(traj_lyr): rs.AddLayer("trajs_arcon_arcof", parent=main_lyr)
+    rs.CurrentLayer(traj_lyr)
+
+    if len(new_inst_data) > 1:
+        def build_t(data, state):
+            if len(data) < 2: return
+            pid = rs.AddPolyline([d['pos'] for d in data])
+            pref = "ARCON" if state else "ARCOF"
+            rs.ObjectName(pid, "{} {}-{}".format(pref, data[0]['idx'], data[-1]['idx']))
+            rs.ObjectColor(pid, (255,0,0) if state else (150,150,150))
+            rs.SetUserText(pid, "uuid_origin", str(pid))
+            for i, d in enumerate(data):
+                rs.SetUserText(pid, "Pt_{}".format(i), d['idx'])
+                rs.SetUserText(pid, "UUID_{}".format(i), d['uuid'])
+
+        seg = [new_inst_data[0]]
+        last_s = new_inst_data[0]['arcon']
+        
+        for i in range(1, len(new_inst_data)):
+            if new_inst_data[i]['arcon'] != last_s:
+                build_t(seg, last_s)
+                # Le segment change, on redémarre du point précédent pour continuité
+                seg = [new_inst_data[i-1], new_inst_data[i]]
+                last_s = new_inst_data[i]['arcon']
+            else:
+                seg.append(new_inst_data[i])
+        build_t(seg, last_s)
+
+    rs.EnableRedraw(True)
+    rs.MessageBox("Reconstruction terminée.", 64)
+
+if __name__ == "__main__":
+    analyze_and_rebuild()
