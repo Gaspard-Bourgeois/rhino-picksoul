@@ -3,24 +3,10 @@ import Rhino.Geometry as rg
 import math
 import re
 
-def get_euler_from_plane(plane):
-    """Calcule les angles Euler (Rx, Ry, Rz) pour affichage debug."""
-    xaxis = plane.XAxis
-    ry = math.asin(-xaxis.Z)
-    if abs(math.cos(ry)) > 0.000001:
-        rx = math.atan2(plane.YAxis.Z, plane.ZAxis.Z)
-        rz = math.atan2(plane.XAxis.Y, plane.XAxis.X)
-    else:
-        rx = 0
-        rz = math.atan2(-plane.YAxis.X, plane.YAxis.Y)
-    return math.degrees(rx), math.degrees(ry), math.degrees(rz)
-
 def create_pose_block():
-    """Crée le bloc 'Pose' avec axes XYZ colorés."""
     if rs.IsBlock("Pose"): return
     current_lyr = rs.CurrentLayer()
-    if not rs.IsLayer("_pose_def"):
-        rs.AddLayer("_pose_def", (128,128,128))
+    if not rs.IsLayer("_pose_def"): rs.AddLayer("_pose_def", (128,128,128))
     rs.CurrentLayer("_pose_def")
     p0 = [0,0,0]
     lx = rs.AddLine(p0, [10,0,0]); rs.ObjectColor(lx, (255,0,0))
@@ -29,13 +15,28 @@ def create_pose_block():
     rs.AddBlock([lx, ly, lz], p0, "Pose", delete_input=True)
     rs.CurrentLayer(current_lyr)
 
+def create_start_end_blocks():
+    """Crée les définitions de blocs pour le départ (Cube) et l'arrivée (Sphère)."""
+    if not rs.IsLayer("_start_end_def"): rs.AddLayer("_start_end_def", (200,200,200))
+    current_lyr = rs.CurrentLayer()
+    rs.CurrentLayer("_start_end_def")
+    
+    if not rs.IsBlock("Start"):
+        box = rs.AddBox([[-2.5,-2.5,-2.5],[2.5,-2.5,-2.5],[2.5,2.5,-2.5],[-2.5,2.5,-2.5],
+                         [-2.5,-2.5,2.5],[2.5,-2.5,2.5],[2.5,2.5,2.5],[-2.5,2.5,2.5]])
+        rs.AddBlock([box], [0,0,0], "Start", delete_input=True)
+        
+    if not rs.IsBlock("End"):
+        sph = rs.AddSphere([0,0,0], 3)
+        rs.AddBlock([sph], [0,0,0], "End", delete_input=True)
+        
+    rs.CurrentLayer(current_lyr)
+
 def import_jbi_final():
     filepath = rs.OpenFileName("Ouvrir fichier JBI", "JBI Files (*.jbi)|*.jbi||")
     if not filepath: return
-    with open(filepath, 'r') as f:
-        lines = f.readlines()
+    with open(filepath, 'r') as f: lines = f.readlines()
 
-    # --- 1. Parsing Initial ---
     job_name = "NONAME"
     folder_name = ""
     user_frame_id = None
@@ -50,45 +51,37 @@ def import_jbi_final():
             parts = l.split("=")
             pos_dict[parts[0]] = [float(v) for v in parts[1].split(",")]
 
-    # --- 2. Gestion des Calques ---
     full_path = "{}::{}".format(folder_name, job_name) if folder_name else job_name
-    
-    # Vérification anti-doublon basique (calque ou bloc existant)
-    if rs.IsLayer(full_path) or rs.IsBlock(job_name):
-        rs.MessageBox("Erreur : Le programme '{}' existe déjà (Calque ou Bloc).".format(full_path), 16)
+    if rs.IsLayer(full_path):
+        rs.MessageBox("Erreur : Le calque '{}' existe déjà.".format(full_path), 16)
         return
 
+    # Gestion Calques
     if folder_name:
         if not rs.IsLayer(folder_name): rs.AddLayer(folder_name)
         main_lyr = rs.AddLayer(job_name, parent=folder_name)
     else:
         main_lyr = rs.AddLayer(job_name)
-        
+    
     traj_lyr = rs.AddLayer("trajs_arcon_arcof", parent=main_lyr)
     se_lyr = rs.AddLayer("start_end", parent=main_lyr)
-    rs.CurrentLayer(main_lyr)
-
-    # --- 3. Repère ---
-    origin_plane = rs.WorldXYPlane()
-    if user_frame_id:
-        for np in rs.NamedCPlanes():
-            if np.Name == user_frame_id: origin_plane = np.Plane; break
 
     create_pose_block()
+    create_start_end_blocks()
+    
     rs.EnableRedraw(False)
-
+    origin_plane = rs.WorldXYPlane()
     inst_data = []
-    ctx = {'arcon': False, 'macro': "", 'label': ""}
+    ctx = {'arcon': False}
     in_nop = False
     instance_idx = 0
 
-    # --- 4. Placement des Instances ---
+    # Parsing Instructions
     for line in lines:
         raw = line.strip()
         if raw == "NOP": in_nop = True; continue
         if not in_nop or raw == "END": continue
-        if raw.startswith("*"): ctx['label'] = raw
-        elif "ARCON" in raw: ctx['arcon'] = True
+        if "ARCON" in raw: ctx['arcon'] = True
         elif "ARCOF" in raw: ctx['arcon'] = False
         
         m_match = re.search(r"(MOVL|MOVJ|SMOVL)\s+(C\d+)", raw)
@@ -97,47 +90,30 @@ def import_jbi_final():
             if c_id in pos_dict:
                 p = pos_dict[c_id]
                 target_pt = origin_plane.PointAt(p[0], p[1], p[2])
-                pose_plane = rg.Plane(origin_plane)
-                pose_plane.Origin = target_pt
-                pose_plane.Rotate(math.radians(p[5]), origin_plane.ZAxis, target_pt)
-                pose_plane.Rotate(math.radians(p[4]), pose_plane.YAxis, target_pt)
-                pose_plane.Rotate(math.radians(p[3]), pose_plane.XAxis, target_pt)
                 
-                inst_id = rs.InsertBlock("Pose", [0,0,0])
-                xform = rg.Transform.PlaneToPlane(rg.Plane.WorldXY, pose_plane)
-                rs.TransformObject(inst_id, xform)
+                # Placement Pose
+                rs.CurrentLayer(main_lyr)
+                inst_id = rs.InsertBlock("Pose", target_pt)
                 rs.ObjectName(inst_id, str(instance_idx))
-                
                 rs.SetUserText(inst_id, "uuid_origin", str(inst_id))
-                rs.SetUserText(inst_id, "ID_C", c_id)
-                rs.SetUserText(inst_id, "Type", move_type)
                 
                 inst_data.append({'idx': str(instance_idx), 'pos': target_pt, 'arcon': ctx['arcon'], 'uuid': str(inst_id)})
                 instance_idx += 1
 
-    # --- 5. Création des Courbes et Collecte des UUIDs ---
+    # Courbes
     rs.CurrentLayer(traj_lyr)
     created_curves_uuids = []
-
     if len(inst_data) > 1:
-        segment = [inst_data[0]]
-        last_state = inst_data[0]['arcon']
-
         def create_traj(data, state):
-            if len(data) < 2: return
             pl_id = rs.AddPolyline([d['pos'] for d in data])
-            prefix = "ARCON" if state else "ARCOF"
-            rs.ObjectName(pl_id, "{} {}-{}".format(prefix, data[0]['idx'], data[-1]['idx']))
             rs.ObjectColor(pl_id, (255,0,0) if state else (150,150,150))
-            
-            # Métadonnées Courbe
             rs.SetUserText(pl_id, "uuid_origin", str(pl_id))
             for i, d in enumerate(data):
                 rs.SetUserText(pl_id, "Pt_{}".format(i), d['idx'])
-                rs.SetUserText(pl_id, "UUID_{}".format(i), d['uuid'])
-            
             created_curves_uuids.append(str(pl_id))
 
+        segment = [inst_data[0]]
+        last_state = inst_data[0]['arcon']
         for i in range(1, len(inst_data)):
             if inst_data[i]['arcon'] != last_state:
                 create_traj(segment, last_state)
@@ -147,47 +123,31 @@ def import_jbi_final():
                 segment.append(inst_data[i])
         create_traj(segment, last_state)
 
-    # --- 6. Start & End ---
+    # Start & End Instances
     if inst_data:
         rs.CurrentLayer(se_lyr)
-        rs.AddRectangle(rg.Plane(inst_data[0]['pos'], rg.Vector3d.ZAxis), 5, 5)
-        rs.AddSphere(inst_data[-1]['pos'], 3)
+        rs.InsertBlock("Start", inst_data[0]['pos'])
+        rs.InsertBlock("End", inst_data[-1]['pos'])
 
-    # --- 7. Création du Bloc Programme et de son Instance (MODIFIÉ) ---
-    
-    # 7.1 Préparation du calque de définition interne
-    def_layer = "_curve_arcon_arcof_def"
-    if not rs.IsLayer(def_layer):
-        rs.AddLayer(def_layer, (100, 100, 100))
-    
-    # 7.2 Création du texte sur ce calque spécifique
+    # Bloc Programme (Définition)
+    def_layer = "_program_def"
+    if not rs.IsLayer(def_layer): rs.AddLayer(def_layer, (100, 100, 100))
     rs.CurrentLayer(def_layer)
-    # On crée le texte à l'origine [0,0,0] qui sera l'origine locale du bloc
-    raw_text_id = rs.AddText("".join(lines), [0,0,0], height=10.0)
+    txt_id = rs.AddText("".join(lines), [0,0,0], height=10.0)
     
-    # 7.3 Création de la définition du bloc (si elle n'existe pas déjà, gérée en étape 2)
-    # delete_input=True enlève le texte du modèle pour le mettre DANS le bloc
-    if not rs.IsBlock(job_name):
-        rs.AddBlock([raw_text_id], [0,0,0], job_name, delete_input=True)
+    # On utilise un nom de bloc unique pour éviter les conflits
+    block_name = "PROG_" + job_name
+    if rs.IsBlock(block_name): rs.DeleteBlock(block_name)
+    rs.AddBlock([txt_id], [0,0,0], block_name, delete_input=True)
     
-    # 7.4 Insertion de l'instance du bloc sur le calque principal
     rs.CurrentLayer(main_lyr)
-    # On insère l'instance à [0,0,0] monde
-    instance_id = rs.InsertBlock(job_name, [0,0,0])
-    rs.ObjectName(instance_id, job_name)
-    
-    # 7.5 Application des UserStrings critiques sur l'INSTANCE du bloc
+    instance_id = rs.InsertBlock(block_name, [0,0,0])
     rs.SetUserText(instance_id, "type", "program")
-    # L'uuid_origin réfère maintenant à l'instance du bloc
-    rs.SetUserText(instance_id, "uuid_origin", str(instance_id))
-    
-    # On stocke l'ordre des courbes sur l'instance
     for i, crv_uuid in enumerate(created_curves_uuids):
         rs.SetUserText(instance_id, "Crv_{}".format(i), crv_uuid)
 
     rs.EnableRedraw(True)
-    rs.Redraw()
-    print("Importation de {} terminée. Bloc créé. {} courbes séquencées.".format(job_name, len(created_curves_uuids)))
+    print("Importation terminée.")
 
 if __name__ == "__main__":
     import_jbi_final()
