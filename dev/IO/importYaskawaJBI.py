@@ -1,6 +1,5 @@
 import rhinoscriptsyntax as rs
 import Rhino.Geometry as rg
-import math
 import re
 
 def create_pose_block():
@@ -30,25 +29,26 @@ def create_start_end_blocks():
 def import_jbi_final():
     filepath = rs.OpenFileName("Ouvrir fichier JBI", "JBI Files (*.jbi)|*.jbi||")
     if not filepath: return
-    f = open(filepath, 'r')
-    lines = f.readlines()
-    f.close()
+    
+    with open(filepath, 'r') as f:
+        lines = f.readlines()
 
     job_name = "NONAME"
     folder_name = ""
-    user_frame_id = None
     pos_dict = {}
 
+    # Parsing préliminaire (Header)
     for line in lines:
         l = line.strip()
         if l.startswith("//NAME"): job_name = l.split(" ")[1]
         elif l.startswith("///FOLDERNAME"): folder_name = l.split(" ")[1]
-        elif l.startswith("///USER"): user_frame_id = l.split(" ")[1]
         elif l.startswith("C") and "=" in l:
             parts = l.split("=")
-            pos_dict[parts[0]] = [float(v) for v in parts[1].split(",")]
+            try:
+                pos_dict[parts[0]] = [float(v) for v in parts[1].split(",")]
+            except: pass
 
-    # Correction Hiérarchie Calques
+    # Création Calques
     if folder_name:
         if not rs.IsLayer(folder_name): rs.AddLayer(folder_name)
         main_lyr = rs.AddLayer(job_name, parent=folder_name)
@@ -63,19 +63,22 @@ def import_jbi_final():
     
     origin_plane = rs.WorldXYPlane()
     inst_data = []
-    ctx = {'arcon': False}
+    
+    # ETAT PAR DEFAUT = ARCOF (False)
+    ctx = {'arcon': False} 
     in_nop = False
     idx = 0
 
-    # Regex modifiée pour inclure les commentaires (group 7)
-    pattern = r"(MOVL|MOVJ|SMOVL)\s+(C\d+)(?:\s+(BC\d+))?(?:\s+(V|VJ)=([\d\.]+))?(?:\s+PL=(\d+))?(?:\s*//(.*))?"
+    # Regex capture : Type, C_ID, BC_ID(opt), V_Type(opt), V_Val(opt), PL(opt), Comment(opt)
+    pattern = r"(MOVL|MOVJ|SMOVL)\s+(C\d+)(?:\s+(BC\d+))?(?:\s+(V|VJ)=([\d\.]+))?(?:\s+PL=(\d+))?(?:.*//(.*))?"
 
     for line in lines:
         raw = line.strip()
         if raw == "NOP": in_nop = True; continue
         if not in_nop or raw == "END": continue
         
-        # Détection d'état avant le mouvement
+        # Mise à jour de l'état AVANT de traiter la pose courante
+        # Si une ligne contient ARCON, l'état devient ARCON pour la suite
         if "ARCON" in raw: ctx['arcon'] = True
         elif "ARCOF" in raw: ctx['arcon'] = False
         
@@ -90,58 +93,87 @@ def import_jbi_final():
                 inst_id = rs.InsertBlock("Pose", pt)
                 rs.ObjectName(inst_id, str(idx))
                 
-                # Restauration clés d'origine
+                # UserText
                 rs.SetUserText(inst_id, "uuid_origin", str(inst_id))
                 rs.SetUserText(inst_id, "ID_C", c_id)
                 if bc_id: rs.SetUserText(inst_id, "BC", bc_id)
                 rs.SetUserText(inst_id, "Type", m_type)
                 if v_val: rs.SetUserText(inst_id, v_type, v_val)
                 if pl_val: rs.SetUserText(inst_id, "PL", pl_val)
-                
-                # NOUVEAU: Stockage du commentaire et de l'état
                 if comment: rs.SetUserText(inst_id, "Comment", comment.strip())
-                rs.SetUserText(inst_id, "State", "ARCON" if ctx['arcon'] else "ARCOF")
                 
-                inst_data.append({'idx': str(idx), 'pos': pt, 'arcon': ctx['arcon'], 'uuid': str(inst_id)})
+                # STOCKAGE DE L'ÉTAT ACTUEL DANS LA POSE
+                current_state = "ARCON" if ctx['arcon'] else "ARCOF"
+                rs.SetUserText(inst_id, "State", current_state)
+                
+                inst_data.append({'idx': str(idx), 'pos': pt, 'state': current_state, 'uuid': str(inst_id)})
                 idx += 1
 
-    # Trajectoires
+    # Création des Trajectoires (Courbes)
     rs.CurrentLayer(traj_lyr)
-    created_uuids = []
+    created_crv_uuids = []
+    
     if len(inst_data) > 1:
-        def build_t(data, state):
-            if len(data) < 2: return
-            pid = rs.AddPolyline([d['pos'] for d in data])
-            pref = "ARCON" if state else "ARCOF"
-            rs.ObjectName(pid, "{} {}-{}".format(pref, data[0]['idx'], data[-1]['idx']))
-            rs.ObjectColor(pid, (255,0,0) if state else (150,150,150))
+        # On regroupe les points par segments de même état.
+        # Règle : Le segment entre P(i-1) et P(i) prend la couleur de l'état de P(i).
+        
+        # Initialisation
+        current_poly_pts = [inst_data[0]['pos']]
+        current_poly_uuids = [inst_data[0]['uuid']]
+        current_indices = [0]
+        # L'état du premier segment dépend du 2ème point (le premier mouvement réel)
+        last_seg_state = inst_data[1]['state'] 
+
+        def commit_polyline(pts, uuids, state, indices):
+            if len(pts) < 2: return
+            pid = rs.AddPolyline(pts)
+            start_i = indices[0]
+            end_i = indices[-1]
+            rs.ObjectName(pid, "{} {}-{}".format(state, start_i, end_i))
+            rs.ObjectColor(pid, (255,0,0) if state == "ARCON" else (150,150,150))
+            
             rs.SetUserText(pid, "uuid_origin", str(pid))
-            for i, d in enumerate(data):
-                rs.SetUserText(pid, "Pt_{}".format(i), d['idx'])
-                rs.SetUserText(pid, "UUID_{}".format(i), d['uuid'])
-            created_uuids.append(str(pid))
+            # Stockage des UUIDs pour retrouver les poses lors du rebuild
+            for k, u in enumerate(uuids):
+                rs.SetUserText(pid, "UUID_{}".format(k), u)
+                rs.SetUserText(pid, "Pt_{}".format(k), str(indices[k]))
+            created_crv_uuids.append(str(pid))
 
-        seg = [inst_data[0]]
-        last_s = inst_data[0]['arcon']
         for i in range(1, len(inst_data)):
-            if inst_data[i]['arcon'] != last_s:
-                build_t(seg, last_s)
-                seg = [inst_data[i-1], inst_data[i]]
-                last_s = inst_data[i]['arcon']
-            else: seg.append(inst_data[i])
-        build_t(seg, last_s)
+            curr_state = inst_data[i]['state']
+            
+            if curr_state != last_seg_state:
+                # Changement d'état : on finit la courbe courante au point actuel
+                current_poly_pts.append(inst_data[i]['pos'])
+                current_poly_uuids.append(inst_data[i]['uuid'])
+                current_indices.append(i)
+                
+                commit_polyline(current_poly_pts, current_poly_uuids, last_seg_state, current_indices)
+                
+                # On redémarre une nouvelle courbe à partir de ce point
+                current_poly_pts = [inst_data[i]['pos']]
+                current_poly_uuids = [inst_data[i]['uuid']]
+                current_indices = [i]
+                last_seg_state = curr_state
+            else:
+                current_poly_pts.append(inst_data[i]['pos'])
+                current_poly_uuids.append(inst_data[i]['uuid'])
+                current_indices.append(i)
+        
+        # Commit final
+        commit_polyline(current_poly_pts, current_poly_uuids, last_seg_state, current_indices)
 
-    # Start/End sur Main Layer
+    # Start/End
     if inst_data:
         rs.CurrentLayer(main_lyr)
         rs.InsertBlock("Start", inst_data[0]['pos'])
         rs.InsertBlock("End", inst_data[-1]['pos'])
 
-    # Definition Bloc Program
+    # Bloc Program (pour garder l'ordre)
     def_lyr = "_program_def"
     if not rs.IsLayer(def_lyr): rs.AddLayer(def_lyr)
     rs.CurrentLayer(def_lyr)
-    txt_id = rs.AddText("".join(lines), [0,0,0], 10.0)
+    txt_id = rs.AddText("SOURCE_JBI", [0,0,0], 1.0) # Placeholder
     b_name = "PROG_" + job_name
     if rs.IsBlock(b_name): rs.DeleteBlock(b_name)
     rs.AddBlock([txt_id], [0,0,0], b_name, True)
@@ -149,8 +181,8 @@ def import_jbi_final():
     rs.CurrentLayer(main_lyr)
     prog_inst = rs.InsertBlock(b_name, [0,0,0])
     rs.SetUserText(prog_inst, "type", "program")
-    # On stocke l'ordre des courbes originales
-    for i, u in enumerate(created_uuids): rs.SetUserText(prog_inst, "Crv_{}".format(i), u)
+    # On stocke l'ordre des courbes pour le rebuild
+    for i, u in enumerate(created_crv_uuids): rs.SetUserText(prog_inst, "Crv_{}".format(i), u)
 
     rs.EnableRedraw(True)
 
