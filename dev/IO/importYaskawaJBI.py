@@ -12,7 +12,7 @@ def create_pose_block():
     lx = rs.AddLine(p0, [10,0,0]); rs.ObjectColor(lx, (255,0,0))
     ly = rs.AddLine(p0, [0,10,0]); rs.ObjectColor(ly, (0,255,0))
     lz = rs.AddLine(p0, [0,0,10]); rs.ObjectColor(lz, (0,0,255))
-    rs.AddBlock([lx, ly, lz], p0, "Pose", delete_input=True)
+    rs.AddBlock([lx, ly, lz], p0, "Pose", True)
     rs.CurrentLayer(current_lyr)
 
 def create_start_end_blocks():
@@ -21,23 +21,24 @@ def create_start_end_blocks():
     rs.CurrentLayer("_start_end_def")
     if not rs.IsBlock("Start"):
         box = rs.AddBox([[-2.5,-2.5,-2.5],[2.5,-2.5,-2.5],[2.5,2.5,-2.5],[-2.5,2.5,-2.5],[-2.5,-2.5,2.5],[2.5,-2.5,2.5],[2.5,2.5,2.5],[-2.5,2.5,2.5]])
-        rs.AddBlock([box], [0,0,0], "Start", delete_input=True)
+        rs.AddBlock([box], [0,0,0], "Start", True)
     if not rs.IsBlock("End"):
         sph = rs.AddSphere([0,0,0], 3)
-        rs.AddBlock([sph], [0,0,0], "End", delete_input=True)
+        rs.AddBlock([sph], [0,0,0], "End", True)
     rs.CurrentLayer(current_lyr)
 
 def import_jbi_final():
     filepath = rs.OpenFileName("Ouvrir fichier JBI", "JBI Files (*.jbi)|*.jbi||")
     if not filepath: return
-    with open(filepath, 'r', encoding='utf-8') as f: lines = f.readlines()
+    f = open(filepath, 'r')
+    lines = f.readlines()
+    f.close()
 
     job_name = "NONAME"
     folder_name = ""
     user_frame_id = None
     pos_dict = {}
 
-    # Parsing en-tête et positions
     for line in lines:
         l = line.strip()
         if l.startswith("//NAME"): job_name = l.split(" ")[1]
@@ -47,28 +48,25 @@ def import_jbi_final():
             parts = l.split("=")
             pos_dict[parts[0]] = [float(v) for v in parts[1].split(",")]
 
-    # Gestion des calques
-    full_path = "{}::{}".format(folder_name, job_name) if folder_name else job_name
-    if rs.IsLayer(full_path):
-        rs.MessageBox("Le calque '{}' existe déjà.".format(full_path), 16)
-        return
-
-    main_lyr = rs.AddLayer(job_name, parent=folder_name if folder_name else None)
+    # Correction Hiérarchie Calques
+    if folder_name:
+        if not rs.IsLayer(folder_name): rs.AddLayer(folder_name)
+        main_lyr = rs.AddLayer(job_name, parent=folder_name)
+    else:
+        main_lyr = rs.AddLayer(job_name)
+    
     traj_lyr = rs.AddLayer("trajs_arcon_arcof", parent=main_lyr)
-    se_lyr = rs.AddLayer("start_end", parent=main_lyr)
-
+    
     create_pose_block()
     create_start_end_blocks()
-    
     rs.EnableRedraw(False)
-    origin_plane = rs.WorldXYPlane() # À adapter si user_frame_id est géré
+    
+    origin_plane = rs.WorldXYPlane()
     inst_data = []
     ctx = {'arcon': False}
     in_nop = False
     idx = 0
 
-    # Parsing Instructions avec paramètres étendus
-    # Regex: (Type) (C) (BC optionnel) (V/VJ) (PL)
     pattern = r"(MOVL|MOVJ|SMOVL)\s+(C\d+)(?:\s+(BC\d+))?(?:\s+(V|VJ)=([\d\.]+))?(?:\s+PL=(\d+))?"
 
     for line in lines:
@@ -78,82 +76,74 @@ def import_jbi_final():
         if "ARCON" in raw: ctx['arcon'] = True
         elif "ARCOF" in raw: ctx['arcon'] = False
         
-        match = re.search(pattern, raw)
-        if match:
-            m_type, c_id, bc_id, v_type, v_val, pl_val = match.groups()
+        m = re.search(pattern, raw)
+        if m:
+            m_type, c_id, bc_id, v_type, v_val, pl_val = m.groups()
             if c_id in pos_dict:
                 p = pos_dict[c_id]
-                target_pt = origin_plane.PointAt(p[0], p[1], p[2])
-                
+                pt = origin_plane.PointAt(p[0], p[1], p[2])
                 rs.CurrentLayer(main_lyr)
-                inst_id = rs.InsertBlock("Pose", target_pt)
+                inst_id = rs.InsertBlock("Pose", pt)
                 rs.ObjectName(inst_id, str(idx))
                 
-                # Stockage Meta sur la Pose
+                # Restauration clés d'origine
                 rs.SetUserText(inst_id, "uuid_origin", str(inst_id))
                 rs.SetUserText(inst_id, "ID_C", c_id)
-                if bc_id: rs.SetUserText(inst_id, "ID_BC", bc_id)
+                if bc_id: rs.SetUserText(inst_id, "BC", bc_id)
                 rs.SetUserText(inst_id, "Type", m_type)
-                rs.SetUserText(inst_id, "V_Type", v_type or "")
-                rs.SetUserText(inst_id, "V_Val", v_val or "")
-                rs.SetUserText(inst_id, "PL", pl_val or "")
-                rs.SetUserText(inst_id, "ArcState", "ARCON" if ctx['arcon'] else "ARCOF")
-
-                inst_data.append({'idx': str(idx), 'pos': target_pt, 'arcon': ctx['arcon'], 'uuid': str(inst_id)})
+                if v_val: rs.SetUserText(inst_id, v_type, v_val)
+                if pl_val: rs.SetUserText(inst_id, "PL", pl_val)
+                
+                inst_data.append({'idx': str(idx), 'pos': pt, 'arcon': ctx['arcon'], 'uuid': str(inst_id)})
                 idx += 1
 
-    # Création des trajectoires
+    # Trajectoires
     rs.CurrentLayer(traj_lyr)
-    created_curves_uuids = []
+    created_uuids = []
     if len(inst_data) > 1:
-        def create_traj(data, state):
+        def build_t(data, state):
             if len(data) < 2: return
-            pl_id = rs.AddPolyline([d['pos'] for d in data])
+            pid = rs.AddPolyline([d['pos'] for d in data])
             pref = "ARCON" if state else "ARCOF"
-            rs.ObjectName(pl_id, "{} {}-{}".format(pref, data[0]['idx'], data[-1]['idx']))
-            rs.ObjectColor(pl_id, (255,0,0) if state else (150,150,150))
-            rs.SetUserText(pl_id, "uuid_origin", str(pl_id))
-            rs.SetUserText(pl_id, "ArcState", pref)
+            rs.ObjectName(pid, "{} {}-{}".format(pref, data[0]['idx'], data[-1]['idx']))
+            rs.ObjectColor(pid, (255,0,0) if state else (150,150,150))
+            rs.SetUserText(pid, "uuid_origin", str(pid))
             for i, d in enumerate(data):
-                rs.SetUserText(pl_id, "Pt_{}".format(i), d['idx'])
-                rs.SetUserText(pl_id, "UUID_{}".format(i), d['uuid'])
-            created_curves_uuids.append(str(pl_id))
+                rs.SetUserText(pid, "Pt_{}".format(i), d['idx'])
+                rs.SetUserText(pid, "UUID_{}".format(i), d['uuid'])
+            created_uuids.append(str(pid))
 
-        segment = [inst_data[0]]
-        last_state = inst_data[0]['arcon']
+        seg = [inst_data[0]]
+        last_s = inst_data[0]['arcon']
         for i in range(1, len(inst_data)):
-            if inst_data[i]['arcon'] != last_state:
-                create_traj(segment, last_state)
-                segment = [inst_data[i-1], inst_data[i]]
-                last_state = inst_data[i]['arcon']
-            else:
-                segment.append(inst_data[i])
-        create_traj(segment, last_state)
+            if inst_data[i]['arcon'] != last_s:
+                build_t(seg, last_s)
+                seg = [inst_data[i-1], inst_data[i]]
+                last_s = inst_data[i]['arcon']
+            else: seg.append(inst_data[i])
+        build_t(seg, last_s)
 
-    # Start/End
+    # Start/End sur Main Layer
     if inst_data:
-        rs.CurrentLayer(se_lyr)
+        rs.CurrentLayer(main_lyr)
         rs.InsertBlock("Start", inst_data[0]['pos'])
         rs.InsertBlock("End", inst_data[-1]['pos'])
 
-    # Bloc Programme de référence
-    def_layer = "_program_def"
-    if not rs.IsLayer(def_layer): rs.AddLayer(def_layer, (100, 100, 100))
-    rs.CurrentLayer(def_layer)
-    txt_id = rs.AddText("".join(lines), [0,0,0], height=10.0)
-    
+    # Definition Bloc Program
+    def_lyr = "_program_def"
+    if not rs.IsLayer(def_lyr): rs.AddLayer(def_lyr)
+    rs.CurrentLayer(def_lyr)
+    txt_id = rs.AddText("".join(lines), [0,0,0], 10.0)
     b_name = "PROG_" + job_name
     if rs.IsBlock(b_name): rs.DeleteBlock(b_name)
-    rs.AddBlock([txt_id], [0,0,0], b_name, delete_input=True)
+    rs.AddBlock([txt_id], [0,0,0], b_name, True)
     
     rs.CurrentLayer(main_lyr)
     prog_inst = rs.InsertBlock(b_name, [0,0,0])
     rs.SetUserText(prog_inst, "type", "program")
-    for i, u in enumerate(created_curves_uuids):
-        rs.SetUserText(prog_inst, "Crv_{}".format(i), u)
+    for i, u in enumerate(created_uuids): rs.SetUserText(prog_inst, "Crv_{}".format(i), u)
 
     rs.EnableRedraw(True)
-    print("Import JBI réussi.")
 
 if __name__ == "__main__":
     import_jbi_final()
