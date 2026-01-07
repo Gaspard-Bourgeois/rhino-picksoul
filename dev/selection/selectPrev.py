@@ -6,7 +6,7 @@ Date: 05/01/26
 import rhinoscriptsyntax as rs
 import re
 
-def select_next_elements():
+def select_previous_elements():
     # Récupérer les objets actuellement sélectionnés
     selected_objects = rs.GetObjects("Sélectionnez les éléments actuels", preselect=True)
     
@@ -14,9 +14,8 @@ def select_next_elements():
         print("Aucune sélection active.")
         return
 
-    next_objects_to_select = []
+    prev_objects_to_select = []
     
-    # On désélectionne tout pour préparer la nouvelle sélection
     rs.UnselectAllObjects()
 
     for obj_id in selected_objects:
@@ -28,20 +27,20 @@ def select_next_elements():
 
         # --- CAS 1 : POSE (Nommé "3", "4"...) ---
         if obj_name.isdigit():
-            target_idx = int(obj_name) + 1
+            target_idx = "{:04d}".format(int(obj_name) - 1)
             target_name = str(target_idx)
             
             layer_objs = rs.ObjectsByLayer(obj_layer)
             if layer_objs:
                 for cand_id in layer_objs:
                     if rs.ObjectName(cand_id) == target_name:
-                        next_objects_to_select.append(cand_id)
+                        prev_objects_to_select.append(cand_id)
 
         # --- CAS 2 : COURBE (Nommé "... X-Y") ---
         else:
             match = re.search(r"(\d+)-(\d+)$", obj_name)
             if match:
-                current_end = int(match.group(2))
+                current_start = int(match.group(1))
                 
                 layer_objs = rs.ObjectsByLayer(obj_layer)
                 if layer_objs:
@@ -50,15 +49,15 @@ def select_next_elements():
                         if cand_name and cand_name != obj_name:
                             cand_match = re.search(r"(\d+)-(\d+)$", cand_name)
                             if cand_match:
-                                # Le début du suivant doit être la fin de l'actuel
-                                if int(cand_match.group(1)) == current_end:
-                                    next_objects_to_select.append(cand_id)
+                                # La fin du précédent doit être le début de l'actuel
+                                if int(cand_match.group(2)) == current_start:
+                                    prev_objects_to_select.append(cand_id)
 
-    if next_objects_to_select:
-        rs.SelectObjects(next_objects_to_select)
-        print("{} éléments suivants sélectionnés.".format(len(next_objects_to_select)))
+    if prev_objects_to_select:
+        rs.SelectObjects(prev_objects_to_select)
+        print("{} éléments précédents sélectionnés.".format(len(prev_objects_to_select)))
     else:
-        print("Aucun élément suivant trouvé.")
+        print("Aucun élément précédent trouvé.")
 
 if __name__ == "__main__":
-    select_next_elements()
+    select_previous_elements()
