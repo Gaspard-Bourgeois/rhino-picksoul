@@ -9,7 +9,7 @@ def get_program_from_selection(selected_ids):
         parent = rs.ParentLayer(lyr)
         if parent: target_layers.add(parent)
     
-    all_objs = rs.ObjectsByType(16) # Instances de blocs
+    all_objs = rs.ObjectsByType(4096) # Instances de blocs
     programs = []
     if all_objs:
         for obj in all_objs:
@@ -23,7 +23,7 @@ def rebuild_trajectories():
     selected = rs.SelectedObjects()
     target_programs = []
     
-    all_instances = rs.ObjectsByType(16) or []
+    all_instances = rs.ObjectsByType(4096) or []
     all_progs = [obj for obj in all_instances if rs.GetUserText(obj, "type") == "program"]
 
     if not selected:
@@ -53,7 +53,7 @@ def rebuild_trajectories():
         original_crv_uuids = []
         i = 0
         while True:
-            u = rs.GetUserText(prog_id, "Crv_{}".format(i))
+            u = rs.GetUserText(prog_id, "Crv_{:04d}".format(i))
             if not u: break
             if rs.IsObject(u): original_crv_uuids.append(u)
             i += 1
@@ -157,7 +157,7 @@ def rebuild_trajectories():
                 rs.ObjectColor(nc, (255,0,0) if is_arcon else (150,150,150))
                 rs.SetUserText(nc, "uuid_origin", str(nc))
                 for j, d in enumerate(data):
-                    rs.SetUserText(nc, "Pt_{}".format(j), rs.ObjectName(d['uuid']))
+                    rs.SetUserText(nc, "Pt_{:04d}".format(j), rs.ObjectName(d['uuid']))
                     rs.SetUserText(nc, "UUID_{}".format(j), d['uuid'])
                 new_crv_uuids.append(str(nc))
 
@@ -198,7 +198,7 @@ def rebuild_trajectories():
         print(" - Poses finales : {}".format(stats["pose_out"]))
         print(" - Courbes : {} -> {}".format(stats["crv_in"], stats["crv_out"]))
 
-    rs.CurrentLayer(target_programs[0] if target_programs else None)
+    # rs.CurrentLayer(target_programs[0] if target_programs else None)
     rs.EnableRedraw(True)
     rs.MessageBox("Reconstruction terminée.")
 
