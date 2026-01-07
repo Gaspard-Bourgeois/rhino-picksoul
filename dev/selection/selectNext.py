@@ -1,3 +1,8 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 05/01/26
+"""
 import rhinoscriptsyntax as rs
 import re
 
@@ -21,9 +26,9 @@ def select_next_elements():
         if not obj_name:
             continue
 
-        # --- CAS 1 : POSE (Nommé "3", "4"...) ---
+        # --- CAS 1 : POSE (Nommé "003", "0004"...) ---
         if obj_name.isdigit():
-            target_idx = int(obj_name) + 1
+            target_idx = "{:04d}".format(int(obj_name) + 1)
             target_name = str(target_idx)
             
             layer_objs = rs.ObjectsByLayer(obj_layer)
