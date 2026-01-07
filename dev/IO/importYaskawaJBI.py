@@ -90,7 +90,7 @@ def import_jbi_final():
                 pt = origin_plane.PointAt(p[0], p[1], p[2])
                 rs.CurrentLayer(main_lyr)
                 inst_id = rs.InsertBlock("Pose", pt)
-                rs.ObjectName(inst_id, str(idx))
+                rs.ObjectName(inst_id, "{:04d}".format(idx))
                 
                 # UserText
                 rs.SetUserText(inst_id, "uuid_origin", str(inst_id))
@@ -121,8 +121,8 @@ def import_jbi_final():
             rs.ObjectColor(pid, (255,0,0) if state else (150,150,150))
             rs.SetUserText(pid, "uuid_origin", str(pid))
             for i, d in enumerate(data):
-                rs.SetUserText(pid, "Pt_{}".format(i), d['idx'])
-                rs.SetUserText(pid, "UUID_{}".format(i), d['uuid'])
+                rs.SetUserText(pid, "Pt_{:04d}".format(i), "{:04d}".format(int(d['idx'])))
+                rs.SetUserText(pid, "UUID_{:04d}".format(i), d['uuid'])
             created_crv_uuids.append(str(pid))
 
         seg = [inst_data[0]]
@@ -157,7 +157,7 @@ def import_jbi_final():
     prog_inst = rs.InsertBlock(b_name, [0,0,0])
     rs.SetUserText(prog_inst, "type", "program")
     # On stocke l'ordre des courbes pour le rebuild
-    for i, u in enumerate(created_crv_uuids): rs.SetUserText(prog_inst, "Crv_{}".format(i), u)
+    for i, u in enumerate(created_crv_uuids): rs.SetUserText(prog_inst, "Crv_{:04d}".format(i), u)
 
     rs.EnableRedraw(True)
 
