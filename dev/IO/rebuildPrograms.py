@@ -144,12 +144,15 @@ def rebuild_trajectories():
         # --- Étape 6 : Nettoyage et Renommage ---
         final_poses_clean = []
         for idx, p_id in enumerate(global_pose_list):
-            if not rs.IsObject(p_id): continue
+            if not rs.IsObject(p_id):
+                print("error with uuid {}".format(p_id))
+                continue
             
-            rs.ObjectName(p_id, str(idx))
+            rs.ObjectName(p_id, "{:04d}".format(idx))
             rs.SetUserText(p_id, "uuid_origin", str(p_id))
             
             final_poses_clean.append({
+                'idx' : idx,
                 'uuid': str(p_id),
                 'state': rs.GetUserText(p_id, "State") or "ARCOF",
                 'pos': rs.BlockInstanceInsertPoint(p_id)
@@ -186,7 +189,7 @@ def rebuild_trajectories():
                         nc = rs.AddPolyline([d['pos'] for d in current_seg_data])
                         if nc:
                             lbl = "ARCON" if current_state else "ARCOF"
-                            rs.ObjectName(nc, "{}_{}-{}".format(lbl, current_seg_data[0]['uuid'], current_seg_data[-1]['uuid']))
+                            rs.ObjectName(nc, "{}_{}-{}".format(lbl, current_seg_data[0]['idx'], current_seg_data[-1]['idx']))
                             rs.ObjectColor(nc, (255,0,0) if current_state else (150,150,150))
                             rs.SetUserText(nc, "uuid_origin", str(nc))
                             for j, d in enumerate(current_seg_data):
