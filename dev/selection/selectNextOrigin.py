@@ -48,7 +48,7 @@ def select_next_program_element():
         else:
             curve_selected.add(str(obj_id))
     
-    print(pose_selected, curve_selected)
+    # print(pose_selected, curve_selected)
     
     print("Analyse de la selection utilisateur ({} objets)...".format(len(selected)))
     target_programs = get_program_from_selection(selected)
@@ -78,11 +78,11 @@ def select_next_program_element():
             if select_next_curve:
                 select_next_curve = False
                 next_curves.append(u)
-                curve_selected.remove(u)
             if u in curve_selected:
                 select_next_curve = True
+                curve_selected.remove(u)
             if  not len(pose_selected) and not len(curve_selected) and not select_next_curve:
-                return
+                break
             i += 1
         
 
@@ -98,7 +98,7 @@ def select_next_program_element():
                 if orig_pose_uuid == last_pose:
                     continue
                 last_pose = orig_pose_uuid
-                print(orig_pose_uuid)
+                # print(orig_pose_uuid)
                 if select_next_pose:
                     select_next_pose = False
                     next_poses.append(orig_pose_uuid)
