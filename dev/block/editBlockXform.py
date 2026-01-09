@@ -268,7 +268,7 @@ def editBlockXform():
                 desired_T = soiXform 
             else:
                 # SŒUR : La transformation finale désirée est T_new = X_comp * T_old
-                desired_T = rs.XformMultiply(inv_def, T_old) 
+                desired_T = rs.XformMultiply(T_old, inv_def) 
             
             # Calcul X_apply : X_apply = desired_T * T_old^-1
             inv_T_old = rs.XformInverse(T_old)
@@ -291,4 +291,3 @@ def editBlockXform():
 
 if __name__ == '__main__':
     editBlockXform()
-
