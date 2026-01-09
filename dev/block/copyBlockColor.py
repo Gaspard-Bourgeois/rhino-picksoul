@@ -1,3 +1,8 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 09/01/26
+"""
 import rhinoscriptsyntax as rs
 
 def copyBlockColor():
