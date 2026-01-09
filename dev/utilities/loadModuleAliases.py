@@ -49,7 +49,9 @@ def loadModuleAliases():
             "showKeyValue" : '_NoEcho !_PropertiesPage _Pause T'
     }
     module_aliases_dev = {
+            #cplane
             "editBlockXform" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/editBlockXform.py"',
+            "copyBlockColor" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/copyBlockColor.py"',
             #cplane
             "alignCPlaneToBFitPoints" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/cplane/alignCPlaneToBFitPoints.py"',
             "alignCPlaneToBlock" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/cplane/alignCPlaneToBlock.py"',
