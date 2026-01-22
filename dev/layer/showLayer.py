@@ -13,11 +13,12 @@ def RunCommand(is_interactive):
     all_layers = rs.LayerNames()
     if not all_layers:
         return 0
-
+        
+    layer = rs.CurrentLayer()
     # 2. Demander la saisie à l'utilisateur
     # Exemple : "p1::l1, p1::l2, p2::*"
     prompt = "Calques à afficher (séparés par une virgule). Ex: p1::*, p2*, Layer01"
-    user_input = rs.GetString(prompt)
+    user_input = rs.GetString(prompt, layer, all_layers)
     
     if not user_input:
         return 0
