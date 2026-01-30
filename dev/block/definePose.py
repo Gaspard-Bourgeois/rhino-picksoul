@@ -7,6 +7,7 @@ import re
 
 def get_block_definition(block_name):
     if not rs.IsBlock(block_name):
+        # Création d'un point temporaire pour définir le bloc s'il n'existe pas
         pt = rs.AddPoint([0,0,0])
         rs.AddBlock([pt], [0,0,0], block_name, delete_input=True)
     return block_name
@@ -28,46 +29,56 @@ def update_pose_geometry(block_name, viz_type, size):
         rs.ObjectColor(pt, System.Drawing.Color.Red)
         new_objs = [pt]
         
-    # Redéfinition du bloc (écrase l'ancienne définition)
+    # Redéfinition du bloc (écrase l'ancienne définition géométrique)
     rs.AddBlock(new_objs, [0,0,0], block_name, delete_input=True)
 
 def reset_instances_scale(block_name):
+    """
+    Réinitialise l'échelle et supprime le cisaillement des instances.
+    Calcule la matrice de compensation : M_correction = M_cible * inverse(M_actuelle)
+    """
     instances = rs.BlockInstances(block_name)
     if not instances: return 0
     
     count = 0
     for inst in instances:
-        # 1. Récupérer la matrice actuelle
-        xform = rs.BlockInstanceXform(inst)
+        # 1. Obtenir la matrice de transformation actuelle (M_old)
+        m_old = rs.BlockInstanceXform(inst)
         
-        # 2. Extraire les vecteurs colonnes (axes locaux)
-        vX = rg.Vector3d(xform.M00, xform.M10, xform.M20)
-        vY = rg.Vector3d(xform.M01, xform.M11, xform.M21)
-        vZ = rg.Vector3d(xform.M02, xform.M12, xform.M22)
+        # 2. Extraire les vecteurs colonnes actuels
+        vX = rg.Vector3d(m_old.M00, m_old.M10, m_old.M20)
+        vY = rg.Vector3d(m_old.M01, m_old.M11, m_old.M21)
         
-        # 3. Calculer les échelles actuelles
-        sX, sY, sZ = vX.Length, vY.Length, vZ.Length
+        # 3. Construire une base orthonormée (sans échelle ni cisaillement)
+        # On garde la direction X comme référence
+        vX.Unitize()
+        # On calcule Z par produit vectoriel pour garantir la perpendicularité
+        vZ = rg.Vector3d.CrossProduct(vX, vY)
+        vZ.Unitize()
+        # On recalcule Y pour fermer la base orthonormée
+        vY = rg.Vector3d.CrossProduct(vZ, vX)
+        vY.Unitize()
         
-        # Tolérance pour éviter de recalculer ce qui est déjà à 1.0
-        if abs(sX-1.0) > 1e-6 or abs(sY-1.0) > 1e-6 or abs(sZ-1.0) > 1e-6:
-            # --- LE POINT CRUCIAL ---
-            # On crée un plan LOCAL basé sur l'orientation actuelle du bloc
-            pivot = rs.BlockInstanceInsertPoint(inst)
-            # On normalise les vecteurs pour définir le plan d'orientation pure
-            vX.Unitize()
-            vY.Unitize()
-            local_plane = rg.Plane(pivot, vX, vY)
-            
-            # 4. Créer la matrice de compensation sur ce plan local
-            # On multiplie par l'inverse de l'échelle (1/s)
-            scaling_matrix = rg.Transform.Scale(local_plane, 1.0/sX, 1.0/sY, 1.0/sZ)
-            
-            # 5. Appliquer la transformation relative
-            rs.TransformObject(inst, scaling_matrix)
-            count += 1
-            
+        # 4. Créer la matrice cible (M_new) : Rotation pure + Translation d'origine
+        m_new = rg.Transform(1.0)
+        m_new.M00, m_new.M10, m_new.M20 = vX.X, vX.Y, vX.Z
+        m_new.M01, m_new.M11, m_new.M21 = vY.X, vY.Y, vY.Z
+        m_new.M02, m_new.M12, m_new.M22 = vZ.X, vZ.Y, vZ.Z
+        # On préserve la position (4ème colonne)
+        m_new.M03, m_new.M13, m_new.M23 = m_old.M03, m_old.M13, m_old.M23
+        
+        # 5. Calculer la transformation de compensation
+        # Mathématiquement : M_new = M_comp * M_old  =>  M_comp = M_new * inverse(M_old)
+        rc, m_old_inv = m_old.TryGetInverse()
+        
+        if rc:
+            m_comp = m_new * m_old_inv
+            # On vérifie si une correction est réellement nécessaire (différence de matrice)
+            if not m_comp.IsIdentity:
+                rs.TransformObject(inst, m_comp)
+                count += 1
+                
     return count
-
 
 def main():
     block_name = "Pose"
@@ -86,33 +97,27 @@ def main():
     for line in cmd_hist:
         match = re.search(pattern, line)
         if match:
-            p_type = match.group(1)
-            p_size = int(match.group(2))
-            p_reset = match.group(3)
-            break
+            try:
+                p_type = match.group(1)
+                p_size = int(match.group(2))
+                p_reset = match.group(3)
+                break
+            except: pass
 
     # --- 3. BOUCLE D'OPTIONS ---
     while True:
-        # On définit les options SANS le signe "=" pour garantir la sélection
         options = ["Type", "Size", "ResetScale"]
-        
-        # On construit un message clair avec les valeurs actuelles
         prompt = "Paramètres Pose [ Type=%s  Size=%d  ResetScale=%s ]" % (p_type, p_size, p_reset)
-        
         res = rs.GetString(prompt, "Valider", options)
         
-        if res is None: return # Annulation
-        
-        if res == "Valider" or res == "": 
-            break
+        if res is None: return 
+        if res == "Valider" or res == "": break
             
         elif res == "Type":
             p_type = "point" if p_type == "frame" else "frame"
-            
         elif res == "Size":
             new_val = rs.GetInteger("Nouvelle taille (0-100)", p_size, 0, 100)
             if new_val is not None: p_size = new_val
-            
         elif res == "ResetScale":
             p_reset = "On" if p_reset == "Off" else "Off"
 
@@ -124,11 +129,10 @@ def main():
     
     if p_reset == "On":
         num = reset_instances_scale(block_name)
-        print("%d instances corrigées." % num)
+        if num > 0:
+            print("%d instances corrigées (Echelle & Cisaillement)." % num)
     
-    # Print final pour l'historique
     print(structure_requete % (p_type, p_size, p_reset))
-    
     rs.EnableRedraw(True)
 
 if __name__ == "__main__":
