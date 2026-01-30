@@ -37,32 +37,37 @@ def reset_instances_scale(block_name):
     
     count = 0
     for inst in instances:
-        # Récupérer la matrice actuelle
+        # 1. Récupérer la matrice actuelle
         xform = rs.BlockInstanceXform(inst)
         
-        # Extraire les vecteurs colonnes (axes locaux)
+        # 2. Extraire les vecteurs colonnes (axes locaux)
         vX = rg.Vector3d(xform.M00, xform.M10, xform.M20)
         vY = rg.Vector3d(xform.M01, xform.M11, xform.M21)
         vZ = rg.Vector3d(xform.M02, xform.M12, xform.M22)
         
-        # Calculer les facteurs d'échelle actuels
-        sX = vX.Length
-        sY = vY.Length
-        sZ = vZ.Length
+        # 3. Calculer les échelles actuelles
+        sX, sY, sZ = vX.Length, vY.Length, vZ.Length
         
-        # Si l'échelle n'est pas de 1 (avec une petite tolérance)
+        # Tolérance pour éviter de recalculer ce qui est déjà à 1.0
         if abs(sX-1.0) > 1e-6 or abs(sY-1.0) > 1e-6 or abs(sZ-1.0) > 1e-6:
-            # Créer une matrice de compensation d'échelle inverse
-            # On scale par 1/s autour du point d'insertion
-            plane = rs.WorldXYPlane()
+            # --- LE POINT CRUCIAL ---
+            # On crée un plan LOCAL basé sur l'orientation actuelle du bloc
             pivot = rs.BlockInstanceInsertPoint(inst)
-            plane = rs.MovePlane(plane, pivot)
-            scaling_matrix = rg.Transform.Scale(plane, 1.0/sX, 1.0/sY, 1.0/sZ)
+            # On normalise les vecteurs pour définir le plan d'orientation pure
+            vX.Unitize()
+            vY.Unitize()
+            local_plane = rg.Plane(pivot, vX, vY)
             
-            # Appliquer la transformation à l'objet
+            # 4. Créer la matrice de compensation sur ce plan local
+            # On multiplie par l'inverse de l'échelle (1/s)
+            scaling_matrix = rg.Transform.Scale(local_plane, 1.0/sX, 1.0/sY, 1.0/sZ)
+            
+            # 5. Appliquer la transformation relative
             rs.TransformObject(inst, scaling_matrix)
             count += 1
+            
     return count
+
 
 def main():
     block_name = "Pose"
