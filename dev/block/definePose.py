@@ -1,3 +1,8 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 30/01/2026
+"""
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
 import Rhino.Geometry as rg
@@ -21,9 +26,9 @@ def update_pose_geometry(block_name, viz_type, size):
     Type 'point': Point Rouge.
     """
     # 1. Nettoyer la géométrie existante du bloc
-    block_objects = rs.BlockObjects(block_name)
-    if block_objects:
-        rs.DeleteObjects(block_objects)
+    # block_objects = rs.BlockObjects(block_name)
+    # if block_objects:
+        # rs.DeleteObjects(block_objects)
     
     new_objs = []
     origin = [0,0,0]
@@ -51,7 +56,8 @@ def update_pose_geometry(block_name, viz_type, size):
         new_objs = [pt]
         
     # 2. Ajouter les nouveaux objets au bloc
-    rs.AddObjectsToBlock(new_objs, block_name, delete_input=True)
+    rs.AddBlock(new_objs, [0,0,0], block_name, delete_input=True)
+    # print(new_objs, block_name)
     print("Bloc '%s' mis à jour (Type: %s, Size: %s)." % (block_name, viz_type, size))
 
 def reset_instances_scale(block_name):
