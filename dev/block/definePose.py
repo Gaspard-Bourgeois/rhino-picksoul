@@ -54,8 +54,10 @@ def reset_instances_scale(block_name):
         if abs(sX-1.0) > 1e-6 or abs(sY-1.0) > 1e-6 or abs(sZ-1.0) > 1e-6:
             # Créer une matrice de compensation d'échelle inverse
             # On scale par 1/s autour du point d'insertion
+            plane = rs.WorldXYPlane()
             pivot = rs.BlockInstanceInsertPoint(inst)
-            scaling_matrix = rg.Transform.Scale(pivot, 1.0/sX, 1.0/sY, 1.0/sZ)
+            plane = rs.MovePlane(plane, pivot)
+            scaling_matrix = rg.Transform.Scale(plane, 1.0/sX, 1.0/sY, 1.0/sZ)
             
             # Appliquer la transformation à l'objet
             rs.TransformObject(inst, scaling_matrix)
