@@ -1,7 +1,7 @@
 import rhinoscriptsyntax as rs
 
 def rebuild_reciproque():
-    # 1. Sélection des objets (preselect=True, Rhino gère les groupes par défaut)
+    # 1. Sélection des objets
     initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
     if not initial_objs: return
 
@@ -9,70 +9,88 @@ def rebuild_reciproque():
     block_name = None
     xform = None
 
-    # 2. Recherche de l'objet origine via la clé UserText
+    # 2. Recherche de l'objet origine via la clé
     for obj in initial_objs:
         val = rs.GetUserText(obj, "OriginalBlockName")
         if val:
             origin_obj = obj
             block_name = val
-            # On récupère la transformation (si c'est une instance)
             if rs.IsBlockInstance(obj):
                 xform = rs.BlockInstanceXform(obj)
             break
 
-    # 3. Gestion de l'absence d'origine
+    # 3. Gestion de l'absence d'origine (Correction sur le nom de l'objet)
     if not origin_obj:
-        ref_id = rs.GetObject("Origine non trouvée. Référence ou [Entrée] pour Monde", rs.filter.instance)
+        ref_id = rs.GetObject("Origine non trouvée. Référence ou [Entrée] pour Monde")
         if ref_id:
-            block_name = rs.BlockInstanceName(ref_id)
-            xform = rs.BlockInstanceXform(ref_id)
+            # On utilise le nom de l'objet (ObjectName) et non celui de la définition de bloc
+            block_name = rs.ObjectName(ref_id)
+            if not block_name and rs.IsBlockInstance(ref_id):
+                block_name = rs.BlockInstanceName(ref_id)
+            
+            # Si toujours pas de nom, on demande
+            if not block_name:
+                block_name = rs.GetString("Nom du bloc", "NouveauBloc")
+                
+            xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformRotation(0, [0,0,1], [0,0,0])
         else:
             block_name = rs.GetString("Nom du bloc", "NouveauBloc")
             xform = rs.XformIdentity()
     
-    # Si après tout ça on n'a toujours pas de nom, on arrête
     if not block_name: return
 
-    # 4. Comparaison (facultatif selon les étapes, mais on vérifie si la définition existe)
-    # On prépare la géométrie pour la définition (déplacement vers 0,0,0 local)
-    inv_xform = rs.XformInverse(xform) # Un seul argument renvoyé
-    
-    new_geometries = []
-    for o in initial_objs:
-        # On évite d'inclure le trièdre "Pose" dans la définition si c'est lui l'origine
-        if rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == "Pose":
-            continue
+    # 4. Insertion préalable pour comparaison visuelle
+    temp_instance = None
+    if rs.IsBlock(block_name):
+        temp_instance = rs.InsertBlock(block_name, [0,0,0])
+        rs.TransformObject(temp_instance, xform)
+        rs.UnselectAllObjects()
+        rs.SelectObject(temp_instance)
         
-        copy = rs.CopyObject(o)
-        rs.TransformObject(copy, inv_xform)
-        new_geometries.append(copy)
+        msg = "Le bloc '{}' existe déjà. Mettre à jour sa définition et remplacer les objets ?".format(block_name)
+    else:
+        msg = "Le bloc '{}' n'existe pas. Créer la définition et remplacer les objets ?".format(block_name)
 
-    # 5. Mise à jour de la définition de bloc
-    # rs.AddBlock avec un nom existant redéfinit le bloc
-    rs.AddBlock(new_geometries, [0,0,0], block_name, delete_input=True)
-    
-    # 6. Substitution visuelle
-    # On insère la nouvelle instance au même endroit que l'origine trouvée
-    new_instance = rs.InsertBlock(block_name, [0,0,0])
-    rs.TransformObject(new_instance, xform)
-    
-    # On sélectionne l'instance pour que l'utilisateur puisse comparer avant suppression
-    rs.UnselectAllObjects()
-    rs.SelectObject(new_instance)
-    
-    # Question de confirmation pour la mise à jour (Optionnel selon votre flux)
-    confirm = rs.GetString("Remplacer les objets par le bloc '{}' ?".format(block_name), "Oui", ["Oui", "Non"])
+    # 5. Demande à l'utilisateur
+    confirm = rs.GetString(msg, "Oui", ["Oui", "Non"])
     
     if confirm == "Oui":
+        # Préparation de la géométrie (Transformation inverse pour le repère local 0,0,0)
+        inv_xform = rs.XformInverse(xform)
+        
+        new_geometries = []
+        for o in initial_objs:
+            # On exclut l'objet "Pose" (trièdre) de la nouvelle définition pour ne pas polluer le bloc
+            if rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == "Pose":
+                continue
+            
+            copy = rs.CopyObject(o)
+            rs.TransformObject(copy, inv_xform)
+            new_geometries.append(copy)
+
+        # Mise à jour ou création de la définition
+        rs.AddBlock(new_geometries, [0,0,0], block_name, delete_input=True)
+        
+        # Si on avait inséré une instance temporaire, elle est déjà à jour (Rhino met à jour les instances)
+        # Sinon, on en insère une nouvelle
+        if not temp_instance:
+            temp_instance = rs.InsertBlock(block_name, [0,0,0])
+            rs.TransformObject(temp_instance, xform)
+        
+        # Suppression des objets initiaux
         rs.DeleteObjects(initial_objs)
-        # On garde uniquement la nouvelle instance sélectionnée
-        rs.SelectObject(new_instance)
-        print("Bloc '{}' mis à jour et substitué.".format(block_name))
+        
+        rs.UnselectAllObjects()
+        rs.SelectObject(temp_instance)
+        print("Bloc '{}' reconstruit avec succès.".format(block_name))
+        
     else:
-        # On supprime l'instance temporaire et on revient à l'état initial
-        rs.DeleteObject(new_instance)
+        # Si Non : on nettoie l'instance temporaire si elle a été créée
+        if temp_instance:
+            rs.DeleteObject(temp_instance)
+        rs.UnselectAllObjects()
         rs.SelectObjects(initial_objs)
-        print("Reconstruction annulée, objets conservés.")
+        print("Action annulée.")
 
 if __name__ == "__main__":
     rebuild_reciproque()
