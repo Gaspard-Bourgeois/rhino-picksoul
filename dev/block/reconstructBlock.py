@@ -3,7 +3,6 @@ import rhinoscriptsyntax as rs
 import Rhino
 import scriptcontext as sc
 import re
-import time
 
 def get_bbox_center(obj_id):
     bbox = rs.BoundingBox(obj_id)
@@ -14,41 +13,37 @@ def ensure_layer(layer_name):
     if not rs.IsLayer(layer_name): rs.AddLayer(layer_name)
     return layer_name
 
-def force_redefine_block(name, base_point, ids):
+def robust_update_block(name, base_point, ids):
     """
-    Approche radicale : Renomme l'existant pour libérer le nom, 
-    puis crée une nouvelle définition propre.
+    Met à jour la définition du bloc sans supprimer les instances.
     """
     base_pt = Rhino.Geometry.Point3d(base_point[0], base_point[1], base_point[2])
     
-    # 1. Collecte des géométries réelles (pas les GUIDs)
+    # 1. Préparer les géométries (Duplication réelle pour détacher du document)
     geoms = []
     attrs = []
     for g_id in ids:
         obj = sc.doc.Objects.Find(g_id)
         if obj:
-            geoms.append(obj.Geometry.Duplicate()) # On duplique pour éviter les liens
+            # Sécurité anti-circularité : on ne peut pas mettre le bloc dans lui-même
+            if isinstance(obj, Rhino.DocObjects.InstanceObject):
+                if obj.InstanceDefinition.Name == name:
+                    continue
+            geoms.append(obj.Geometry.Duplicate())
             attrs.append(obj.Attributes.Duplicate())
 
     if not geoms: return False
 
-    # 2. Libérer le nom si déjà utilisé
-    old_def = sc.doc.InstanceDefinitions.Find(name, True)
-    if old_def:
-        # On renomme l'ancien bloc avec un timestamp pour éviter tout conflit
-        temp_name = "OLD_{}_{}".format(name, int(time.time()))
-        sc.doc.InstanceDefinitions.Modify(old_def.Index, temp_name, old_def.Description, True)
-
-    # 3. Création de la nouvelle définition
-    # On utilise la méthode Add de la table des définitions
-    new_idx = sc.doc.InstanceDefinitions.Add(name, "Rebuilt via Python", base_pt, geoms, attrs)
+    # 2. Chercher la définition existante
+    idef_index = sc.doc.InstanceDefinitions.Find(name, True)
     
-    if new_idx >= 0:
-        # On peut maintenant supprimer l'ancienne définition renommée (si elle existait)
-        if old_def:
-            sc.doc.InstanceDefinitions.Delete(old_def.Index, True, True)
-        return True
-    return False
+    if idef_index >= 0:
+        # EXISTE : On modifie la géométrie existante. 
+        # Cela met à jour TOUTES les instances dans le document instantanément.
+        return sc.doc.InstanceDefinitions.ModifyGeometry(idef_index, geoms, attrs)
+    else:
+        # NOUVEAU : On crée la définition
+        return sc.doc.InstanceDefinitions.Add(name, "", base_pt, geoms, attrs) >= 0
 
 def rebuild_reciproque():
     objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
@@ -59,7 +54,7 @@ def rebuild_reciproque():
     xform = None
     needs_indexing = False
 
-    # 1. Identification du pivot et du nom
+    # 1. Recherche du pivot et du nom via UserText
     for o in objs:
         val = rs.GetUserText(o, "OriginalBlockName")
         if val:
@@ -67,13 +62,15 @@ def rebuild_reciproque():
             if rs.IsBlockInstance(o): xform = rs.BlockInstanceXform(o)
             break
 
-    # 2. Fallback (Point pivot manuel)
+    # 2. Gestion de l'origine si non trouvée
     if not origin_obj:
         ref = rs.GetObject("Origine non trouvée. Sélectionnez un pivot (Entrée pour Monde)")
         if ref:
             if rs.IsBlockInstance(ref):
-                block_name, xform = rs.BlockInstanceName(ref), rs.BlockInstanceXform(ref)
-                if block_name == "Pose": block_name, needs_indexing = "NouveauBloc", True
+                block_name = rs.BlockInstanceName(ref)
+                xform = rs.BlockInstanceXform(ref)
+                if block_name == "Pose": 
+                    block_name, needs_indexing = "NouveauBloc", True
             else:
                 block_name, needs_indexing = "NouveauBloc", True
                 xform = rs.XformTranslation(get_bbox_center(ref))
@@ -81,54 +78,64 @@ def rebuild_reciproque():
             block_name, needs_indexing = "NouveauBloc", True
             xform = rs.XformIdentity()
 
-        # Nettoyage du nom
+        # Logique de nommage _base / _contain
         if "_base" in block_name.lower():
             block_name = re.sub('(?i)_base', '', block_name)
         elif not block_name.lower().endswith("_contain"):
             block_name += "_contain"
 
-        # Gestion des doublons
+        # Vérification d'existence et indexation (Correction de la fonctionnalité cassée)
         if needs_indexing or rs.IsBlock(block_name):
-            temp_name = block_name
-            for i in range(1, 100):
-                check_name = "{}_{:02d}".format(block_name, i)
-                if not rs.IsBlock(check_name):
-                    temp_name = check_name
-                    break
-            block_name = temp_name
-
+            base_search_name = block_name
+            # Si le nom existe déjà et qu'on a besoin d'un nouveau bloc indexé
+            if rs.IsBlock(base_search_name) and needs_indexing:
+                for i in range(1, 100):
+                    temp = "{}_{:02d}".format(base_search_name, i)
+                    if not rs.IsBlock(temp):
+                        block_name = temp
+                        break
+    
     if not block_name: return
 
-    # 3. Exécution
-    layer = ensure_layer("Blocs")
-    inv_xf = rs.XformInverse(xform)
-    temp_ids = []
-    
-    rs.EnableRedraw(False)
-    
-    # Création des copies locales pour le bloc
-    for o in objs:
-        copy = rs.CopyObject(o)
-        rs.ObjectLayer(copy, layer)
-        rs.TransformObject(copy, inv_xf)
-        temp_ids.append(copy)
+    # 3. Confirmation si le bloc existe déjà
+    confirm = "Oui"
+    if rs.IsBlock(block_name):
+        # On demande confirmation car ModifyGeometry est irréversible (sauf via Undo)
+        res = rs.MessageBox("Le bloc '{}' existe. Mettre à jour toutes ses occurrences ?".format(block_name), 4 + 32, "Mise à jour de bloc")
+        confirm = "Oui" if res == 6 else "Non"
 
-    # Appel de la fonction de création forcée
-    if force_redefine_block(block_name, [0,0,0], temp_ids):
-        # On insère le nouveau bloc
-        new_inst = rs.InsertBlock(block_name, [0,0,0])
-        rs.TransformObject(new_inst, xform)
+    if confirm == "Oui":
+        layer = ensure_layer("Blocs")
+        inv_xf = rs.XformInverse(xform)
+        temp_ids = []
         
-        # Nettoyage
-        rs.DeleteObjects(objs)
-        rs.DeleteObjects(temp_ids)
-        rs.SelectObject(new_inst)
-        print("Bloc '{}' reconstruit avec succès (Table Reset).".format(block_name))
+        rs.EnableRedraw(False)
+        try:
+            # Préparer les objets pour la définition (déplacer au 0,0,0 local)
+            for o in objs:
+                copy = rs.CopyObject(o)
+                rs.ObjectLayer(copy, layer)
+                rs.TransformObject(copy, inv_xf)
+                temp_ids.append(copy)
+
+            # Mise à jour de la définition (ModifyGeometry)
+            if robust_update_block(block_name, [0,0,0], temp_ids):
+                # Remplacer les objets sélectionnés par une instance du bloc mis à jour
+                new_inst = rs.InsertBlock(block_name, [0,0,0])
+                rs.TransformObject(new_inst, xform)
+                
+                # Nettoyage
+                rs.DeleteObjects(objs)
+                rs.SelectObject(new_inst)
+                print("Succès : Bloc '{}' mis à jour dans tout le document.".format(block_name))
+            else:
+                print("Erreur : La mise à jour de la définition a échoué.")
+        finally:
+            # On supprime toujours les objets temporaires créés pour la définition
+            if temp_ids: rs.DeleteObjects(temp_ids)
+            rs.EnableRedraw(True)
     else:
-        print("ERREUR FATALE : Impossible de créer le bloc '{}'.".format(block_name))
-        rs.DeleteObjects(temp_ids)
-        
-    rs.EnableRedraw(True)
+        print("Opération annulée.")
 
 if __name__ == "__main__":
     rebuild_reciproque()
