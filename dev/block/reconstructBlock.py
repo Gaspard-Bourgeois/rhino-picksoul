@@ -2,17 +2,18 @@
 import rhinoscriptsyntax as rs
 
 def get_bbox_center(obj_id):
-    """Calcule le centre d'une BoundingBox sans Rhino.Geometry."""
+    """Calcule le centre d'une BoundingBox."""
     bbox = rs.BoundingBox(obj_id)
     if not bbox: return [0,0,0]
-    # bbox[0] est le min, bbox[6] est le max
     pt_min = bbox[0]
     pt_max = bbox[6]
-    return [
-        (pt_min[0] + pt_max[0]) / 2.0,
-        (pt_min[1] + pt_max[1]) / 2.0,
-        (pt_min[2] + pt_max[2]) / 2.0
-    ]
+    return [(pt_min[i] + pt_max[i]) / 2.0 for i in range(3)]
+
+def ensure_layer(layer_name):
+    """Vérifie si le calque existe, sinon le crée."""
+    if not rs.IsLayer(layer_name):
+        rs.AddLayer(layer_name)
+    return layer_name
 
 def rebuild_reciproque():
     # 1. Sélection des objets
@@ -23,6 +24,7 @@ def rebuild_reciproque():
     block_name = None
     xform = None
     block_names_in_doc = rs.BlockNames()
+    needs_indexing = False
 
     # 2. Recherche de l'objet "Pose" ou origine via la clé UserText
     for obj in initial_objs:
@@ -34,43 +36,53 @@ def rebuild_reciproque():
                 xform = rs.BlockInstanceXform(obj)
             break
 
-    # 3. Gestion de l'absence d'origine identifiée
+    # 3. Gestion de l'origine si non trouvée automatiquement
     if not origin_obj:
         ref_id = rs.GetObject("Origine non trouvée. Sélectionnez une référence (ou Entrée pour Monde)")
+        
         if ref_id:
             if rs.IsBlockInstance(ref_id):
-                block_name = rs.BlockInstanceName(ref_id)
+                raw_name = rs.BlockInstanceName(ref_id)
                 xform = rs.BlockInstanceXform(ref_id)
+                
+                # Si c'est un bloc "Pose" choisi manuellement sans UserText
+                if raw_name == "Pose":
+                    block_name = "NouveauBloc"
+                    needs_indexing = True
+                else:
+                    block_name = raw_name
             else:
-                # Si c'est un objet normal, on prend son centre et on crée une translation
                 block_name = "NouveauBloc"
-                center = get_bbox_center(ref_id)
-                xform = rs.XformTranslation(center)
+                xform = rs.XformTranslation(get_bbox_center(ref_id))
+                needs_indexing = True
         else:
             block_name = "NouveauBloc"
             xform = rs.XformIdentity()
+            needs_indexing = True
 
-        # Nettoyage du nom (suffixes _base ou _01)
-        if block_name.lower().endswith("_base"):
-            block_name = block_name[:-5]
+        # --- LOGIQUE DE RENOMMAGE (Correction 3 & 4) ---
+        # Retirer _base ou ajouter _contain
+        if "_base" in block_name.lower():
+            # Remplace toutes les occurrences de _base (insensible à la casse)
+            import re
+            block_name = re.sub('(?i)_base', '', block_name)
+        else:
+            block_name = block_name + "_contain"
         
-        # Supprime le suffixe de copie type _01, _02
-        if len(block_name) > 3 and block_name[-3] == "_" and block_name[-2:].isdigit():
-            block_name = block_name[:-3]
-        
-        # Recherche d'un nom libre
-        free_name = block_name
-        if free_name in block_names_in_doc:
-            for i in range(1, 100):
-                temp_name = "{}_{:02d}".format(block_name, i)
-                if temp_name not in block_names_in_doc:
-                    free_name = temp_name
-                    break
-        block_name = free_name
+        # Indexation seulement si nécessaire (Pose choisi sans nom prédéfini ou nouveau bloc)
+        if needs_indexing:
+            free_name = block_name
+            if free_name in block_names_in_doc:
+                for i in range(1, 100):
+                    temp_name = "{}_{:02d}".format(block_name, i)
+                    if temp_name not in block_names_in_doc:
+                        free_name = temp_name
+                        break
+            block_name = free_name
     
     if not block_name: return
 
-    # 4. Insertion préalable pour comparaison visuelle
+    # 4. Vérification et prévisualisation
     confirm = "Oui"
     temp_instance = None
     if rs.IsBlock(block_name):
@@ -78,39 +90,42 @@ def rebuild_reciproque():
         rs.TransformObject(temp_instance, xform)
         rs.UnselectAllObjects()
         rs.SelectObject(temp_instance)
-        
         msg = "Le bloc '{}' existe déjà. Mettre à jour sa définition ?".format(block_name)
         confirm = rs.GetString(msg, "Oui", ["Oui", "Non"])
     
     if confirm == "Oui":
-        # Préparation de la géométrie (Inverse transformation pour revenir au 0,0,0 local)
-        inv_xform = rs.XformInverse(xform)
+        # Préparation du calque cible (Correction 2)
+        target_layer = ensure_layer("Blocs")
         
+        # Préparation de la géométrie
+        inv_xform = rs.XformInverse(xform)
         new_geometries = []
+        
+        rs.EnableRedraw(False)
         for o in initial_objs:
-            # Sécurité : on ne met pas l'objet "Pose" à l'intérieur de sa propre définition
-            if rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == "Pose":
-                continue
-                
+            # Note: On ne saute plus l'instance "Pose" (Correction 1)
             copy = rs.CopyObject(o)
+            
+            # Placer les éléments sur le calque "Blocs"
+            rs.ObjectLayer(copy, target_layer)
+            
             rs.TransformObject(copy, inv_xform)
             new_geometries.append(copy)
 
-        # 5. Mise à jour ou création de la définition de bloc
-        # rs.AddBlock redéfinit le bloc s'il existe déjà
+        # 5. Création/Mise à jour du bloc
         rs.AddBlock(new_geometries, [0,0,0], block_name, delete_input=True)
         
-        # Si on n'avait pas d'instance de prévisualisation, on en crée une à l'emplacement final
         if not temp_instance:
             temp_instance = rs.InsertBlock(block_name, [0,0,0])
             rs.TransformObject(temp_instance, xform)
         
-        # 6. Nettoyage
+        # 6. Nettoyage final
         rs.DeleteObjects(initial_objs)
         rs.UnselectAllObjects()
         rs.SelectObject(temp_instance)
+        rs.EnableRedraw(True)
         
-        print("Bloc '{}' généré avec succès au point d'origine.".format(block_name))
+        print("Bloc '{}' généré sur le calque 'Blocs'.".format(block_name))
     else:
         if temp_instance: rs.DeleteObject(temp_instance)
         print("Opération annulée.")
