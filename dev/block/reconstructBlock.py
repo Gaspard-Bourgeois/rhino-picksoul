@@ -88,8 +88,12 @@ def rebuild_reciproque():
         
         new_geometries = []
         for o in initial_objs:
-            # Sécurité : on ne met pas l'objet "Pose" à l'intérieur de sa propre définition
-            if rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == "Pose":
+            # CORRECTION ICI :
+            # On vérifie si l'objet est une instance DU MEME BLOC que celui qu'on crée.
+            # Cela empêche la récursion (block A dans block A), mais autorise le bloc "Pose"
+            # s'il est différent du bloc en cours de création.
+            if rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == block_name:
+                print("Info: Instance '{}' exclue pour éviter une récursion.".format(block_name))
                 continue
                 
             copy = rs.CopyObject(o)
@@ -98,19 +102,25 @@ def rebuild_reciproque():
 
         # 5. Mise à jour ou création de la définition de bloc
         # rs.AddBlock redéfinit le bloc s'il existe déjà
-        rs.AddBlock(new_geometries, [0,0,0], block_name, delete_input=True)
-        
-        # Si on n'avait pas d'instance de prévisualisation, on en crée une à l'emplacement final
-        if not temp_instance:
-            temp_instance = rs.InsertBlock(block_name, [0,0,0])
-            rs.TransformObject(temp_instance, xform)
-        
-        # 6. Nettoyage
-        rs.DeleteObjects(initial_objs)
-        rs.UnselectAllObjects()
-        rs.SelectObject(temp_instance)
-        
-        print("Bloc '{}' généré avec succès au point d'origine.".format(block_name))
+        if len(new_geometries) > 0:
+            rs.AddBlock(new_geometries, [0,0,0], block_name, delete_input=True)
+            
+            # Si on n'avait pas d'instance de prévisualisation, on en crée une à l'emplacement final
+            if not temp_instance:
+                temp_instance = rs.InsertBlock(block_name, [0,0,0])
+                rs.TransformObject(temp_instance, xform)
+            
+            # 6. Nettoyage
+            rs.DeleteObjects(initial_objs)
+            rs.UnselectAllObjects()
+            rs.SelectObject(temp_instance)
+            
+            print("Bloc '{}' généré avec succès au point d'origine.".format(block_name))
+        else:
+            print("Erreur : Aucune géométrie valide à ajouter au bloc.")
+            # Nettoyage de la prévisualisation si échec
+            if temp_instance: rs.DeleteObject(temp_instance)
+            
     else:
         if temp_instance: rs.DeleteObject(temp_instance)
         print("Opération annulée.")
