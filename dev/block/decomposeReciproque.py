@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
-import Rhino.Geometry as rg
-import scriptcontext as sc
 
 def create_pose_block():
-    """Crée le bloc 'Pose' s'il n'existe pas."""
+    """Crée le bloc 'Pose' (trièdre RVB) s'il n'existe pas."""
     if not rs.IsBlock("Pose"):
+        rs.EnableRedraw(False)
         items = []
+        # Axes X (Rouge), Y (Vert), Z (Bleu)
         items.append(rs.AddLine([0,0,0], [1,0,0]))
         rs.ObjectColor(items[-1], [255,0,0])
         items.append(rs.AddLine([0,0,0], [0,1,0]))
@@ -14,86 +14,82 @@ def create_pose_block():
         items.append(rs.AddLine([0,0,0], [0,0,1]))
         rs.ObjectColor(items[-1], [0,0,255])
         rs.AddBlock(items, [0,0,0], "Pose", True)
+        rs.EnableRedraw(True)
     return "Pose"
 
-def generic_explode(obj_id):
+def explode_any(obj_id):
     """
-    Explose une géométrie de manière générique via Rhino.Geometry.
+    Fonction utilitaire pour exploser n'importe quel type d'objet.
+    Remplace le 'rs.ExplodeObjects' inexistant.
     """
-    # 1. Récupérer la géométrie à partir du GUID
-    geo = rs.coercegeometry(obj_id)
-    if not geo: return None
-    
-    exploded_geos = []
-
-    # 2. Vérifier si la géométrie possède une méthode Explode
-    # Les Breps (polysurfaces) et les Curves ont cette méthode
-    if hasattr(geo, "Explode"):
-        exploded_geos = geo.Explode()
-    
-    # Cas particulier : Les maillages (Mesh) utilisent ExplodeAtUnweldedEdges ou similaire
-    elif isinstance(geo, rg.Mesh):
-        exploded_geos = geo.ExplodeAtUnweldedEdges()
-
-    if not exploded_geos:
-        return None
-
-    # 3. Ajouter les nouvelles géométries au document et récupérer leurs nouveaux GUIDs
-    new_ids = []
-    for g in exploded_geos:
-        new_id = sc.doc.Objects.Add(g)
-        if new_id: new_ids.append(new_id)
-    
-    # Supprimer l'objet original si l'explosion a réussi
-    if new_ids:
-        rs.DeleteObject(obj_id)
-        
-    return new_ids
+    if rs.IsPolysurface(obj_id):
+        return rs.ExplodePolysurfaces(obj_id, delete_input=True)
+    elif rs.IsCurve(obj_id) and not rs.IsLine(obj_id):
+        return rs.ExplodeCurves(obj_id, delete_input=True)
+    elif rs.IsMesh(obj_id):
+        return rs.ExplodeMesh(obj_id, delete_input=True)
+    return None
 
 def decompose_reciproque():
-    object_ids = rs.GetObjects("Sélectionnez les objets à décomposer", preselect=True)
+    # Sélection multiple
+    object_ids = rs.GetObjects("Sélectionnez les objets ou blocs à décomposer", preselect=True)
     if not object_ids: return
 
     all_results = []
     create_pose_block()
+    
     rs.EnableRedraw(False)
     
     for obj_id in object_ids:
-        # TRAITEMENT DES BLOCS
+        # --- CAS 1 : C'EST UN BLOC ---
         if rs.IsBlockInstance(obj_id):
-            name = rs.BlockInstanceName(obj_id)
-            xform = rs.BlockInstanceXform(obj_id)
-            ins_pt = rs.BlockInstanceInsertPoint(obj_id)
+            block_name = rs.BlockInstanceName(obj_id)
+            block_xform = rs.BlockInstanceXform(obj_id)
+            insert_pt = rs.BlockInstanceInsertPoint(obj_id)
             
+            # Explosion du bloc (un seul niveau)
             exploded_items = rs.ExplodeBlockInstance(obj_id)
             
-            origin_obj = next((item for item in exploded_items if rs.IsBlockInstance(item) 
-                              and rs.BlockInstanceInsertPoint(item) == ins_pt), None)
+            origin_obj = None
+            # On cherche si un sous-bloc "Pose" est déjà présent à l'origine
+            for item in exploded_items:
+                if rs.IsBlockInstance(item):
+                    if rs.BlockInstanceInsertPoint(item) == insert_pt:
+                        origin_obj = item
+                        break
             
+            # Si pas de Pose trouvée, on l'insère
             if not origin_obj:
                 origin_obj = rs.InsertBlock("Pose", [0,0,0])
-                rs.TransformObject(origin_obj, xform)
+                rs.TransformObject(origin_obj, block_xform)
                 exploded_items.append(origin_obj)
 
-            rs.SetUserText(origin_obj, "OriginalBlockName", name)
+            # Marquage avec le nom d'origine
+            rs.SetUserText(origin_obj, "OriginalBlockName", block_name)
             
+            # Groupement du résultat
             group = rs.AddGroup()
             rs.AddObjectsToGroup(exploded_items, group)
             all_results.extend(exploded_items)
 
-        # TRAITEMENT GÉNÉRIQUE (Polysurfaces, Courbes, etc.)
+        # --- CAS 2 : C'EST UN OBJET GÉOMÉTRIQUE (Polysurface, Courbe, etc.) ---
         else:
-            new_parts = generic_explode(obj_id)
-            if new_parts:
+            exploded_geo = explode_any(obj_id)
+            if exploded_geo:
                 group = rs.AddGroup()
-                rs.AddObjectsToGroup(new_parts, group)
-                all_results.extend(new_parts)
+                rs.AddObjectsToGroup(exploded_geo, group)
+                all_results.extend(exploded_geo)
             else:
+                # Si l'objet n'est pas explosable (ex: une ligne seule), on le garde
                 all_results.append(obj_id)
 
+    # Finalisation
     rs.UnselectAllObjects()
-    if all_results: rs.SelectObjects(all_results)
+    if all_results:
+        rs.SelectObjects(all_results)
+    
     rs.EnableRedraw(True)
+    print("Décomposition terminée pour {} objet(s).".format(len(object_ids)))
 
 if __name__ == "__main__":
     decompose_reciproque()
