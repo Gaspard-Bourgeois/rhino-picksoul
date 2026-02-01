@@ -2,148 +2,135 @@
 import rhinoscriptsyntax as rs
 import Rhino
 import scriptcontext as sc
+import re
 
 def get_bbox_center(obj_id):
     bbox = rs.BoundingBox(obj_id)
-    if not bbox: return [0,0,0]
-    pt_min = bbox[0]
-    pt_max = bbox[6]
-    return [(pt_min[i] + pt_max[i]) / 2.0 for i in range(3)]
+    if not bbox: return Rhino.Geometry.Point3d.Origin
+    return (bbox[0] + bbox[6]) / 2.0
 
 def ensure_layer(layer_name):
-    if not rs.IsLayer(layer_name):
-        rs.AddLayer(layer_name)
+    if not rs.IsLayer(layer_name): rs.AddLayer(layer_name)
     return layer_name
 
-def redefine_block(name, base_point, ids, delete_input):
+def safe_redefine_block(name, base_point, ids, delete_input):
     """
-    Version robuste pour créer OU mettre à jour un bloc sans perdre les instances.
+    Redéfinit ou crée un bloc de manière atomique.
     """
-    # Récupérer les géométries et leurs attributs
-    geometries = []
-    attributes = []
-    for obj_id in ids:
-        rh_obj = sc.doc.Objects.Find(obj_id)
-        if rh_obj:
-            geometries.append(rh_obj.Geometry)
-            attributes.append(rh_obj.Attributes)
-
-    # Trouver si le bloc existe déjà
-    index = sc.doc.InstanceDefinitions.Find(name, True)
+    # 1. Collecte des géométries
+    geoms = []
+    attrs = []
+    for g_id in ids:
+        obj = sc.doc.Objects.Find(g_id)
+        if obj:
+            # Sécurité anti-circularité : on ne peut pas mettre le bloc dans lui-même
+            if isinstance(obj, Rhino.DocObjects.InstanceObject):
+                if obj.InstanceDefinition.Name == name:
+                    continue 
+            geoms.append(obj.Geometry)
+            attrs.append(obj.Attributes)
     
-    if index < 0:
-        # Le bloc n'existe pas, on le crée normalement
-        return rs.AddBlock(ids, base_point, name, delete_input)
+    if not geoms: return False
+
+    base_pt = Rhino.Geometry.Point3d(base_point[0], base_point[1], base_point[2])
+    
+    # 2. Recherche de la définition existante
+    idef_index = sc.doc.InstanceDefinitions.Find(name, True)
+    
+    if idef_index >= 0:
+        # MISE À JOUR (Redéfinition sans casser les instances existantes)
+        success = sc.doc.InstanceDefinitions.ModifyGeometry(idef_index, geoms, attrs)
     else:
-        # Le bloc existe, on modifie sa définition (Redéfinition)
-        # On définit le point de base (0,0,0 local)
-        base_point_rg = Rhino.Geometry.Point3d(base_point[0], base_point[1], base_point[2])
-        
-        success = sc.doc.InstanceDefinitions.ModifyGeometry(index, geometries, attributes)
-        
-        if success and delete_input:
-            rs.DeleteObjects(ids)
-        return success
+        # CRÉATION
+        new_idx = sc.doc.InstanceDefinitions.Add(name, "", base_pt, geoms, attrs)
+        success = new_idx >= 0
+
+    if success and delete_input:
+        for g_id in ids: sc.doc.Objects.Delete(g_id, True)
+    
+    return success
 
 def rebuild_reciproque():
-    initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
-    if not initial_objs: return
+    objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
+    if not objs: return
 
     origin_obj = None
     block_name = None
     xform = None
     needs_indexing = False
 
-    # 1. Recherche de l'origine via UserText
-    for obj in initial_objs:
-        val = rs.GetUserText(obj, "OriginalBlockName")
+    # 1. Identification de l'origine (Pose ou Key)
+    for o in objs:
+        val = rs.GetUserText(o, "OriginalBlockName")
         if val:
-            origin_obj = obj
-            block_name = val
-            if rs.IsBlockInstance(obj):
-                xform = rs.BlockInstanceXform(obj)
+            origin_obj, block_name = o, val
+            if rs.IsBlockInstance(o): xform = rs.BlockInstanceXform(o)
             break
 
-    # 2. Gestion de l'absence d'origine automatique
+    # 2. Fallback si aucune Pose n'est trouvée
     if not origin_obj:
-        ref_id = rs.GetObject("Origine non trouvée. Sélectionnez une référence (ou Entrée pour Monde)")
-        if ref_id:
-            if rs.IsBlockInstance(ref_id):
-                raw_name = rs.BlockInstanceName(ref_id)
-                xform = rs.BlockInstanceXform(ref_id)
+        ref = rs.GetObject("Origine non trouvée. Sélectionnez un pivot (ou Entrée pour Monde)")
+        if ref:
+            if rs.IsBlockInstance(ref):
+                raw_name = rs.BlockInstanceName(ref)
+                xform = rs.BlockInstanceXform(ref)
                 if raw_name == "Pose":
-                    block_name = "NouveauBloc"
-                    needs_indexing = True
+                    block_name, needs_indexing = "NouveauBloc", True
                 else:
                     block_name = raw_name
             else:
-                block_name = "NouveauBloc"
-                xform = rs.XformTranslation(get_bbox_center(ref_id))
-                needs_indexing = True
+                block_name, needs_indexing = "NouveauBloc", True
+                xform = rs.XformTranslation(get_bbox_center(ref))
         else:
-            block_name = "NouveauBloc"
+            block_name, needs_indexing = "NouveauBloc", True
             xform = rs.XformIdentity()
-            needs_indexing = True
 
-        # Logique de nommage _base / _contain
+        # Logique de nommage : _base / _contain
         if "_base" in block_name.lower():
-            import re
             block_name = re.sub('(?i)_base', '', block_name)
-        else:
-            if not block_name.endswith("_contain"):
-                block_name = block_name + "_contain"
-        
-        if needs_indexing:
+        elif not block_name.lower().endswith("_contain"):
+            block_name += "_contain"
+
+        # Indexation (évite les doublons)
+        if needs_indexing or rs.IsBlock(block_name):
             free_name = block_name
-            if rs.IsBlock(free_name):
-                for i in range(1, 100):
-                    temp_name = "{}_{:02d}".format(block_name, i)
-                    if not rs.IsBlock(temp_name):
-                        free_name = temp_name
-                        break
+            for i in range(1, 100):
+                temp = "{}_{:02d}".format(block_name, i)
+                if not rs.IsBlock(temp):
+                    free_name = temp
+                    break
             block_name = free_name
-    
+
     if not block_name: return
 
-    # 3. Confirmation si redefinition
+    # 3. Action
     confirm = "Oui"
     if rs.IsBlock(block_name):
-        msg = "Le bloc '{}' existe déjà. Mettre à jour sa définition ?".format(block_name)
-        confirm = rs.GetString(msg, "Oui", ["Oui", "Non"])
-    
+        confirm = rs.GetString("Mettre à jour le bloc '{}' ?".format(block_name), "Oui", ["Oui", "Non"])
+
     if confirm == "Oui":
-        target_layer = ensure_layer("Blocs")
-        inv_xform = rs.XformInverse(xform)
-        new_geometries = []
+        layer = ensure_layer("Blocs")
+        inv_xf = rs.XformInverse(xform)
+        temp_ids = []
         
         rs.EnableRedraw(False)
-        
-        # Création des copies transformées pour le bloc
-        for o in initial_objs:
-            # On conserve tout (y compris l'instance Pose)
+        for o in objs:
             copy = rs.CopyObject(o)
-            rs.ObjectLayer(copy, target_layer)
-            rs.TransformObject(copy, inv_xform)
-            new_geometries.append(copy)
+            rs.ObjectLayer(copy, layer)
+            rs.TransformObject(copy, inv_xf)
+            temp_ids.append(copy)
 
-        # 4. Utilisation de la fonction de redéfinition robuste
-        res = redefine_block(block_name, [0,0,0], new_geometries, delete_input=True)
-        
-        if res:
-            # Remplacer les objets initiaux par une instance du bloc
-            new_instance = rs.InsertBlock(block_name, [0,0,0])
-            rs.TransformObject(new_instance, xform)
-            
-            rs.DeleteObjects(initial_objs)
-            rs.UnselectAllObjects()
-            rs.SelectObject(new_instance)
-            print("Bloc '{}' reconstruit avec succès.".format(block_name))
+        if safe_redefine_block(block_name, [0,0,0], temp_ids, delete_input=True):
+            # On insère une nouvelle instance au point final
+            new_inst = rs.InsertBlock(block_name, [0,0,0])
+            rs.TransformObject(new_inst, xform)
+            rs.DeleteObjects(objs)
+            rs.SelectObject(new_inst)
+            print("Succès : Bloc '{}' généré.".format(block_name))
         else:
-            print("Erreur : La création/mise à jour du bloc a échoué.")
-            
+            print("Erreur : La redéfinition a échoué (vérifiez si le bloc est verrouillé).")
+            rs.DeleteObjects(temp_ids) # Nettoyage
         rs.EnableRedraw(True)
-    else:
-        print("Opération annulée.")
 
 if __name__ == "__main__":
     rebuild_reciproque()
