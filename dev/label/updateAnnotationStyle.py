@@ -1,64 +1,72 @@
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
 
-def update_annotations_with_options():
-    # 1. Récupérer les styles et le style actuel
-    styles = rs.DimStyleNames()
-    if not styles:
-        print("Aucun style d'annotation trouvé.")
+def update_annotations_v2():
+    # 1. Récupérer les styles
+    all_styles = rs.DimStyleNames()
+    if not all_styles:
+        print("Erreur : Aucun style trouvé dans le document.")
         return
 
-    current_default = rs.CurrentDimStyle()
+    # 2. Préparation pour la ligne de commande (Rhino n'accepte pas d'espaces ici)
+    # On crée un dictionnaire : { "Nom_Sans_Espace" : "Nom Réel" }
+    style_map = {}
+    options_list = []
     
-    # Nettoyage des noms de styles pour l'affichage en options (Rhino n'aime pas les espaces dans les mots-clés)
-    # On crée un dictionnaire pour faire la correspondance si besoin, 
-    # mais rs.GetString accepte généralement les listes directes.
-    options = [s.replace(" ", "_") for s in styles]
+    for s in all_styles:
+        # Transformation manuelle pour éviter tout souci de compatibilité
+        clean_name = "".join(c if c.isalnum() else "_" for c in s)
+        style_map[clean_name] = s
+        options_list.append(clean_name)
 
-    # 2. Demander le style via la barre de commande
-    msg = "Style actuel : {}. Choisir le nouveau style".format(current_default)
-    res = rs.GetString(msg, current_default, options)
-
-    if res is None: return # Annulation
+    current_style = rs.CurrentDimStyle()
     
-    # Retrouver le nom original du style (si on a remplacé les espaces par des underscores)
-    chosen_style = None
-    if res in styles:
-        chosen_style = res
+    # 3. Demander le style via rs.GetString
+    msg = "Style actuel: {}. Choisir nouveau style".format(current_style)
+    # On affiche les options cliquables
+    res = rs.GetString(msg, None, options_list)
+
+    if res is None: 
+        return # Utilisateur a fait Echap
+    
+    # Si l'utilisateur tape ou clique une option, on récupère le vrai nom
+    if res in style_map:
+        chosen_style = style_map[res]
+    elif res == "":
+        # Si l'utilisateur fait "Entrée" sans rien taper, on garde l'actuel ou on quitte
+        chosen_style = current_style
     else:
-        # Recherche de correspondance pour gérer les espaces/underscores
-        for s in styles:
-            if s.replace(" ", "_") == res or s == res:
-                chosen_style = s
-                break
-    
-    if not chosen_style:
-        print("Style invalide.")
-        return
+        # Si l'utilisateur a tapé un nom manuellement qui n'est pas dans la liste
+        if rs.IsDimStyle(res):
+            chosen_style = res
+        else:
+            print("Le style '{}' n'existe pas.".format(res))
+            return
 
-    # 3. Traiter la sélection
+    # 4. Traitement de la sélection
     selected_objs = rs.SelectedObjects()
     
+    # On vérifie si selected_objs n'est pas None (car rs.SelectedObjects() renvoie None si vide)
     if selected_objs:
         rs.EnableRedraw(False)
-        anno_count = 0
+        count = 0
         for obj_id in selected_objs:
-            # 512 = Code pour tous les objets d'annotation (Cotes, Textes, Leaders)
+            # 512 = Constante pour les Annotations (Dimensions, Textes, Leaders)
             if rs.ObjectType(obj_id) == 512:
-                rs.DimensionStyle(obj_id, chosen_style)
-                anno_count += 1
+                try:
+                    rs.DimensionStyle(obj_id, chosen_style)
+                    count += 1
+                except:
+                    pass
         rs.EnableRedraw(True)
-        
-        if anno_count > 0:
-            print("Succès : {} annotation(s) mise(s) à jour sur '{}'.".format(anno_count, chosen_style))
-        else:
-            print("Aucune annotation trouvée dans la sélection.")
+        if count > 0:
+            print("Succès : {} annotations mises à jour.".format(count))
     else:
-        print("Aucune sélection. Modification du style par défaut uniquement.")
+        print("Aucune sélection : seul le style par défaut est mis à jour.")
 
-    # 4. Définir comme style par défaut
+    # 5. Définir comme style actuel
     rs.CurrentDimStyle(chosen_style)
-    print("Style par défaut défini sur : {}".format(chosen_style))
+    print("Style par défaut : {}".format(chosen_style))
 
 if __name__ == "__main__":
-    update_annotations_with_options()
+    update_annotations_v2()
