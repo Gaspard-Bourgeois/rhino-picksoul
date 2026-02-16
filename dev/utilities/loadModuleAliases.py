@@ -1,7 +1,7 @@
 """
 Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
 Version: 1.0
-Date: 08/01/26
+Date: 16/02/26
 """
 import rhinoscriptsyntax as rs
 
@@ -49,13 +49,17 @@ def loadModuleAliases():
             "showKeyValue" : '_NoEcho !_PropertiesPage _Pause T'
     }
     module_aliases_dev = {
-            #cplane
+            #block
             "editBlockXform" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/editBlockXform.py"',
             "copyBlockColor" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/copyBlockColor.py"',
+            "definePose" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/definePose.py"',
+            "decomposeReciproque" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/decomposeReciproque.py"',
+            "reconstructBlock" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/reconstructBlock.py"',
             #cplane
             "alignCPlaneToBFitPoints" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/cplane/alignCPlaneToBFitPoints.py"',
             "alignCPlaneToBlock" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/cplane/alignCPlaneToBlock.py"',
             #insert
+            "insertPose" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertPose.py"',
             "insertCircleFromBFitPoints" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertCircleFromBFitPoints.py"',
             #IO
             "importYaskawaJBI" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/IO/importYaskawaJBI.py"',
@@ -71,6 +75,7 @@ def loadModuleAliases():
             #label#
             "blockNameLabel" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/blockNameLabel.py"',
             "blockCountLabel" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/blockCountLabel.py"',
+            "updateAnnotationStyle" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/updateAnnotationStyle.py"',
             #selection#
             "selectNext" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectNext.py"',
             "selectNextOrigin" : '_NoEcho !-_RunPythonScript "../Plug-ins/PythonPlugins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectNextOrigin.py"',
