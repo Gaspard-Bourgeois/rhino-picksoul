@@ -1,17 +1,12 @@
 import Rhino
 import scriptcontext as sc
-import rhinoscriptsyntax as rs
 
-def SmartCPlaneV3():
-    # 1. Configuration de la sélection
+def UltimateCPlane():
+    # 1. Sélection ciblée sur les faces
     go = Rhino.Input.Custom.GetObject()
-    go.SetCommandPrompt("Sélectionnez une face (Surface, Polysurface, Extrusion ou Bloc)")
-    
-    # On accepte les surfaces, les polysurfaces et les extrusions
-    go.GeometryFilter = (Rhino.DocObjects.ObjectType.Surface | 
-                         Rhino.DocObjects.ObjectType.Brep | 
-                         Rhino.DocObjects.ObjectType.Extrusion)
-    go.SubObjectSelect = True
+    go.SetCommandPrompt("Sélectionnez une face (Bloc, Extrusion ou Polysurface)")
+    go.GeometryFilter = Rhino.DocObjects.ObjectType.Surface
+    go.SubObjectSelect = True 
     go.Get()
 
     if go.CommandResult() != Rhino.Commands.Result.Success:
@@ -19,57 +14,60 @@ def SmartCPlaneV3():
 
     objref = go.Object(0)
     
-    # 2. Récupération de la face
-    # .Face() fonctionne pour les Breps et les Extrusions dans Rhino 7
+    # 2. Extraction robuste de la face
+    # On récupère la géométrie de la face, peu importe si c'est une extrusion ou un brep
     face = objref.Face()
     if not face:
-        print("Erreur : Impossible d'extraire la géométrie de la face.")
+        # Tentative de secours : conversion de l'objet entier en Brep pour extraire la face
+        geom = objref.Geometry()
+        if hasattr(geom, "ToBrep"):
+            brep = geom.ToBrep()
+            if brep:
+                face = brep.Faces[objref.GeometryComponentIndex.Index]
+
+    if not face:
+        print("Erreur : Géométrie de face illisible.")
         return
 
-    # 3. Récupération du point de clic et gestion de la transformation
+    # 3. Gestion du point de clic et des transformations
     pick_pt_world = objref.SelectionPoint()
     parent_obj = objref.Object()
     
-    # Initialisation de la matrice de transformation (Identité par défaut)
+    # Récupérer la matrice de transformation (monde réel)
     xform = Rhino.Geometry.Transform.Identity
-    
-    # Si l'objet parent est une instance de bloc, on récupère sa transformation
     if isinstance(parent_obj, Rhino.DocObjects.InstanceObject):
         xform = parent_obj.InstanceXform
-    
-    # 4. Calcul du plan en coordonnées LOCALES
-    # Pour trouver les paramètres U,V, on doit ramener le point de clic dans l'espace local du bloc
-    local_pick_pt = Rhino.Geometry.Point3d(pick_pt_world)
-    if xform != Rhino.Geometry.Transform.Identity:
-        # On calcule l'inverse de la transformation du bloc
-        success, inv_xform = xform.TryGetInverse()
-        if success:
-            local_pick_pt.Transform(inv_xform)
 
-    # Trouver les paramètres U,V sur la face locale
-    rc, u, v = face.ClosestPoint(local_pick_pt)
-    rc, plane = face.FrameAt(u, v)
+    # 4. Calcul du plan local -> Conversion vers le monde
+    # On projette le point de clic dans l'espace local pour obtenir UV
+    local_pt = Rhino.Geometry.Point3d(pick_pt_world)
+    success_inv, inv_xform = xform.TryGetInverse()
+    if success_inv:
+        local_pt.Transform(inv_xform)
 
-    # 5. Transformer le plan LOCAL vers le monde REEL (World)
-    # On applique la rotation/position du bloc au plan calculé
+    # Calcul de la normale locale
+    rc, u, v = face.ClosestPoint(local_pt)
+    success_frame, plane = face.FrameAt(u, v)
+
+    # Transformer le plan local pour qu'il suive la position/rotation de l'objet
     plane.Transform(xform)
-    
-    # On force l'origine au point de clic précis
+    # L'origine est placée exactement sur le clic
     plane.Origin = pick_pt_world
 
-    # 6. Correction de l'orientation (Z-Face vers Caméra)
-    viewport = sc.doc.Views.ActiveView.ActiveViewport
-    cam_dir = viewport.CameraDirection # Vecteur de la caméra
-
-    # Si le produit scalaire est positif, la normale et la caméra vont dans le même sens
-    # La face nous tourne le dos, donc on l'inverse.
-    if (plane.Normal * cam_dir) > 0:
+    # 5. Correction automatique de l'inversion (Z vers utilisateur)
+    view = sc.doc.Views.ActiveView
+    viewport = view.ActiveViewport
+    # Vecteur de vue : de la caméra vers la cible
+    look_dir = viewport.CameraDirection
+    
+    # Si le Z du plan "regarde" dans la même direction que la caméra, il pointe vers l'intérieur
+    if (plane.Normal * look_dir) > 0:
         plane.Flip()
 
-    # 7. Application du CPlane
+    # 6. Application
     viewport.SetConstructionPlane(plane)
-    sc.doc.Views.ActiveView.Redraw()
-    print("CPlane mis à jour (Orientation corrigée).")
+    view.Redraw()
+    print("CPlane aligné avec succès.")
 
 if __name__ == "__main__":
-    SmartCPlaneV3()
+    UltimateCPlane()
