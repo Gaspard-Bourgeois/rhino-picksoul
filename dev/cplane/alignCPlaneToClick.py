@@ -3,11 +3,12 @@ import scriptcontext as sc
 import rhinoscriptsyntax as rs
 
 def ForceSmartCPlane():
-    # 1. Configuration de la sélection
+    # 1. Sélection ultra-précise
     go = Rhino.Input.Custom.GetObject()
-    go.SetCommandPrompt("Sélectionnez une face (Brep, Extrusion ou Bloc)")
+    go.SetCommandPrompt("Sélectionnez une face (Bloc, Polysurface ou Extrusion)")
+    # On accepte Surface (face de Brep) et Polysrf (Brep entier avec sélection de face activée)
     go.GeometryFilter = Rhino.DocObjects.ObjectType.Surface | Rhino.DocObjects.ObjectType.PolysrfFilter
-    go.SubObjectSelect = True # Permet de sélectionner une face dans un bloc ou un brep
+    go.SubObjectSelect = True 
     go.GroupSelect = False
     go.Get()
 
@@ -16,69 +17,79 @@ def ForceSmartCPlane():
 
     objref = go.Object(0)
     
-    # 2. Récupération de la géométrie de la face
-    # objref.Face() fonctionne pour les Breps et les Blocs
-    face = objref.Face()
+    # 2. EXTRACTION ROBUSTE DE LA GÉOMÉTRIE
+    # On récupère l'index du sous-objet (la face) cliquée
+    comp_index = objref.GeometryComponentIndex
+    # On récupère la géométrie de base (dans le cas d'un bloc, c'est la géométrie LOCALE du bloc)
+    base_geom = objref.Geometry()
     
-    # Cas particulier : Les Extrusions ne sont pas toujours lues comme des faces
-    if face is None:
-        geom = objref.Geometry()
-        if isinstance(geom, Rhino.Geometry.Extrusion):
-            face = geom.ToBrep().Faces[0]
+    face = None
+    
+    # Cas A : C'est un Brep (ou une face de Brep)
+    if isinstance(base_geom, Rhino.Geometry.Brep):
+        if comp_index.Index >= 0:
+            face = base_geom.Faces[comp_index.Index]
+        else:
+            face = base_geom.Faces[0] # Fallback
             
+    # Cas B : C'est une Extrusion (ex: commande Boîte ou Extrusion simple)
+    elif isinstance(base_geom, Rhino.Geometry.Extrusion):
+        brep = base_geom.ToBrep()
+        if comp_index.Index >= 0:
+            face = brep.Faces[comp_index.Index]
+        else:
+            face = brep.Faces[0]
+
     if face is None:
-        print("Erreur : Impossible d'extraire la géométrie de la face.")
+        print("Erreur : Impossible d'accéder à la face de la définition.")
         return
 
-    # 3. GESTION ROBUSTE DE LA TRANSFORMATION
-    # objref.InstanceXform récupère la matrice cumulative (même si bloc dans un bloc)
-    # Pour un objet normal (Brep hors bloc), cette matrice est 'Identity' (neutre)
+    # 3. TRANSFORMATION (LE POINT CRITIQUE)
+    # objref.InstanceXform renvoie la matrice totale du bloc vers le monde.
+    # Pour un objet normal (hors bloc), cette matrice est 'Identity' (neutre). 
+    # C'est ce qui rend ce script universel.
     xform = objref.InstanceXform
-    
-    # 4. CALCUL DU PLAN (Transition Local -> Monde)
-    # A. On récupère le point de clic en coordonnées MONDE
+
+    # 4. CALCUL DU PLAN
     pick_pt_world = objref.SelectionPoint()
     
-    # B. On convertit ce point en coordonnées LOCALES (pour trouver les UV sur la face)
-    rc, inv_xform = xform.TryGetInverse()
-    pick_pt_local = Rhino.Geometry.Point3d(pick_pt_world)
-    if rc: # Si on est dans un bloc, on transforme le point
-        pick_pt_local.Transform(inv_xform)
+    # Ramener le point de clic dans le référentiel local de la définition
+    local_pt = Rhino.Geometry.Point3d(pick_pt_world)
+    rc_inv, inv_xform = xform.TryGetInverse()
+    if rc_inv:
+        local_pt.Transform(inv_xform)
 
-    # C. Calcul des UV et de la normale sur la face LOCALE
-    success, u, v = face.ClosestPoint(pick_pt_local)
-    if not success:
+    # Calculer le plan (Frame) sur la face locale
+    success_uv, u, v = face.ClosestPoint(local_pt)
+    success_frame, local_plane = face.FrameAt(u, v)
+
+    if not success_frame:
+        print("Erreur : Calcul du plan local impossible.")
         return
-    
-    # On extrait le plan local à cet endroit
-    # FrameAt donne l'origine, le X, le Y et le Z (normale) de la face
-    res, local_plane = face.FrameAt(u, v)
-    
-    # D. TRANSFORMATION DU PLAN VERS LE MONDE
-    # On applique la matrice de transformation de l'instance au plan entier
+
+    # Transformer le plan LOCAL vers le MONDE
     world_plane = local_plane.Duplicate()
     world_plane.Transform(xform)
     
-    # On force l'origine sur le point de clic précis (en monde)
+    # On force l'origine exacte au point de clic
     world_plane.Origin = pick_pt_world
 
-    # 5. ALIGNEMENT AVEC LA VUE
+    # 5. ORIENTATION ET VUE
     view = sc.doc.Views.ActiveView
     viewport = view.ActiveViewport
     
-    # Retourner la face si elle pointe à l'opposé de la caméra
+    # Si la normale s'éloigne de la caméra, on la retourne
     if (world_plane.Normal * viewport.CameraDirection) > 0:
         world_plane.Flip()
 
-    # 6. APPLICATION
-    sc.doc.Views.ActiveView.ActiveViewport.SetConstructionPlane(world_plane)
+    # Application
+    viewport.SetConstructionPlane(world_plane)
     
-    # Pour que la vue s'aligne (équivalent de la commande _Plan)
-    # On utilise rs.Command pour garantir que l'affichage suit la logique de Rhino
+    # Synchronisation de la vue (Top relative au CPlane)
     rs.Command("_Plan", False)
     
     sc.doc.Views.Redraw()
-    print("CPlane synchronisé (Compatible Blocs & Breps).")
+    print("Succès : CPlane aligné sur la face (Compatible Instances de Bloc).")
 
 if __name__ == "__main__":
     ForceSmartCPlane()
