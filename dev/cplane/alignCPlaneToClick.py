@@ -1,58 +1,58 @@
 import Rhino
 import scriptcontext as sc
+import rhinoscriptsyntax as rs
 
-def SmartCPlaneAlign():
-    # 1. Configurer la sélection pour accepter les sous-faces (Polysurfaces et Blocs)
+def SmartCPlaneUniversal():
+    # 1. Sélection de la face (accepte sous-objets de blocs et polysurfaces)
     go = Rhino.Input.Custom.GetObject()
-    go.SetCommandPrompt("Sélectionnez une face (Polysurface ou Bloc)")
+    go.SetCommandPrompt("Sélectionnez une face (Surface, Polysurface ou Bloc)")
     go.GeometryFilter = Rhino.DocObjects.ObjectType.Surface
-    go.SubObjectSelect = True # Permet de cliquer sur une face individuelle
+    go.SubObjectSelect = True
     go.Get()
 
     if go.CommandResult() != Rhino.Commands.Result.Success:
         return
 
-    # 2. Récupérer les données du clic
     objref = go.Object(0)
-    face = objref.Face() # La géométrie de la face
-    pick_pt = objref.SelectionPoint() # Le point précis du clic
-
+    face = objref.Face()
+    pick_pt = objref.SelectionPoint()
+    
     if not face:
-        print("Erreur: Impossible de récupérer la face.")
+        print("Erreur : Impossible de récupérer la face.")
         return
 
-    # 3. Calculer le plan au point de contact
-    # On trouve les paramètres U,V de la face au point cliqué
+    # 2. Calcul du plan local sur la face
     rc, u, v = face.ClosestPoint(pick_pt)
     rc, plane = face.FrameAt(u, v)
 
-    # 4. Appliquer la transformation si c'est un BLOC
-    # Si la face appartient à un bloc, le plan est actuellement en coordonnées locales.
-    # On le transforme en coordonnées "Monde" (World).
-    xform = objref.Object().InstanceIncrementalTransform
-    if not xform.IsIdentity:
+    # 3. Gestion de la transformation (La clé pour les BLOCS)
+    # On récupère l'objet parent pour voir s'il a une transformation
+    parent_obj = objref.Object()
+    if parent_obj and isinstance(parent_obj, Rhino.DocObjects.InstanceObject):
+        # Si c'est un bloc, on applique sa matrice de transformation au plan
+        xform = parent_obj.InstanceXform
         plane.Transform(xform)
+    elif objref.Geometry().HasBrepForm:
+        # Pour une polysurface standard, on s'assure que le point est en World Coordinates
+        # (Généralement déjà le cas avec SelectionPoint)
+        pass
 
-    # 5. Inversion intelligente (Check Caméra)
-    # On récupère le vecteur de direction de la caméra actuelle
+    # 4. Inversion intelligente (Orientation vers la caméra)
     view = sc.doc.Views.ActiveView
     viewport = view.ActiveViewport
-    # CameraDirection est le vecteur allant de la caméra vers la cible
     cam_dir = viewport.CameraDirection 
 
-    # Produit scalaire : si > 0, la normale et la caméra pointent dans le même sens
-    # Donc la face nous tourne le dos (elle regarde vers l'intérieur de l'objet)
-    dot_product = plane.Normal * cam_dir
-    
-    if dot_product > 0:
-        # On inverse l'axe Z pour que le CPlane regarde l'utilisateur
+    # Si la normale pointe dans la même direction que la caméra (dot > 0), on inverse
+    if (plane.Normal * cam_dir) > 0:
         plane.Flip()
 
-    # 6. Mise à jour du CPlane (sans changer la vue)
-    plane.Origin = pick_pt # On centre le plan sur le clic
+    # 5. Mise à jour du CPlane
+    # On force l'origine au point cliqué pour la précision
+    plane.Origin = pick_pt
     viewport.SetConstructionPlane(plane)
-    view.Redraw()
-    print("CPlane mis à jour avec succès.")
+    
+    sc.doc.Views.Redraw()
+    print("CPlane aligné sur la face (Normalisé vers la caméra).")
 
 if __name__ == "__main__":
-    SmartCPlaneAlign()
+    SmartCPlaneUniversal()
