@@ -8,25 +8,21 @@ def get_block_axes(block_id):
     """Extrait les vecteurs X, Y, Z d'une instance de bloc."""
     xform = rs.BlockInstanceXform(block_id)
     if not xform: return None, None, None
+    # Extraction des vecteurs de la matrice de transformation
     x = rg.Vector3d(xform.M00, xform.M10, xform.M20)
     y = rg.Vector3d(xform.M01, xform.M11, xform.M21)
     z = rg.Vector3d(xform.M02, xform.M12, xform.M22)
     return x, y, z
 
 def get_pose_info(objs):
-    """
-    Cherche un objet 'pivot' parmi une liste d'objets via la clé UserText.
-    Retourne (point_origine, vecteur_x, vecteur_y, vecteur_z)
-    """
+    """Cherche un pivot via UserText ou BoundingBox."""
     for obj in objs:
-        # On vérifie les deux clés possibles (la précédente et la nouvelle demandée)
         if rs.GetUserText(obj, "OriginalBlockName") or rs.GetUserText(obj, "block origin"):
             if rs.IsBlockInstance(obj):
                 pt = rs.BlockInstanceInsertPoint(obj)
                 ax, ay, az = get_block_axes(obj)
                 return pt, ax, ay, az
             else:
-                # Si c'est un objet standard avec la clé, on prend sa BBox
                 bbox = rs.BoundingBox(obj)
                 if bbox:
                     return (bbox[0]+bbox[6])/2, rg.Vector3d.XAxis, rg.Vector3d.YAxis, rg.Vector3d.ZAxis
@@ -38,56 +34,55 @@ def transform_smart_sets():
     if not initial_selection: return
 
     # -----------------------------------------------------------
-    # 2. LOGIQUE DE PARSING HISTORIQUE (Inchangée mais nettoyée)
+    # 2. LOGIQUE DE PARSING (Correction des Index)
     # -----------------------------------------------------------
     tx, ty, tz = 10.0, 0.0, 0.0
     rz_deg, ry_deg, rx_deg = 45.0, 0.0, 0.0
     coordinate_system = "World"
     
+    # Regex corrigé pour correspondre exactement au print final
     struct = r"Repère: (\S+). Paramètres: Tx=(\S+) Ty=(\S+) Tz=(\S+) \| Rotations \(Deg\): Rz=(\S+) Ry=(\S+) Rx=(\S+)"
     history = rs.CommandHistory().split('\n')
     for line in reversed(history):
         match = re.search(struct, line)
         if match:
             coordinate_system = match.group(1)
-            tx, ty, tz, rz_deg, ry_deg, rx_deg = map(float, match.group(2,3,4,8,7,6)) # Note: Ordre regex
+            # Correction des index : 2=Tx, 3=Ty, 4=Tz, 5=Rz, 6=Ry, 7=Rx
+            tx, ty, tz, rz_deg, ry_deg, rx_deg = map(float, match.group(2,3,4,5,6,7))
             break
 
     # -----------------------------------------------------------
-    # 3. BOUCLE D'INTERFACE (GetString)
+    # 3. INTERFACE UTILISATEUR
     # -----------------------------------------------------------
     while True:
-        msg = "Repère: {}. Paramètres: Tx={:.2f} Ty={:.2f} Tz={:.2f} | Rotations (Deg): Rz={:.2f} Ry={:.2f} Rx={:.2f}. Entrée pour appliquer.".format(
+        msg = "Repère: {}. Paramètres: Tx={:.2f} Ty={:.2f} Tz={:.2f} | Rz={:.2f} Ry={:.2f} Rx={:.2f}".format(
             coordinate_system, tx, ty, tz, rz_deg, ry_deg, rx_deg)
         
-        res = rs.GetString(msg, "", ["Repere", "Tx", "Ty", "Tz", "Rz", "Ry", "Rx", "SetAll"])
+        res = rs.GetString(msg, "Appliquer", ["Repere", "Tx", "Ty", "Tz", "Rz", "Ry", "Rx", "SetAll"])
         if res is None: return
-        if res == "": break
+        if res == "" or res == "Appliquer": break
         
         if res == "Repere":
-            coordinate_system = rs.GetString("Système?", coordinate_system, ["World", "CPlane", "Block"]) or coordinate_system
-        elif res == "Tx": tx = rs.GetReal("Tx", tx) or tx
-        elif res == "Ty": ty = rs.GetReal("Ty", ty) or ty
-        elif res == "Tz": tz = rs.GetReal("Tz", tz) or tz
-        elif res == "Rz": rz_deg = rs.GetReal("Rz", rz_deg) or rz_deg
-        elif res == "Ry": ry_deg = rs.GetReal("Ry", ry_deg) or ry_deg
-        elif res == "Rx": rx_deg = rs.GetReal("Rx", rx_deg) or rx_deg
+            choice = rs.GetString("Système?", coordinate_system, ["World", "CPlane", "Block"])
+            if choice: coordinate_system = choice
+        elif res == "Tx": tx = rs.GetReal("Tx", tx)
+        elif res == "Ty": ty = rs.GetReal("Ty", ty)
+        elif res == "Tz": tz = rs.GetReal("Tz", tz)
+        elif res == "Rz": rz_deg = rs.GetReal("Rz", rz_deg)
+        elif res == "Ry": ry_deg = rs.GetReal("Ry", ry_deg)
+        elif res == "Rx": rx_deg = rs.GetReal("Rx", rx_deg)
         elif res == "SetAll":
-            val = rs.GetString("X,Y,Z,Rz,Ry,Rx", "{},{},{},{},{},{}".format(tx,ty,tz,rz_deg,ry_deg,rx_deg))
+            val = rs.GetString("Format: X,Y,Z,Rz,Ry,Rx", "{},{},{},{},{},{}".format(tx,ty,tz,rz_deg,ry_deg,rx_deg))
             if val:
-                try: tx, ty, tz, rz_deg, ry_deg, rx_deg = [float(x) for x in val.split(',')]
+                try: tx, ty, tz, rz_deg, ry_deg, rx_deg = [float(x.strip()) for x in val.split(',')]
                 except: print("Format invalide.")
 
     # -----------------------------------------------------------
-    # 4. APPLICATION DE LA TRANSFORMATION
+    # 4. APPLICATION
     # -----------------------------------------------------------
     rz, ry, rx = math.radians(rz_deg), math.radians(ry_deg), math.radians(rx_deg)
     rs.EnableRedraw(False)
 
-    # On définit le plan de base pour la translation (World ou CPlane)
-    ref_plane = rs.ViewCPlane() if coordinate_system == "CPlane" else rg.Plane.WorldXY
-    
-    # Identifier les "Paquets" d'objets (Regrouper par groupe Rhino si présent)
     objects_to_process = []
     processed_ids = set()
 
@@ -95,7 +90,8 @@ def transform_smart_sets():
         if obj_id in processed_ids: continue
         
         group_names = rs.ObjectGroups(obj_id)
-        if group_names:
+        # On vérifie que le groupe existe réellement dans le document
+        if group_names and rs.IsGroup(group_names[0]):
             group_members = rs.ObjectsByGroup(group_names[0])
             objects_to_process.append(group_members)
             for m in group_members: processed_ids.add(m)
@@ -105,45 +101,43 @@ def transform_smart_sets():
 
     count = 0
     for subset in objects_to_process:
-        # Trouver le pivot dans ce sous-ensemble
         pose_data = get_pose_info(subset)
         
         if pose_data:
             pivot_pt, axis_x, axis_y, axis_z = pose_data
         else:
-            # Fallback : Centre de la sélection
             bbox = rs.BoundingBox(subset)
             pivot_pt = (bbox[0] + bbox[6]) / 2 if bbox else rg.Point3d(0,0,0)
             axis_x, axis_y, axis_z = rg.Vector3d.XAxis, rg.Vector3d.YAxis, rg.Vector3d.ZAxis
 
-        # Choix des axes pour la rotation/translation locale
+        # Sélection des axes de travail
         if coordinate_system == "Block":
-            target_x, target_y, target_z = axis_x, axis_y, axis_z
+            tx_axis, ty_axis, tz_axis = axis_x, axis_y, axis_z
         elif coordinate_system == "CPlane":
             cp = rs.ViewCPlane()
-            target_x, target_y, target_z = cp.XAxis, cp.YAxis, cp.ZAxis
+            tx_axis, ty_axis, tz_axis = cp.XAxis, cp.YAxis, cp.ZAxis
         else:
-            target_x, target_y, target_z = rg.Vector3d.XAxis, rg.Vector3d.YAxis, rg.Vector3d.ZAxis
+            tx_axis, ty_axis, tz_axis = rg.Vector3d.XAxis, rg.Vector3d.YAxis, rg.Vector3d.ZAxis
 
-        # Construction de la matrice
-        # 1. Rotation
-        xf_rz = rg.Transform.Rotation(rz, target_z, pivot_pt)
-        xf_ry = rg.Transform.Rotation(ry, target_y, pivot_pt)
-        xf_rx = rg.Transform.Rotation(rx, target_x, pivot_pt)
-        rotation_final = xf_rx * xf_ry * xf_rz
+        # Construction des matrices
+        xf_rz = rg.Transform.Rotation(rz, tz_axis, pivot_pt)
+        xf_ry = rg.Transform.Rotation(ry, ty_axis, pivot_pt)
+        xf_rx = rg.Transform.Rotation(rx, tx_axis, pivot_pt)
         
-        # 2. Translation
-        vec_t = (target_x * tx) + (target_y * ty) + (target_z * tz)
-        translation_final = rg.Transform.Translation(vec_t)
+        vec_t = (tx_axis * tx) + (ty_axis * ty) + (tz_axis * tz)
+        xf_trans = rg.Transform.Translation(vec_t)
         
-        # Transformation combinée
-        full_xf = translation_final * rotation_final
+        # Ordre : Rotation puis Translation
+        full_xf = xf_trans * xf_rx * xf_ry * xf_rz
         
         if rs.TransformObjects(subset, full_xf, copy=False):
             count += 1
 
     rs.EnableRedraw(True)
-    print("Succès : {} groupe(s)/objet(s) transformés via leur pivot.".format(count))
+    # Ce print est crucial car il alimente l'historique pour le prochain lancement
+    print("Repère: {}. Paramètres: Tx={:.2f} Ty={:.2f} Tz={:.2f} | Rotations (Deg): Rz={:.2f} Ry={:.2f} Rx={:.2f}".format(
+        coordinate_system, tx, ty, tz, rz_deg, ry_deg, rx_deg))
+    print("Succès : {} ensemble(s) transformé(s).".format(count))
 
 if __name__ == "__main__":
     transform_smart_sets()
