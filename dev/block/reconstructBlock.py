@@ -1,129 +1,133 @@
-# -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
+import scriptcontext as sc
+import Rhino
+import rhinoscript.utility as rhutil
 
-def get_bbox_center(obj_id):
-    """Calcule le centre d'une BoundingBox sans Rhino.Geometry."""
-    bbox = rs.BoundingBox(obj_id)
-    if not bbox: return [0,0,0]
-    # bbox[0] est le min, bbox[6] est le max
-    pt_min = bbox[0]
-    pt_max = bbox[6]
-    return [
-        (pt_min[0] + pt_max[0]) / 2.0,
-        (pt_min[1] + pt_max[1]) / 2.0,
-        (pt_min[2] + pt_max[2]) / 2.0
-    ]
+# --- FONCTIONS UTILITAIRES (Identiques à editblockxform) ---
+
+def update_block_def(instance_id, xform):
+    """Applique xform à la géométrie interne de la définition."""
+    objref = rs.coercerhinoobject(instance_id)
+    if not objref: return False
+    idef = objref.InstanceDefinition
+    idef_index = idef.Index
+    
+    block_objects = idef.GetObjects()
+    new_geometry = []
+    new_attributes = []
+
+    for rhino_obj in block_objects:
+        geometry = rhino_obj.Geometry.DuplicateShallow() 
+        geometry.Transform(xform)
+        attributes = rhino_obj.Attributes.Duplicate()
+        new_geometry.append(geometry)
+        new_attributes.append(attributes)
+
+    return sc.doc.InstanceDefinitions.ModifyGeometry(idef_index, new_geometry, new_attributes)
+
+def selective_update_block_def(definition_name, target_object_id, xform):
+    """Compense une instance spécifique à l'intérieur d'une autre définition."""
+    parent_def = sc.doc.InstanceDefinitions.Find(definition_name, False)
+    if not parent_def: return False
+    
+    idef_index = parent_def.Index
+    block_objects = parent_def.GetObjects()
+    new_geometry = []
+    new_attributes = []
+    modified = False
+
+    for rhino_obj in block_objects:
+        geometry = rhino_obj.Geometry.DuplicateShallow() 
+        attributes = rhino_obj.Attributes.Duplicate()
+        if rhino_obj.Id.Equals(target_object_id):
+            geometry.Transform(xform)
+            modified = True
+        new_geometry.append(geometry)
+        new_attributes.append(attributes)
+
+    if modified:
+        return sc.doc.InstanceDefinitions.ModifyGeometry(idef_index, new_geometry, new_attributes)
+    return False
+
+def PropagateUpwardCompensation(child_block_name, xform_compensation, visited_defs=None):
+    """Récursivité pour stabiliser les blocs parents."""
+    if visited_defs is None: visited_defs = set()
+    parent_block_names = rs.BlockContainers(child_block_name)
+    if not parent_block_names: return
+
+    for parent_name in parent_block_names:
+        if parent_name in visited_defs: continue
+        visited_defs.add(parent_name)
+
+        definition_objects = rs.BlockObjects(parent_name)
+        child_instances_in_def = [
+            obj_id for obj_id in definition_objects
+            if rs.IsBlockInstance(obj_id) and rs.BlockInstanceName(obj_id) == child_block_name
+        ]
+
+        for inst_id_in_def in child_instances_in_def:
+            selective_update_block_def(parent_name, inst_id_in_def, xform_compensation)
+
+        PropagateUpwardCompensation(parent_name, xform_compensation, visited_defs)
+
+# --- FONCTION PRINCIPALE : REBUILD RECIPROQUE ---
 
 def rebuild_reciproque():
-    # 1. Sélection des objets
-    initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
-    if not initial_objs: return
+    # 1. Sélection de l'instance de référence
+    target_inst = rs.GetObject("Sélectionner l'instance de bloc pour réinitialiser la définition", rs.filter.instance)
+    if not target_inst: return
 
-    origin_obj = None
-    block_name = None
-    xform = None
-    block_names_in_doc = rs.BlockNames()
-
-    # 2. Recherche de l'objet "Pose" ou origine via la clé UserText
-    for obj in initial_objs:
-        val = rs.GetUserText(obj, "OriginalBlockName")
-        if val:
-            origin_obj = obj
-            block_name = val
-            if rs.IsBlockInstance(obj):
-                xform = rs.BlockInstanceXform(obj)
-            break
-
-    # 3. Gestion de l'absence d'origine identifiée
-    if not origin_obj:
-        ref_id = rs.GetObject("Origine non trouvée. Sélectionnez une référence (ou Entrée pour Monde)")
-        if ref_id:
-            if rs.IsBlockInstance(ref_id):
-                block_name = rs.BlockInstanceName(ref_id)
-                xform = rs.BlockInstanceXform(ref_id)
-            else:
-                # Si c'est un objet normal, on prend son centre et on crée une translation
-                block_name = "NouveauBloc"
-                center = get_bbox_center(ref_id)
-                xform = rs.XformTranslation(center)
-        else:
-            block_name = "NouveauBloc"
-            xform = rs.XformIdentity()
-
-        # Nettoyage du nom (suffixes _base ou _01)
-        if block_name.lower().endswith("_base"):
-            block_name = block_name[:-5]
-        
-        # Supprime le suffixe de copie type _01, _02
-        if len(block_name) > 3 and block_name[-3] == "_" and block_name[-2:].isdigit():
-            block_name = block_name[:-3]
-        
-        # Recherche d'un nom libre
-        free_name = block_name
-        if free_name in block_names_in_doc:
-            for i in range(1, 100):
-                temp_name = "{}_{:02d}".format(block_name, i)
-                if temp_name not in block_names_in_doc:
-                    free_name = temp_name
-                    break
-        block_name = free_name
+    block_name = rs.BlockInstanceName(target_inst)
     
-    if not block_name: return
-
-    # 4. Insertion préalable pour comparaison visuelle
-    confirm = "Oui"
-    temp_instance = None
-    if rs.IsBlock(block_name):
-        temp_instance = rs.InsertBlock(block_name, [0,0,0])
-        rs.TransformObject(temp_instance, xform)
-        rs.UnselectAllObjects()
-        rs.SelectObject(temp_instance)
-        
-        msg = "Le bloc '{}' existe déjà. Mettre à jour sa définition ?".format(block_name)
-        confirm = rs.GetString(msg, "Oui", ["Oui", "Non"])
+    # 2. Calcul des matrices
+    # T_current : La transformation actuelle de l'instance choisie
+    t_current = rs.BlockInstanceXform(target_inst)
     
-    if confirm == "Oui":
-        # Préparation de la géométrie (Inverse transformation pour revenir au 0,0,0 local)
-        inv_xform = rs.XformInverse(xform)
-        
-        new_geometries = []
-        for o in initial_objs:
-            # CORRECTION ICI :
-            # On vérifie si l'objet est une instance DU MEME BLOC que celui qu'on crée.
-            # Cela empêche la récursion (block A dans block A), mais autorise le bloc "Pose"
-            # s'il est différent du bloc en cours de création.
-            if rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == block_name:
-                print("Info: Instance '{}' exclue pour éviter une récursion.".format(block_name))
-                continue
-                
-            copy = rs.CopyObject(o)
-            rs.TransformObject(copy, inv_xform)
-            new_geometries.append(copy)
+    # X_def : Ce qu'on applique à la géométrie interne pour la ramener à l'origine
+    # C'est l'inverse de la position actuelle
+    x_def = rs.XformInverse(t_current)
+    if not x_def: return
 
-        # 5. Mise à jour ou création de la définition de bloc
-        # rs.AddBlock redéfinit le bloc s'il existe déjà
-        if len(new_geometries) > 0:
-            rs.AddBlock(new_geometries, [0,0,0], block_name, delete_input=True)
-            
-            # Si on n'avait pas d'instance de prévisualisation, on en crée une à l'emplacement final
-            if not temp_instance:
-                temp_instance = rs.InsertBlock(block_name, [0,0,0])
-                rs.TransformObject(temp_instance, xform)
-            
-            # 6. Nettoyage
-            rs.DeleteObjects(initial_objs)
-            rs.UnselectAllObjects()
-            rs.SelectObject(temp_instance)
-            
-            print("Bloc '{}' généré avec succès au point d'origine.".format(block_name))
+    # X_comp : Ce qu'on applique aux instances pour compenser le changement de définition
+    # C'est l'inverse de X_def, donc t_current lui-même.
+    x_comp = t_current
+
+    rs.EnableRedraw(False)
+
+    # 3. Mise à jour de la définition (La géométrie interne bouge vers l'origine)
+    if not update_block_def(target_inst, x_def):
+        rs.EnableRedraw(True)
+        print("Erreur lors de la modification de la définition.")
+        return
+
+    # 4. Compensation des instances imbriquées (Propagation ascendante)
+    # On utilise x_comp pour que les blocs parents ne voient pas de changement visuel
+    PropagateUpwardCompensation(block_name, x_comp)
+
+    # 5. Compensation des instances "sœurs" dans le document
+    all_instances = rs.BlockInstances(block_name)
+    
+    for inst in all_instances:
+        # On récupère l'ancienne matrice (Rhino ne l'a pas encore mise à jour visuellement)
+        t_old = rs.BlockInstanceXform(inst)
+        
+        if inst == target_inst:
+            # L'instance de référence doit maintenant être à l'Identité (0,0,0 sans rotation)
+            new_xform = rs.XformIdentity()
         else:
-            print("Erreur : Aucune géométrie valide à ajouter au bloc.")
-            # Nettoyage de la prévisualisation si échec
-            if temp_instance: rs.DeleteObject(temp_instance)
-            
-    else:
-        if temp_instance: rs.DeleteObject(temp_instance)
-        print("Opération annulée.")
+            # Les autres instances reçoivent : T_new = T_old * X_comp
+            new_xform = rs.XformMultiply(t_old, x_comp)
+        
+        # Calcul du delta à appliquer à l'objet instance lui-même
+        # X_apply = T_new * T_old^-1
+        inv_t_old = rs.XformInverse(t_old)
+        x_apply = rs.XformMultiply(new_xform, inv_t_old)
+        
+        if not x_apply.IsIdentity:
+            rs.TransformObject(inst, x_apply)
+
+    rs.EnableRedraw(True)
+    print("Définition de bloc '{}' reconstruite et instances stabilisées.".format(block_name))
 
 if __name__ == "__main__":
     rebuild_reciproque()
