@@ -10,70 +10,70 @@ def loadModuleAliases():
     oldAliases = ["zsdu", "swpe", "sdmsd", "sdmgd", "sdmwe", "svtp", "svft", "svbk", "svrt", "svlt", "me", "re", "ihe", "sh", "jn", "ese"]
 
     roccat_aliases = {
-    'A1' : 'Click',
-    'A2' : 'Menu',
-    'A3' : 'Universal scrolling',
-    'A9' : 'rightView',
-    'A10' : 'topView',
-    'A11' : 'frontView',
-    'A12' : 'perspectiveView',
-    'A13' : 'rotate',
-    'A14' : 'move',
-    'A15' : 'Scroll Up',
-    'A16' : 'Scroll Down',
-    'A4' : '0',
-    'A5' : 'Profile Up',
-    'A6' : 'Easy shift',
-    'A7' : 'Ctrl + Z',
-    'A8' : 'Ctrl + Y',
-    'A17' : 'invertHide',
-    'A18' : 'show',
-    'A19' : 'zoomSelected',
-    'A25' : 'ghostMode',
-    'A26' : 'shadedMode',
-    'A27' : 'wireframeMode',
-    'A28' : 'worldCPlane',
-    'A29' : 'mirror',
-    'A30' : 'scale1D',
-    'A31' : 'Page_up',
-    'A32' : 'Page_down',
-    'A20' : 'Disabled',
-    'A21' : 'Profile Up',
-    'A22' : 'Disabled',
-    'A23' : 'Disabled',
-    'A24' : 'Disabled',
-    'B1' : 'Click',
-    'B2' : 'Menu',
-    'B3' : 'objectToCPlane',
-    'B9' : 'join',
-    'B10' : 'projectToCPlane',
-    'B11' : 'curveExtrude',
-    'B12' : 'dupEdge',
-    'B13' : 'curveBoolean',
-    'B14' : 'booleanUnion',
-    'B15' : 'Scroll Up',
-    'B16' : 'Scroll Down',
-    'B4' : 'booleanDifference',
-    'B5' : 'Easy shift',
-    'B6' : 'Profile Down',
-    'B7' : 'sweep1',
-    'B8' : 'sweep2',
-    'B17' : 'planarSrf',
-    'B18' : 'loft',
-    'B19' : 'changeLayer',
-    'B25' : 'cap',
-    'B26' : 'projectXY',
-    'B27' : 'surfaceExtrude',
-    'B28' : 'surfaceExtract',
-    'B29' : 'rotateWorld',
-    'B30' : 'orientObject',
-    'B31' : 'Volume up',
-    'B32' : 'Volume down',
-    'B20' : 'showEdges',
-    'B21' : 'Disabled',
-    'B22' : 'Profile Down',
-    'B23' : 'Disabled',
-    'B24' : 'Disabled'
+    'a1' : 'Click',
+    'a2' : 'Menu',
+    'a3' : 'Universal scrolling',
+    'a9' : 'rightView',
+    'a10' : 'topView',
+    'a11' : 'frontView',
+    'a12' : 'perspectiveView',
+    'a13' : 'rotate',
+    'a14' : 'move',
+    'a15' : 'Scroll Up',
+    'a16' : 'Scroll Down',
+    'a4' : '0',
+    'a5' : 'Profile Up',
+    'a6' : 'Easy shift',
+    'a7' : 'Ctrl + Z',
+    'a8' : 'Ctrl + Y',
+    'a17' : 'invertHide',
+    'a18' : 'show',
+    'a19' : 'zoomSelected',
+    'a25' : 'ghostMode',
+    'a26' : 'shadedMode',
+    'a27' : 'wireframeMode',
+    'a28' : 'worldCPlane',
+    'a29' : 'mirror',
+    'a30' : 'scale1D',
+    'a31' : 'Page_up',
+    'a32' : 'Page_down',
+    'a20' : 'Disabled',
+    'a21' : 'Profile Up',
+    'a22' : 'Disabled',
+    'a23' : 'Disabled',
+    'a24' : 'Disabled',
+    'b1' : 'Click',
+    'b2' : 'Menu',
+    'b3' : 'objectToCPlane',
+    'b9' : 'join',
+    'b10' : 'projectToCPlane',
+    'b11' : 'curveExtrude',
+    'b12' : 'dupEdge',
+    'b13' : 'curveBoolean',
+    'b14' : 'booleanUnion',
+    'b15' : 'Scroll Up',
+    'b16' : 'Scroll Down',
+    'b4' : 'booleanDifference',
+    'b5' : 'Easy shift',
+    'b6' : 'Profile Down',
+    'b7' : 'sweep1',
+    'b8' : 'sweep2',
+    'b17' : 'planarSrf',
+    'b18' : 'loft',
+    'b19' : 'changeLayer',
+    'b25' : 'cap',
+    'b26' : 'projectXY',
+    'b27' : 'surfaceExtrude',
+    'b28' : 'surfaceExtract',
+    'b29' : 'rotateWorld',
+    'b30' : 'orientObject',
+    'b31' : 'Volume up',
+    'b32' : 'Volume down',
+    'b20' : 'showEdges',
+    'b21' : 'Disabled',
+    'b22' : 'Profile Down',
+    'b23' : 'Disabled',
+    'b24' : 'Disabled'
     }
 
     rhino_aliases = {
@@ -189,13 +189,15 @@ def loadModuleAliases():
         if mode_force:
             delete_aliases.update(module_aliases_dev)
             delete_aliases.update(rhino_aliases)
-            
+            delete_aliases.update(roccat_aliases)
+
             for key in oldAliases:
                 count += rs.DeleteAlias(key)
         else:
             if not plugin_install:
                 delete_aliases.update(module_aliases_dev)
                 delete_aliases.update(rhino_aliases)
+                delete_aliases.update(roccat_aliases)
                 
         for key in delete_aliases:
             count += rs.DeleteAlias(key)
@@ -208,6 +210,8 @@ def loadModuleAliases():
         if plugin_install:
             
             install_aliases = {}
+            if roccat_install:
+                install_aliases.update(roccat_aliases)
             if version_dev:
                 install_aliases.update(module_aliases_dev)
                 install_aliases.update(rhino_aliases)
@@ -219,7 +223,8 @@ def loadModuleAliases():
                 if not mode_force and key in all_aliases:
                     pass
                 count += rs.AddAlias(key, value)
-                count += rs.AddAlias(initials(key), key)
+                if key != initials(key):
+                    count += rs.AddAlias(initials(key), key)
                 
 
         if count:
