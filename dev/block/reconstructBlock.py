@@ -84,7 +84,7 @@ def rebuild_reciproque():
             ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
             xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformTranslation(get_bbox_center(ref_id)) if ref_id else rs.XformIdentity()
             
-            # --- TODO 1 : Ajouter les UserText à la pose pour la récursion ---
+            # Ajouter les UserText à la pose pour la récursion ---
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
             
@@ -117,15 +117,18 @@ def rebuild_reciproque():
 
             # Gestion du renommage
             if rs.IsBlock(target_name):
+                #TODO : insérer temporairement l'instance de bloc qui pourrait être écrasé aux coordonnée xform
+                #TODO : selectionner les objets du niveau hiérarchique qui seront utilisé remplacer l'instance avant de poser la question
                 rs.EnableRedraw(True)
                 res = rs.GetString("Le bloc '{}' existe déjà".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Annuler"])
                 rs.EnableRedraw(False)
+                #TODO : supprimer l'instance temporaire
                 
                 if res == "Renommer":
                     target_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
                     if not target_name: continue
                     
-                    # --- TODO 2 : Mettre à jour les sigs dans current_selection ---
+                    # Mettre à jour les sigs dans current_selection ---
                     old_prefix = original_name + "#"
                     new_prefix = target_name + "#"
                     for obj in current_selection:
