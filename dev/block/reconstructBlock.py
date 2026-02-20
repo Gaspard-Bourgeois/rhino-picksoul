@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
-import uuid # Pour générer des noms temporaires uniques
+import uuid
 
 def get_bbox_center(obj_id):
     """Calcule le centre d'une BoundingBox pour l'origine manuelle."""
@@ -103,48 +103,72 @@ def rebuild_reciproque():
             original_name = clean_name(sig)
             target_name = original_name
             xform = rs.BlockInstanceXform(pose_obj)
+            
             skip_reconstruction = False
+            user_action = "Ecraser"
 
-            if rs.IsBlock(target_name):
-                # Comparaison visuelle
+            # --- BOUCLE DE VALIDATION DU NOM ---
+            while rs.IsBlock(target_name):
                 rs.UnselectAllObjects()
                 rs.SelectObjects(geometries)
                 rs.SelectObject(pose_obj)
                 
+                # Visualisation du bloc conflictuel
                 temp_compare = rs.InsertBlock(target_name, [0,0,0])
                 rs.TransformObject(temp_compare, xform)
                 rs.ObjectColor(temp_compare, [150, 150, 150]) # Gris
                 
                 rs.EnableRedraw(True)
-                res = rs.GetString("Bloc '{}' existant.".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Conserver", "Annuler"])
+                msg = "Le bloc '{}' existe déjà. Souhaitez-vous l'écraser ?".format(target_name)
+                user_action = rs.GetString(msg, "Ecraser", ["Ecraser", "Renommer", "Conserver", "Annuler"])
                 rs.EnableRedraw(False)
                 rs.DeleteObject(temp_compare)
                 
-                if res == "Conserver":
-                    skip_reconstruction = True
-                elif res == "Ecraser":
-                    # FIX : Pour écraser, on renomme l'ancien pour libérer le nom
+                if user_action == "Ecraser":
                     rs.RenameBlock(target_name, "temp_" + str(uuid.uuid4())[:8])
-                elif res == "Renommer":
-                    target_name = rs.StringBox("Nom :", target_name)
-                    if not target_name: continue
-                else:
-                    continue
+                    break # On sort de la boucle, le nom est libre
+                elif user_action == "Renommer":
+                    new_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
+                    if not new_name:
+                        user_action = "Annuler"
+                        break
+                    target_name = new_name
+                    # La boucle continue pour vérifier si le NOUVEAU nom existe aussi
+                elif user_action == "Conserver":
+                    skip_reconstruction = True
+                    break
+                else: # Annuler ou Echap
+                    user_action = "Annuler"
+                    break
+            
+            if user_action == "Annuler": continue
 
+            # --- MISE À JOUR DES SIGNATURES (si le nom a changé) ---
+            if target_name != original_name:
+                old_prefix = original_name + "#"
+                new_prefix = target_name + "#"
+                for obj in current_selection:
+                    keys = rs.GetUserText(obj)
+                    if keys:
+                        for k in keys:
+                            if k.startswith("BlockNameLevel_"):
+                                val = rs.GetUserText(obj, k)
+                                if val and val.startswith(old_prefix):
+                                    rs.SetUserText(obj, k, val.replace(old_prefix, new_prefix))
+
+            # --- RECONSTRUCTION GÉOMÉTRIQUE ---
             if not skip_reconstruction:
                 inv_xform = rs.XformInverse(xform)
                 copied_geos = []
                 for g in geometries:
                     cp = rs.CopyObject(g)
                     rs.TransformObject(cp, inv_xform)
-                    # Nettoyage UserText
                     keys = rs.GetUserText(cp)
                     if keys:
                         for k in keys:
                             if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, None)
                     copied_geos.append(cp)
                 
-                # Création de la définition (le nom est maintenant libre si Ecraser a été choisi)
                 rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=True)
 
             # Insertion nouvelle instance
@@ -158,7 +182,7 @@ def rebuild_reciproque():
                 for k in all_keys:
                     if k.startswith("BlockNameLevel_"):
                         lvl_idx = int(k.split("_")[-1])
-                        if lvl_idx < current_lvl: # Transmettre seulement aux parents
+                        if lvl_idx < current_lvl:
                             rs.SetUserText(new_inst, k, rs.GetUserText(sample_obj, k))
 
             # Nettoyage
