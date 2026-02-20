@@ -14,7 +14,6 @@ def ensure_pose_block():
     if not rs.IsBlock("Pose"):
         rs.EnableRedraw(False)
         p1 = [0,0,0]
-        # Création d'un trièdre simple (RVB pour XYZ)
         l1 = rs.AddLine(p1, [1,0,0]); rs.ObjectColor(l1, [255,0,0])
         l2 = rs.AddLine(p1, [0,1,0]); rs.ObjectColor(l2, [0,255,0])
         l3 = rs.AddLine(p1, [0,0,1]); rs.ObjectColor(l3, [0,0,255])
@@ -57,7 +56,6 @@ def clean_name(signature):
     return name
 
 def rebuild_reciproque():
-    # 1. Sélection initiale
     initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
     if not initial_objs: return
 
@@ -74,112 +72,102 @@ def rebuild_reciproque():
         levels_missing = [hierarchy_map[sig]["level"] for sig in missing_pose_sigs]
         if len(set(levels_missing)) > 1:
             lowest_lvl = max(levels_missing)
-            objs_to_fix = []
-            for sig in missing_pose_sigs:
-                if hierarchy_map[sig]["level"] == lowest_lvl:
-                    objs_to_fix.extend(hierarchy_map[sig]["objects"])
+            objs_to_fix = [o for sig in missing_pose_sigs if hierarchy_map[sig]["level"] == lowest_lvl for o in hierarchy_map[sig]["objects"]]
             rs.UnselectAllObjects()
             rs.SelectObjects(objs_to_fix)
             rs.EnableRedraw(True)
             print("Plusieurs niveaux manquent d'origine. Sélectionnez l'origine pour le niveau {}.".format(lowest_lvl))
             return
         
-        # Redéfinition manuelle de l'origine
         rs.EnableRedraw(True)
         for sig in missing_pose_sigs:
             ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
-            if ref_id:
-                if rs.IsBlockInstance(ref_id):
-                    xform = rs.BlockInstanceXform(ref_id)
-                else:
-                    center = get_bbox_center(ref_id)
-                    xform = rs.XformTranslation(center)
-            else:
-                xform = rs.XformIdentity()
+            xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformTranslation(get_bbox_center(ref_id)) if ref_id else rs.XformIdentity()
             
-            # On insère une Pose et on l'ajoute à la sélection pour qu'elle soit traitée et nettoyée par la récursion
-            #TODO : ajouter les UserText du level actuel à la pose pour qu'elle soit traité par la récursion
+            # --- TODO 1 : Ajouter les UserText à la pose pour la récursion ---
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
+            
+            ref_obj = hierarchy_map[sig]["objects"][0]
+            keys = rs.GetUserText(ref_obj)
+            for k in keys:
+                if k.startswith("BlockNameLevel_"):
+                    rs.SetUserText(temp_pose, k, rs.GetUserText(ref_obj, k))
+            
             current_selection.append(temp_pose)
         rs.EnableRedraw(False)
 
     # --- RECONSTRUCTION RÉCURSIVE ---
-    # On recalcule la map pour inclure les éventuelles Poses ajoutées manuellement
     hierarchy_map = get_hierarchy_map(current_selection)
     unique_levels = sorted([d["level"] for sig, d in hierarchy_map.items() if sig != "Root"], reverse=True)
     if "Root" in hierarchy_map: unique_levels.append(-1)
 
     for current_lvl in unique_levels:
-        #TODO : si un bloc a été renommé lors des opérations précédente alors le target_name contenu dans la sig doit être mis à jour en conséquence
         current_map = get_hierarchy_map(current_selection)
         
         for sig, data in current_map.items():
             if data["level"] != current_lvl or sig == "Root": continue
             
-            pose_obj = data["pose"]
-            geometries = data["objects"]
+            pose_obj, geometries = data["pose"], data["objects"]
             if not pose_obj or not geometries: continue
 
-            target_name = clean_name(sig)
+            original_name = clean_name(sig)
+            target_name = original_name
             xform = rs.BlockInstanceXform(pose_obj)
-            inv_xform = rs.XformInverse(xform)
 
-            # Gestion du renommage dynamique
+            # Gestion du renommage
             if rs.IsBlock(target_name):
                 rs.EnableRedraw(True)
-                opt = ["Ecraser", "Renommer", "Annuler"]
-                res = rs.GetString("Le bloc '{}' existe déjà".format(target_name), "Ecraser", opt)
+                res = rs.GetString("Le bloc '{}' existe déjà".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Annuler"])
                 rs.EnableRedraw(False)
                 
                 if res == "Renommer":
-                    # Si l'utilisateur renomme, target_name devient la nouvelle référence pour Add et Insert
-                    target_name = rs.StringBox("Nouveau nom pour le bloc :", target_name, "Nom du bloc")
+                    target_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
                     if not target_name: continue
-                elif res == "Annuler" or not res:
-                    continue
+                    
+                    # --- TODO 2 : Mettre à jour les sigs dans current_selection ---
+                    old_prefix = original_name + "#"
+                    new_prefix = target_name + "#"
+                    for obj in current_selection:
+                        obj_keys = rs.GetUserText(obj)
+                        for ok in obj_keys:
+                            if ok.startswith("BlockNameLevel_"):
+                                val = rs.GetUserText(obj, ok)
+                                if val.startswith(old_prefix):
+                                    rs.SetUserText(obj, ok, val.replace(old_prefix, new_prefix))
+                elif res == "Annuler" or not res: continue
 
-            # Préparation de la géométrie interne
+            # Reconstruction
+            inv_xform = rs.XformInverse(xform)
             copied_geos = []
             for g in geometries:
                 cp = rs.CopyObject(g)
                 rs.TransformObject(cp, inv_xform)
-                
-                # Nettoyage des UserTexts internes (on ne garde pas la hiérarchie locale dans le bloc)
-                internal_keys = rs.GetUserText(cp)
-                if internal_keys:
-                    for k in internal_keys:
-                        if k.startswith("BlockNameLevel_"):
-                            rs.SetUserText(cp, k, None)
+                # Nettoyage UserText interne
+                for k in rs.GetUserText(cp):
+                    if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, None)
                 copied_geos.append(cp)
 
-            # Création / Mise à jour de la définition de bloc avec le target_name (éventuellement modifié)
             rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=True)
-            
-            # Insertion de la nouvelle instance avec le target_name correct
             new_inst = rs.InsertBlock(target_name, [0,0,0])
             rs.TransformObject(new_inst, xform)
             
-            # Transmission des UserTexts parents vers la nouvelle instance
+            # Transmission UserText parent
             parent_keys = rs.GetUserText(geometries[0])
             if parent_keys:
                 for k in parent_keys:
-                    if k == "BlockNameLevel_{}".format(current_lvl): continue
-                    rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
+                    if k != "BlockNameLevel_{}".format(current_lvl):
+                        rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
 
-            # Nettoyage rigoureux
+            # Nettoyage
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
-            rs.DeleteObjects(copied_geos)
-            
-            # Mise à jour de la liste de travail pour l'itération du niveau supérieur
             current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
             current_selection.append(new_inst)
 
     rs.EnableRedraw(True)
-    print("Reconstruction terminée avec succès.")
-    if current_selection:
-        rs.SelectObjects(current_selection)
+    if current_selection: rs.SelectObjects(current_selection)
+    print("Reconstruction terminée.")
 
 if __name__ == "__main__":
     rebuild_reciproque()
