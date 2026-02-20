@@ -70,19 +70,25 @@ def rebuild_reciproque():
     
     if missing_pose_sigs:
         levels_missing = [hierarchy_map[sig]["level"] for sig in missing_pose_sigs]
-        if len(set(levels_missing)) > 1:
-            lowest_lvl = max(levels_missing)
-            objs_to_fix = [o for sig in missing_pose_sigs if hierarchy_map[sig]["level"] == lowest_lvl for o in hierarchy_map[sig]["objects"]]
+        lowest_lvl = max(levels_missing)
+        objs_to_fix = [o for sig in missing_pose_sigs if hierarchy_map[sig]["level"] == lowest_lvl for o in hierarchy_map[sig]["objects"]]
+        if set(current_selection) != set(objs_to_fix):
             rs.UnselectAllObjects()
             rs.SelectObjects(objs_to_fix)
             rs.EnableRedraw(True)
-            print("Plusieurs niveaux manquent d'origine. Sélectionnez l'origine pour le niveau {}.".format(lowest_lvl))
+            print("Ces objets manquent d'origine. Sélectionnez l'origine pour le niveau {}.".format(lowest_lvl))
             return
         
         rs.EnableRedraw(True)
         for sig in missing_pose_sigs:
             ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
-            xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformTranslation(get_bbox_center(ref_id)) if ref_id else rs.XformIdentity()
+            if ref_id:
+                if rs.IsBlockInstance(ref_id):
+                    xform = rs.BlockInstanceXform(ref_id)  
+                else :
+                    xform = rs.XformTranslation(get_bbox_center(ref_id))
+            else:
+                xform = rs.XformIdentity()
             
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
@@ -116,7 +122,7 @@ def rebuild_reciproque():
 
             # Gestion du renommage et comparaison visuelle
             if rs.IsBlock(target_name):
-                # TODO : insérer temporairement l'instance de bloc pour comparaison
+                # insérer temporairement l'instance de bloc pour comparaison
                 temp_compare = rs.InsertBlock(target_name, [0,0,0])
                 rs.TransformObject(temp_compare, xform)
                 
@@ -126,11 +132,15 @@ def rebuild_reciproque():
                 rs.SelectObject(pose_obj)
                 
                 rs.EnableRedraw(True)
-                res = rs.GetString("Le bloc '{}' existe déjà. Comparaison active (Rouge/Vert/Bleu = Ancien)".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Annuler"])
+                res = rs.GetString("Le bloc '{}' existe déjà. Comparaison active (Rouge/Vert/Bleu = Ancien)".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Conserver", "Annuler"])
                 rs.EnableRedraw(False)
                 
-                # TODO : supprimer l'instance temporaire
+                if res == "Conserver":
+                    #TODO : adapter le code si la définition est conservé plutôt que remplacer
+
+                # supprimer l'instance temporaire
                 rs.DeleteObject(temp_compare)
+                    
                 
                 if res == "Renommer":
                     target_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
@@ -180,6 +190,9 @@ def rebuild_reciproque():
             # Nettoyage des objets obsolètes
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
+                
+            rs.DeleteObjects(copied_geos)
+            
             current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
             current_selection.append(new_inst)
 
