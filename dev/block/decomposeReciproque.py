@@ -27,12 +27,12 @@ def get_next_instance_index(block_name):
                 if key.startswith("BlockNameLevel_"):
                     value = rs.GetUserText(obj, key)
                     if value and "#" in value:
-                        name_part, index_part = value.split("#")
-                        if name_part == block_name:
-                            try:
+                        try:
+                            name_part, index_part = value.split("#")
+                            if name_part == block_name:
                                 idx = int(index_part)
                                 if idx > max_index: max_index = idx
-                            except: continue
+                        except: continue
     return max_index + 1
 
 def get_current_hierarchy_info(obj_id):
@@ -62,6 +62,12 @@ def decompose_reciproque():
         # --- CAS 1 : INSTANCE DE BLOC ---
         if rs.IsBlockInstance(obj_id):
             block_name = rs.BlockInstanceName(obj_id)
+            
+            # SECURITE : On ne décompose JAMAIS le bloc "Pose"
+            if block_name == "Pose":
+                all_results.append(obj_id)
+                continue
+
             block_xform = rs.BlockInstanceXform(obj_id)
             
             # Récupération hiérarchie et calcul de l'indice unique
@@ -72,20 +78,19 @@ def decompose_reciproque():
             exploded_items = rs.ExplodeBlockInstance(obj_id)
             if not exploded_items: exploded_items = []
             
-            # Création et ajout du bloc Pose
+            # Création et ajout du bloc Pose (lui reste intact)
             pose_id = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(pose_id, block_xform)
             
-            # Liste complète des objets à marquer (géométries + Pose)
+            # Liste complète des nouveaux objets à marquer
             targets = list(exploded_items) + [pose_id]
             
-            # Marquage de TOUS les objets décomposés
             for item in targets:
                 # 1. On recopie l'historique parent
                 for key, val in hierarchy_history.items():
                     rs.SetUserText(item, key, val)
                 
-                # 2. On ajoute le niveau actuel : BlocNameLevel_X = Nom#Y
+                # 2. On ajoute le niveau actuel
                 new_key = "BlockNameLevel_{}".format(next_level)
                 new_value = "{}#{}".format(block_name, instance_index)
                 rs.SetUserText(item, new_key, new_value)
@@ -101,7 +106,7 @@ def decompose_reciproque():
         rs.SelectObjects(all_results)
     
     rs.EnableRedraw(True)
-    print("Décomposition terminée : {} objets marqués.".format(len(all_results)))
+    print("Décomposition terminée : {} objets créés ou conservés.".format(len(all_results)))
 
 if __name__ == "__main__":
     decompose_reciproque()
