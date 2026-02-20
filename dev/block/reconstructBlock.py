@@ -82,7 +82,7 @@ def rebuild_reciproque():
             print("Plusieurs niveaux manquent d'origine. Sélectionnez l'origine pour le niveau {}.".format(lowest_lvl))
             return
         
-        # TODO : Redéfinition de l'origine comme une instance de "Pose"
+        # Origine manquante
         rs.EnableRedraw(True)
         for sig in missing_pose_sigs:
             ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
@@ -95,7 +95,7 @@ def rebuild_reciproque():
             else:
                 xform = rs.XformIdentity()
             
-            # On insère le bloc Pose qui servira de pivot
+            #TODO : la xform est a utilisé pour la reconstruction du bloc, on utilise la récursion récursive ci-dessous pour mettre à jour la définition de bloc
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
             hierarchy_map[sig]["pose"] = temp_pose
@@ -121,7 +121,8 @@ def rebuild_reciproque():
             xform = rs.BlockInstanceXform(pose_obj)
             inv_xform = rs.XformInverse(xform)
 
-            # TODO : Choix entre écraser, renommer ou annuler
+            # Choix entre écraser, renommer ou annuler
+            # TODO : si l'utilisateur décide de renommer l'instance alors c'est ce nouveau nom qui doit être utilisé pour définir le bloc et pour insérer l'instance ensuite
             if rs.IsBlock(target_name):
                 rs.EnableRedraw(True)
                 opt = ["Ecraser", "Renommer", "Annuler"]
@@ -161,7 +162,8 @@ def rebuild_reciproque():
                     if k == "BlockNameLevel_{}".format(current_lvl): continue
                     rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
 
-            # TODO : Nettoyage incluant les instances créées aux étapes précédentes
+            # Nettoyage incluant les instances créées aux étapes précédentes
+            rs.DeleteObjects(copied_geos)
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
             
@@ -171,6 +173,7 @@ def rebuild_reciproque():
 
     rs.EnableRedraw(True)
     print("Reconstruction terminée avec succès.")
+    rs.SelectObjects(current_selection)
 
 if __name__ == "__main__":
     rebuild_reciproque()
