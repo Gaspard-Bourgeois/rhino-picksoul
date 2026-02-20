@@ -17,6 +17,7 @@ def get_hierarchy_data(obj_id):
 
 def main():
     # 1. Récupérer l'historique de la session
+    # TODO : seulement si aucun objet n'est sélectionné
     last_val = sc.sticky.get("last_hierarchy_value", None)
     last_lvl = sc.sticky.get("last_hierarchy_level", None)
     
@@ -37,6 +38,7 @@ def main():
         levels = sorted(hierarchy.keys()) # [0, 1, 2...]
         
         # --- LA LOGIQUE CRUCIALE ---
+        # TODO : on cherche pour commencer les objets du niveau hierarchique le plus bas
         # Est-ce que l'objet sélectionné possède la valeur du dernier historique 
         # AU NIVEAU où on s'était arrêté ?
         is_continuation = False
@@ -45,6 +47,7 @@ def main():
                 is_continuation = True
 
         if is_continuation:
+            #TODO : si le résultat est compris dans la selection actuelle, alors on cherche le niveau hiérarchique supérieur, etc...
             # On cherche le niveau juste au-dessus (X - 1)
             idx_actuel = levels.index(last_lvl)
             if idx_actuel > 0:
