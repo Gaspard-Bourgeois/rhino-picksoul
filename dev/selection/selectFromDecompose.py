@@ -18,7 +18,7 @@ def get_hierarchy_data(obj_id):
 def main():
     selected = rs.SelectedObjects()
     
-    # Historique de la session (sticky)
+    # Historique de la session (sticky) pour le mode manuel
     last_val = sc.sticky.get("last_hierarchy_value")
     last_lvl = sc.sticky.get("last_hierarchy_level")
     
@@ -34,63 +34,71 @@ def main():
             print("L'objet sélectionné ne possède pas de données hiérarchiques.")
             return
 
-        # Niveaux triés (ex: [0, 1, 2] où 2 est le plus bas/profond)
+        # Niveaux triés du plus haut (0) au plus bas (max)
         levels = sorted(hierarchy.keys())
         
-        # --- LOGIQUE DE CONTINUATION ---
-        # TODO : on parcours tous les levels dans l'ordre du plus bas au plus haut, on ne continue d'étendre la sélection que si tous les objets du niveau parcouru sont compris dans la selection initiale
-        is_continuation = False
-       
-        if last_val and last_lvl is not None:
-            # On vérifie si TOUS les objets sélectionnés correspondent au dernier critère
-            match_count = 0
-            for s_id in selected:
-                if rs.GetUserText(s_id, "BlockNameLevel_{}".format(last_lvl)) == last_val:
-                    match_count += 1
+        # --- LOGIQUE DE CONTINUATION (TODO corrigé) ---
+        # On parcours tous les niveaux du plus bas au plus haut pour trouver l'état actuel
+        current_detected_level = None
+        all_objs = rs.AllObjects() # Pour compter les représentants dans le document
+        
+        # Inversion pour parcourir du plus bas au plus haut
+        for lvl in reversed(levels):
+            val = hierarchy[lvl]
+            key_str = "BlockNameLevel_{}".format(lvl)
             
-            if match_count == len(selected):
-                is_continuation = True
+            # Compter combien d'objets dans le document ont cette valeur
+            objs_in_doc = [o for o in all_objs if rs.GetUserText(o, key_str) == val]
+            
+            # Vérifier si TOUS ces objets sont présents dans la sélection actuelle
+            all_contained = True
+            for o_doc in objs_in_doc:
+                if o_doc not in selected:
+                    all_contained = False
+                    break
+            
+            if all_contained:
+                current_detected_level = lvl
+            else:
+                # Dès qu'un niveau n'est pas totalement sélectionné, on s'arrête
+                break
 
-        if is_continuation:
+        # TODO : Si un niveau est totalement sélectionné, on cherche le niveau supérieur
+        if current_detected_level is not None:
             try:
-                current_idx = levels.index(last_lvl)
-                if current_idx > 0:
-                    target_level = levels[current_idx - 1]
+                idx = levels.index(current_detected_level)
+                if idx > 0:
+                    target_level = levels[idx - 1]
                     target_value = hierarchy[target_level]
-                    print("Remontée : Niveau {} -> {}".format(last_lvl, target_level))
+                    print("Remontée hiérarchique : Niveau {} -> {}".format(current_detected_level, target_level))
                 else:
-                    # On est déjà à la racine (Niveau 0)
                     target_level = levels[0]
                     target_value = hierarchy[target_level]
-                    print("Niveau racine (0) déjà atteint.")
-            except ValueError:
-                # Sécurité si l'index a sauté
-                target_level = levels[-1]
-                target_value = hierarchy[target_level]
-        else:
-            # TODO : Sinon (nouvelle sélection), on cherche le niveau le plus bas
+                    print("Racine atteinte (Niveau 0).")
+            except ValueError: pass
+        
+        # TODO : Sinon (nouvelle sélection / niveau partiel), on cherche le niveau le plus bas
+        if target_level is None:
             target_level = levels[-1]
             target_value = hierarchy[target_level]
             print("Départ au niveau le plus bas : {}".format(target_level))
 
     else:
         # --- MODE MANUEL (Aucun objet sélectionné) ---
-        # L'historique est utilisé que pour aider la saisie utilisateur
+        # TODO : On n'utilise l'historique que si aucun objet n'est sélectionné
         prompt = "Entrez la valeur à chercher (Nom#Indice)"
         if last_val:
             prompt += " [Dernier : {}]".format(last_val)
         
         user_input = rs.GetString(prompt)
         
-        if user_input is None: return # Annulation
+        if user_input is None: return 
         
-        # Si Entrée sans texte, on prend la dernière valeur
         if user_input == "" and last_val:
             target_value = last_val
             target_level = last_lvl
         elif "#" in user_input:
             target_value = user_input
-            # On scanne le document pour trouver le niveau correspondant à cette valeur
             for obj in rs.AllObjects():
                 data = get_hierarchy_data(obj)
                 for l, v in data.items():
@@ -99,7 +107,7 @@ def main():
                         break
                 if target_level is not None: break
         else:
-            print("Format invalide ou aucune valeur en historique.")
+            print("Format invalide.")
             return
 
     # --- EXÉCUTION DE LA SÉLECTION ---
@@ -118,12 +126,10 @@ def main():
             rs.SelectObjects(to_select)
             rs.EnableRedraw(True)
             
-            # Mise à jour de l'historique pour le prochain appel
+            # Mise à jour de l'historique
             sc.sticky["last_hierarchy_value"] = target_value
             sc.sticky["last_hierarchy_level"] = target_level
             print("Sélectionné : {} ({} objets)".format(target_value, len(to_select)))
-        else:
-            print("Aucun objet trouvé pour {} au niveau {}.".format(target_value, target_level))
 
 if __name__ == "__main__":
     main()
