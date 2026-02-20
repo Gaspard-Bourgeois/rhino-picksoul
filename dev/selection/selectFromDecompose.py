@@ -38,9 +38,9 @@ def main():
         levels = sorted(hierarchy.keys())
         
         # --- LOGIQUE DE CONTINUATION ---
+        # TODO : on parcours tous les levels dans l'ordre du plus bas au plus haut, on ne continue d'étendre la sélection que si tous les objets du niveau parcouru sont compris dans la selection initiale
         is_continuation = False
-        
-        # TODO : On vérifie si le résultat précédent est compris dans la sélection actuelle
+       
         if last_val and last_lvl is not None:
             # On vérifie si TOUS les objets sélectionnés correspondent au dernier critère
             match_count = 0
@@ -52,7 +52,6 @@ def main():
                 is_continuation = True
 
         if is_continuation:
-            # TODO : Si c'est une continuation, on cherche le niveau hiérarchique supérieur (X-1)
             try:
                 current_idx = levels.index(last_lvl)
                 if current_idx > 0:
@@ -76,7 +75,7 @@ def main():
 
     else:
         # --- MODE MANUEL (Aucun objet sélectionné) ---
-        # TODO : L'historique n'est utilisé ici que pour aider la saisie utilisateur
+        # L'historique est utilisé que pour aider la saisie utilisateur
         prompt = "Entrez la valeur à chercher (Nom#Indice)"
         if last_val:
             prompt += " [Dernier : {}]".format(last_val)
