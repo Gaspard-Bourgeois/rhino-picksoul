@@ -97,7 +97,8 @@ def rebuild_reciproque():
             else:
                 xform = rs.XformIdentity()
             
-            # TODO : On insère une Pose et on l'ajoute à la sélection pour qu'elle soit traitée et nettoyée par la récursion
+            # On insère une Pose et on l'ajoute à la sélection pour qu'elle soit traitée et nettoyée par la récursion
+            #TODO : ajouter les UserText du level actuel à la pose pour qu'elle soit traité par la récursion
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
             current_selection.append(temp_pose)
@@ -110,6 +111,7 @@ def rebuild_reciproque():
     if "Root" in hierarchy_map: unique_levels.append(-1)
 
     for current_lvl in unique_levels:
+        #TODO : si un bloc a été renommé lors des opérations précédente alors le target_name contenu dans la sig doit être mis à jour en conséquence
         current_map = get_hierarchy_map(current_selection)
         
         for sig, data in current_map.items():
@@ -123,7 +125,7 @@ def rebuild_reciproque():
             xform = rs.BlockInstanceXform(pose_obj)
             inv_xform = rs.XformInverse(xform)
 
-            # TODO : Gestion du renommage dynamique
+            # Gestion du renommage dynamique
             if rs.IsBlock(target_name):
                 rs.EnableRedraw(True)
                 opt = ["Ecraser", "Renommer", "Annuler"]
@@ -168,6 +170,7 @@ def rebuild_reciproque():
             # Nettoyage rigoureux
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
+            rs.DeleteObjects(copied_geos)
             
             # Mise à jour de la liste de travail pour l'itération du niveau supérieur
             current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
