@@ -1,124 +1,137 @@
 # -*- coding: utf-8 -*-
-import rhinoscriptsyntax as rs
+import rhscriptsyntax as rs
 
-def get_bbox_center(obj_id):
-    """Calcule le centre d'une BoundingBox sans Rhino.Geometry."""
-    bbox = rs.BoundingBox(obj_id)
-    if not bbox: return [0,0,0]
-    # bbox[0] est le min, bbox[6] est le max
-    pt_min = bbox[0]
-    pt_max = bbox[6]
-    return [
-        (pt_min[0] + pt_max[0]) / 2.0,
-        (pt_min[1] + pt_max[1]) / 2.0,
-        (pt_min[2] + pt_max[2]) / 2.0
-    ]
+def get_hierarchy_map(obj_ids):
+    """
+    Classe les objets par signature d'instance (block_name#Y) 
+    pour le niveau hiérarchique le plus élevé (X max) de chaque objet.
+    """
+    mapping = {}
+    for obj in obj_ids:
+        keys = rs.GetUserText(obj)
+        max_lvl = -1
+        signature = "Root" # Pour les objets sans UserText
+
+        if keys:
+            for k in keys:
+                if k.startswith("BlockNameLevel_"):
+                    try:
+                        lvl = int(k.split("_")[-1])
+                        if lvl > max_lvl:
+                            max_lvl = lvl
+                            signature = rs.GetUserText(obj, k)
+                    except: continue
+        
+        if signature not in mapping:
+            mapping[signature] = {"level": max_lvl, "objects": [], "pose": None}
+        
+        # Identification de l'objet Pose (trièdre)
+        if rs.IsBlockInstance(obj) and rs.BlockInstanceName(obj) == "Pose":
+            mapping[signature]["pose"] = obj
+        else:
+            mapping[signature]["objects"].append(obj)
+            
+    return mapping
+
+def clean_name(signature):
+    """Retire l'indice #Y et les suffixes de copie pour obtenir le nom du bloc."""
+    if "#" in signature:
+        name = signature.split("#")[0]
+    else:
+        name = signature
+    
+    # Nettoyage des suffixes classiques
+    if name.lower().endswith("_base"): name = name[:-5]
+    if len(name) > 3 and name[-3] == "_" and name[-2:].isdigit():
+        name = name[:-3]
+    return name
 
 def rebuild_reciproque():
-    # 1. Sélection des objets
+    rs.EnableRedraw(False)
+    
+    # 1. Sélection
     initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
     if not initial_objs: return
 
-    origin_obj = None
-    block_name = None
-    xform = None
-    block_names_in_doc = rs.BlockNames()
-
-    # TODO : on classe les objets sélectionné à partir de la hierarchie de bloc contenu dans les UserTexts du type BlockNameLeve_X=block_name#Y, X le niveau hiérarchique et Y l'indice de l'instance, ceux qui n'ont pas d'usertext sont classé au niveau le plus haut
-    # 2. Recherche de l'objet "Pose" ou origine via la clé UserText
-    # TODO : on classe également tous les objets "Pose" de la selection
-    for obj in initial_objs:
-        val = rs.GetUserText(obj, "OriginalBlockName")
-        if val:
-            origin_obj = obj
-            block_name = val
-            if rs.IsBlockInstance(obj):
-                xform = rs.BlockInstanceXform(obj)
-            break
-
-    # 3. Gestion de l'absence d'origine identifiée
-    #TODO: si plusieurs niveau ne contiennent pas d'origine identifié, alors on sélectionne les objets du niveau le plus bas et on arrête le script, de manière à ce que l'on puisse le relancer pour définir l'origine.
-    if not origin_obj:
-        ref_id = rs.GetObject("Origine non trouvée. Sélectionnez une référence (ou Entrée pour Monde)")
-        if ref_id:
-            if rs.IsBlockInstance(ref_id):
-                block_name = rs.BlockInstanceName(ref_id)
-                xform = rs.BlockInstanceXform(ref_id)
-            else:
-                # Si c'est un objet normal, on prend son centre et on crée une translation
-                block_name = "NouveauBloc"
-                center = get_bbox_center(ref_id)
-                xform = rs.XformTranslation(center)
-        else:
-            block_name = "NouveauBloc"
-            xform = rs.XformIdentity()
-
-        # Nettoyage du nom (suffixes _base ou _01)
-        if block_name.lower().endswith("_base"):
-            block_name = block_name[:-5]
-        
-        # Supprime le suffixe de copie type _01, _02
-        if len(block_name) > 3 and block_name[-3] == "_" and block_name[-2:].isdigit():
-            block_name = block_name[:-3]
-        
-        # Recherche d'un nom libre
-        free_name = block_name
-        if free_name in block_names_in_doc:
-            for i in range(1, 100):
-                temp_name = "{}_{:02d}".format(block_name, i)
-                if temp_name not in block_names_in_doc:
-                    free_name = temp_name
-                    break
-        block_name = free_name
+    # --- TODO: CLASSEMENT ET VÉRIFICATION DES ORIGINES ---
+    hierarchy_map = get_hierarchy_map(initial_objs)
     
-    if not block_name: return
+    # Recherche des niveaux manquant d'une "Pose"
+    missing_pose_levels = {}
+    for sig, data in hierarchy_map.items():
+        if sig == "Root": continue
+        if data["pose"] is None:
+            lvl = data["level"]
+            if lvl not in missing_pose_levels: missing_pose_levels[lvl] = []
+            missing_pose_levels[lvl].extend(data["objects"])
 
-    # 4. Insertion préalable pour comparaison visuelle en cas de conflit de nom
-    # TODO : Cette opération doit être répété de manière reccursive afin de reconstruire tous les niveau hiérarchiques des objets sélectionnés
-    confirm = "Oui"
-    temp_instance = None
-    if rs.IsBlock(block_name):
-        temp_instance = rs.InsertBlock(block_name, [0,0,0])
-        rs.TransformObject(temp_instance, xform)
+    # TODO: Si des origines manquent, on sélectionne le niveau le plus bas et on arrête
+    if missing_pose_levels:
+        lowest_lvl = max(missing_pose_levels.keys())
         rs.UnselectAllObjects()
-        rs.SelectObject(temp_instance)
-        
-        msg = "Le bloc '{}' existe déjà. Mettre à jour sa définition ?".format(block_name)
-        confirm = rs.GetString(msg, "Oui", ["Oui", "Non"])
+        rs.SelectObjects(missing_pose_levels[lowest_lvl])
+        rs.EnableRedraw(True)
+        print("Origine(s) manquante(s) au niveau {}. Sélectionnez les objets pour définir l'origine.".format(lowest_lvl))
+        return
+
+    # --- TODO: RECONSTRUCTION RÉCURSIVE (Boucle par niveau) ---
+    # On traite les niveaux du plus grand (plus profond) vers le plus petit (racine)
+    unique_levels = sorted([d["level"] for sig, d in hierarchy_map.items() if sig != "Root"], reverse=True)
     
-    if confirm == "Oui":
-        # Préparation de la géométrie (Inverse transformation pour revenir au 0,0,0 local)
-        inv_xform = rs.XformInverse(xform)
+    # On ajoute Root à la fin si nécessaire
+    if "Root" in hierarchy_map:
+        unique_levels.append(-1)
+
+    current_selection = list(initial_objs)
+
+    for current_lvl in unique_levels:
+        # On recalcule la map à chaque niveau car les objets changent (deviennent des blocs)
+        current_map = get_hierarchy_map(current_selection)
         
-        new_geometries = []
-        for o in initial_objs:
-            # Sécurité : on ne met pas l'objet "Pose" à l'intérieur de sa propre définition
-            if rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == "Pose":
+        for sig, data in current_map.items():
+            if data["level"] != current_lvl or sig == "Root":
                 continue
-                
-            copy = rs.CopyObject(o)
-            rs.TransformObject(copy, inv_xform)
-            new_geometries.append(copy)
+            
+            pose_obj = data["pose"]
+            geometries = data["objects"]
+            if not pose_obj or not geometries: continue
 
-        # 5. Mise à jour ou création de la définition de bloc
-        # rs.AddBlock redéfinit le bloc s'il existe déjà
-        rs.AddBlock(new_geometries, [0,0,0], block_name, delete_input=True)
-        
-        # Si on n'avait pas d'instance de prévisualisation, on en crée une à l'emplacement final
-        if not temp_instance:
-            temp_instance = rs.InsertBlock(block_name, [0,0,0])
-            rs.TransformObject(temp_instance, xform)
-        
-        # 6. Nettoyage
-        rs.DeleteObjects(initial_objs)
-        rs.DeleteObjects(new_geometries)
-        rs.UnselectAllObjects()
-        rs.SelectObject(temp_instance)
-        
-        print("Bloc '{}' généré avec succès au point d'origine.".format(block_name))
-    else:
-        if temp_instance: rs.DeleteObject(temp_instance)
-        print("Opération annulée.")
+            target_name = clean_name(sig)
+            xform = rs.BlockInstanceXform(pose_obj)
+            inv_xform = rs.XformInverse(xform)
+
+            # Préparation des géométries pour le bloc
+            copied_geos = []
+            for g in geometries:
+                cp = rs.CopyObject(g)
+                rs.TransformObject(cp, inv_xform)
+                copied_geos.append(cp)
+
+            # Création/Mise à jour du bloc
+            rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=True)
+            
+            # Insertion de la nouvelle instance
+            new_inst = rs.InsertBlock(target_name, [0,0,0])
+            rs.TransformObject(new_inst, xform)
+            
+            # TODO: Transmission des UserTexts parents à la nouvelle instance
+            # (On retire le niveau actuel pour que l'objet remonte d'un cran)
+            all_user_texts = rs.GetUserText(geometries[0])
+            if all_user_texts:
+                for k in all_user_texts:
+                    if k == "BlockNameLevel_{}".format(current_lvl): continue
+                    rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
+
+            # Nettoyage de l'ancien niveau
+            rs.DeleteObjects(geometries)
+            rs.DeleteObject(pose_obj)
+            
+            # Mise à jour de la sélection pour le prochain niveau
+            current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
+            current_selection.append(new_inst)
+
+    rs.EnableRedraw(True)
+    print("Reconstruction hiérarchique terminée.")
 
 if __name__ == "__main__":
     rebuild_reciproque()
