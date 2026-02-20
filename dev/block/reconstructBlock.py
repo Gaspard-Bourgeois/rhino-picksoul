@@ -9,10 +9,24 @@ def get_bbox_center(obj_id):
     pt_max = bbox[6]
     return [(pt_min[i] + pt_max[i]) / 2.0 for i in range(3)]
 
+def ensure_pose_block():
+    """S'assure que la définition du bloc 'Pose' existe dans le document."""
+    if not rs.IsBlock("Pose"):
+        rs.EnableRedraw(False)
+        p1 = [0,0,0]
+        # Création d'un trièdre simple
+        l1 = rs.AddLine(p1, [1,0,0]); rs.ObjectColor(l1, [255,0,0])
+        l2 = rs.AddLine(p1, [0,1,0]); rs.ObjectColor(l2, [0,255,0])
+        l3 = rs.AddLine(p1, [0,0,1]); rs.ObjectColor(l3, [0,0,255])
+        rs.AddBlock([l1, l2, l3], p1, "Pose", True)
+        rs.EnableRedraw(True)
+    return "Pose"
+
 def get_hierarchy_map(obj_ids):
     """Classe les objets par signature d'instance (block_name#Y)."""
     mapping = {}
     for obj in obj_ids:
+        if not rs.IsObject(obj): continue
         keys = rs.GetUserText(obj)
         max_lvl = -1
         signature = "Root"
@@ -48,13 +62,13 @@ def rebuild_reciproque():
     if not initial_objs: return
 
     rs.EnableRedraw(False)
+    ensure_pose_block()
     hierarchy_map = get_hierarchy_map(initial_objs)
     
     # --- VÉRIFICATION ET REDÉFINITION DE L'ORIGINE ---
     missing_pose_sigs = [sig for sig, d in hierarchy_map.items() if sig != "Root" and d["pose"] is None]
     
     if missing_pose_sigs:
-        # Si plusieurs niveaux/groupes manquent de pose, on sélectionne le plus bas et on arrête
         levels_missing = [hierarchy_map[sig]["level"] for sig in missing_pose_sigs]
         if len(set(levels_missing)) > 1:
             lowest_lvl = max(levels_missing)
@@ -68,8 +82,7 @@ def rebuild_reciproque():
             print("Plusieurs niveaux manquent d'origine. Sélectionnez l'origine pour le niveau {}.".format(lowest_lvl))
             return
         
-        # Si un seul groupe ou même niveau, proposer de définir l'origine (inspiré version précédente)
-        #TODO : Lorsqu'on redéfinit l'origine, la définition de bloc est créer et inséré comme si l'objet était la "Pose" finalement
+        # TODO : Redéfinition de l'origine comme une instance de "Pose"
         rs.EnableRedraw(True)
         for sig in missing_pose_sigs:
             ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
@@ -82,7 +95,7 @@ def rebuild_reciproque():
             else:
                 xform = rs.XformIdentity()
             
-            # Création d'un bloc Pose temporaire pour la suite du script
+            # On insère le bloc Pose qui servira de pivot
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
             hierarchy_map[sig]["pose"] = temp_pose
@@ -108,17 +121,18 @@ def rebuild_reciproque():
             xform = rs.BlockInstanceXform(pose_obj)
             inv_xform = rs.XformInverse(xform)
 
-            # CONFIRMATION SI LE BLOC EXISTE DÉJÀ ---
-            #TODO : l'utilisateur peut au choix écraser la définition de bloc ou bien définir un nouveau nom
-            confirm = "Oui"
+            # TODO : Choix entre écraser, renommer ou annuler
             if rs.IsBlock(target_name):
                 rs.EnableRedraw(True)
-                msg = "Le bloc '{}' existe déjà. Écraser sa définition ?".format(target_name)
-                confirm = rs.GetString(msg, "Oui", ["Oui", "Non"])
+                opt = ["Ecraser", "Renommer", "Annuler"]
+                res = rs.GetString("Le bloc '{}' existe déjà".format(target_name), "Ecraser", opt)
                 rs.EnableRedraw(False)
-            
-            if confirm != "Oui":
-                continue
+                
+                if res == "Renommer":
+                    target_name = rs.StringBox("Nouveau nom pour le bloc :", target_name, "Nom du bloc")
+                    if not target_name: continue
+                elif res == "Annuler" or not res:
+                    continue
 
             # Préparation de la géométrie
             copied_geos = []
@@ -126,12 +140,11 @@ def rebuild_reciproque():
                 cp = rs.CopyObject(g)
                 rs.TransformObject(cp, inv_xform)
                 
-                # --- SUPPRESSION DES USERTEXTS HIERARCHIQUES INTERNES ---
                 internal_keys = rs.GetUserText(cp)
                 if internal_keys:
                     for k in internal_keys:
                         if k.startswith("BlockNameLevel_"):
-                            rs.SetUserText(cp, k, None) # None supprime la clé
+                            rs.SetUserText(cp, k, None)
                 copied_geos.append(cp)
 
             # Création / Mise à jour
@@ -141,24 +154,23 @@ def rebuild_reciproque():
             new_inst = rs.InsertBlock(target_name, [0,0,0])
             rs.TransformObject(new_inst, xform)
             
-            # Transmission des UserTexts restants (pour les niveaux supérieurs)
+            # Transmission des UserTexts parents
             parent_keys = rs.GetUserText(geometries[0])
             if parent_keys:
                 for k in parent_keys:
                     if k == "BlockNameLevel_{}".format(current_lvl): continue
                     rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
 
-            # Nettoyage
-            #TODO : le nettoyage doit aussi concerné les nouvelles instances inséré depuis les levels précédents
+            # TODO : Nettoyage incluant les instances créées aux étapes précédentes
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
             
-            # Mise à jour liste de travail
+            # Mise à jour liste de travail (remplacement des anciens par le nouveau bloc)
             current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
             current_selection.append(new_inst)
 
     rs.EnableRedraw(True)
-    print("Reconstruction terminée.")
+    print("Reconstruction terminée avec succès.")
 
 if __name__ == "__main__":
     rebuild_reciproque()
