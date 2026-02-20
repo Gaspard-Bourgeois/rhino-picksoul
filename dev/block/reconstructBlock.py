@@ -72,27 +72,27 @@ def rebuild_reciproque():
         levels_missing = [hierarchy_map[sig]["level"] for sig in missing_pose_sigs]
         lowest_lvl = max(levels_missing)
         objs_to_fix = [o for sig in missing_pose_sigs if hierarchy_map[sig]["level"] == lowest_lvl for o in hierarchy_map[sig]["objects"]]
-        if set(current_selection) != set(objs_to_fix):
+        
+        # Correction de la condition de vérification
+        if not rs.SelectedObjects():
             rs.UnselectAllObjects()
             rs.SelectObjects(objs_to_fix)
             rs.EnableRedraw(True)
-            print("Ces objets manquent d'origine. Sélectionnez l'origine pour le niveau {}.".format(lowest_lvl))
+            print("Des objets manquent d'origine au niveau {}. Sélectionnez une référence.".format(lowest_lvl))
             return
         
         rs.EnableRedraw(True)
         for sig in missing_pose_sigs:
-            ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
+            ref_id = rs.GetObject("Origine pour {}. Sélectionnez réf (ou Entrée pour Monde)".format(sig))
             if ref_id:
-                if rs.IsBlockInstance(ref_id):
-                    xform = rs.BlockInstanceXform(ref_id)  
-                else :
-                    xform = rs.XformTranslation(get_bbox_center(ref_id))
+                xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformTranslation(get_bbox_center(ref_id))
             else:
                 xform = rs.XformIdentity()
             
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
             
+            # Transfert des métadonnées à la pose pour qu'elle soit groupée correctement
             ref_obj = hierarchy_map[sig]["objects"][0]
             keys = rs.GetUserText(ref_obj)
             for k in keys:
@@ -119,34 +119,34 @@ def rebuild_reciproque():
             original_name = clean_name(sig)
             target_name = original_name
             xform = rs.BlockInstanceXform(pose_obj)
+            skip_redefinition = False
 
             # Gestion du renommage et comparaison visuelle
             if rs.IsBlock(target_name):
-                # insérer temporairement l'instance de bloc pour comparaison
+                # Insertion temporaire pour comparaison
                 temp_compare = rs.InsertBlock(target_name, [0,0,0])
                 rs.TransformObject(temp_compare, xform)
                 
-                # TODO : sélectionner les objets qui vont remplacer le bloc avant la question
+                # Highlight des objets concernés
                 rs.UnselectAllObjects()
                 rs.SelectObjects(geometries)
                 rs.SelectObject(pose_obj)
                 
                 rs.EnableRedraw(True)
-                res = rs.GetString("Le bloc '{}' existe déjà. Comparaison active (Rouge/Vert/Bleu = Ancien)".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Conserver", "Annuler"])
+                res = rs.GetString("Bloc '{}' existe déjà".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Conserver", "Annuler"])
                 rs.EnableRedraw(False)
                 
-                if res == "Conserver":
-                    #TODO : adapter le code si la définition est conservé plutôt que remplacer
-
-                # supprimer l'instance temporaire
-                rs.DeleteObject(temp_compare)
-                    
+                rs.DeleteObject(temp_compare) # Nettoyage immédiat
                 
-                if res == "Renommer":
+                if res == "Conserver":
+                    # On ne touche pas à la définition, on passera directement à l'insertion
+                    skip_redefinition = True
+                
+                elif res == "Renommer":
                     target_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
                     if not target_name: continue
                     
-                    # Mise à jour des signatures dans la sélection courante
+                    # Propagation du nouveau nom dans les UserTexts pour les niveaux parents
                     old_prefix = original_name + "#"
                     new_prefix = target_name + "#"
                     for obj in current_selection:
@@ -157,41 +157,41 @@ def rebuild_reciproque():
                                     val = rs.GetUserText(obj, ok)
                                     if val and val.startswith(old_prefix):
                                         rs.SetUserText(obj, ok, val.replace(old_prefix, new_prefix))
+                
                 elif res == "Annuler" or not res: 
                     continue
 
-            # Reconstruction
-            inv_xform = rs.XformInverse(xform)
-            copied_geos = []
-            for g in geometries:
-                cp = rs.CopyObject(g)
-                rs.TransformObject(cp, inv_xform)
-                # Nettoyage UserText interne pour ne pas polluer la définition
-                keys_to_clean = rs.GetUserText(cp)
-                if keys_to_clean:
-                    for k in keys_to_clean:
-                        if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, None)
-                copied_geos.append(cp)
+            # Phase de Reconstruction / Insertion
+            if not skip_redefinition:
+                inv_xform = rs.XformInverse(xform)
+                copied_geos = []
+                for g in geometries:
+                    cp = rs.CopyObject(g)
+                    rs.TransformObject(cp, inv_xform)
+                    # Nettoyage des UserTexts internes
+                    keys_to_clean = rs.GetUserText(cp)
+                    if keys_to_clean:
+                        for k in keys_to_clean:
+                            if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, None)
+                    copied_geos.append(cp)
 
-            # Création / Mise à jour de la définition
-            rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=True)
+                # Création/Mise à jour de la définition
+                rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=True)
             
-            # Insertion de la nouvelle instance consolidée
+            # Insertion de la nouvelle instance (qu'elle soit issue d'une nouvelle def ou d'une conservée)
             new_inst = rs.InsertBlock(target_name, [0,0,0])
             rs.TransformObject(new_inst, xform)
             
-            # Transmission UserText parent pour l'itération suivante
-            parent_keys = rs.GetUserText(geometries[0])
-            if parent_keys:
-                for k in parent_keys:
+            # Transmission des métadonnées vers le niveau supérieur
+            ref_keys = rs.GetUserText(geometries[0])
+            if ref_keys:
+                for k in ref_keys:
                     if k != "BlockNameLevel_{}".format(current_lvl):
                         rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
 
-            # Nettoyage des objets obsolètes
+            # Nettoyage final du niveau traité
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
-                
-            rs.DeleteObjects(copied_geos)
             
             current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
             current_selection.append(new_inst)
