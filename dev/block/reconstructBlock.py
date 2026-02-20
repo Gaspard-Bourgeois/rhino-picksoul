@@ -84,7 +84,6 @@ def rebuild_reciproque():
             ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
             xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformTranslation(get_bbox_center(ref_id)) if ref_id else rs.XformIdentity()
             
-            # Ajouter les UserText à la pose pour la récursion ---
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
             
@@ -115,30 +114,41 @@ def rebuild_reciproque():
             target_name = original_name
             xform = rs.BlockInstanceXform(pose_obj)
 
-            # Gestion du renommage
+            # Gestion du renommage et comparaison visuelle
             if rs.IsBlock(target_name):
-                #TODO : insérer temporairement l'instance de bloc qui pourrait être écrasé aux coordonnée xform
-                #TODO : selectionner les objets du niveau hiérarchique qui seront utilisé remplacer l'instance avant de poser la question
+                # TODO : insérer temporairement l'instance de bloc pour comparaison
+                temp_compare = rs.InsertBlock(target_name, [0,0,0])
+                rs.TransformObject(temp_compare, xform)
+                
+                # TODO : sélectionner les objets qui vont remplacer le bloc avant la question
+                rs.UnselectAllObjects()
+                rs.SelectObjects(geometries)
+                rs.SelectObject(pose_obj)
+                
                 rs.EnableRedraw(True)
-                res = rs.GetString("Le bloc '{}' existe déjà".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Annuler"])
+                res = rs.GetString("Le bloc '{}' existe déjà. Comparaison active (Rouge/Vert/Bleu = Ancien)".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Annuler"])
                 rs.EnableRedraw(False)
-                #TODO : supprimer l'instance temporaire
+                
+                # TODO : supprimer l'instance temporaire
+                rs.DeleteObject(temp_compare)
                 
                 if res == "Renommer":
                     target_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
                     if not target_name: continue
                     
-                    # Mettre à jour les sigs dans current_selection ---
+                    # Mise à jour des signatures dans la sélection courante
                     old_prefix = original_name + "#"
                     new_prefix = target_name + "#"
                     for obj in current_selection:
                         obj_keys = rs.GetUserText(obj)
-                        for ok in obj_keys:
-                            if ok.startswith("BlockNameLevel_"):
-                                val = rs.GetUserText(obj, ok)
-                                if val.startswith(old_prefix):
-                                    rs.SetUserText(obj, ok, val.replace(old_prefix, new_prefix))
-                elif res == "Annuler" or not res: continue
+                        if obj_keys:
+                            for ok in obj_keys:
+                                if ok.startswith("BlockNameLevel_"):
+                                    val = rs.GetUserText(obj, ok)
+                                    if val and val.startswith(old_prefix):
+                                        rs.SetUserText(obj, ok, val.replace(old_prefix, new_prefix))
+                elif res == "Annuler" or not res: 
+                    continue
 
             # Reconstruction
             inv_xform = rs.XformInverse(xform)
@@ -146,23 +156,28 @@ def rebuild_reciproque():
             for g in geometries:
                 cp = rs.CopyObject(g)
                 rs.TransformObject(cp, inv_xform)
-                # Nettoyage UserText interne
-                for k in rs.GetUserText(cp):
-                    if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, None)
+                # Nettoyage UserText interne pour ne pas polluer la définition
+                keys_to_clean = rs.GetUserText(cp)
+                if keys_to_clean:
+                    for k in keys_to_clean:
+                        if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, None)
                 copied_geos.append(cp)
 
+            # Création / Mise à jour de la définition
             rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=True)
+            
+            # Insertion de la nouvelle instance consolidée
             new_inst = rs.InsertBlock(target_name, [0,0,0])
             rs.TransformObject(new_inst, xform)
             
-            # Transmission UserText parent
+            # Transmission UserText parent pour l'itération suivante
             parent_keys = rs.GetUserText(geometries[0])
             if parent_keys:
                 for k in parent_keys:
                     if k != "BlockNameLevel_{}".format(current_lvl):
                         rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
 
-            # Nettoyage
+            # Nettoyage des objets obsolètes
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
             current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
