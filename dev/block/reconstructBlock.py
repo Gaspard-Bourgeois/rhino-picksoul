@@ -50,7 +50,7 @@ def rebuild_reciproque():
     rs.EnableRedraw(False)
     hierarchy_map = get_hierarchy_map(initial_objs)
     
-    # --- TODO 1 : VÉRIFICATION ET REDÉFINITION DE L'ORIGINE ---
+    # --- VÉRIFICATION ET REDÉFINITION DE L'ORIGINE ---
     missing_pose_sigs = [sig for sig, d in hierarchy_map.items() if sig != "Root" and d["pose"] is None]
     
     if missing_pose_sigs:
@@ -68,7 +68,8 @@ def rebuild_reciproque():
             print("Plusieurs niveaux manquent d'origine. Sélectionnez l'origine pour le niveau {}.".format(lowest_lvl))
             return
         
-        # TODO : Si un seul groupe ou même niveau, proposer de définir l'origine (inspiré version précédente)
+        # Si un seul groupe ou même niveau, proposer de définir l'origine (inspiré version précédente)
+        #TODO : Lorsqu'on redéfinit l'origine, la définition de bloc est créer et inséré comme si l'objet était la "Pose" finalement
         rs.EnableRedraw(True)
         for sig in missing_pose_sigs:
             ref_id = rs.GetObject("Origine manquante pour {}. Sélectionnez une référence (ou Entrée pour Monde)".format(sig))
@@ -87,7 +88,7 @@ def rebuild_reciproque():
             hierarchy_map[sig]["pose"] = temp_pose
         rs.EnableRedraw(False)
 
-    # --- TODO 2 : RECONSTRUCTION RÉCURSIVE ---
+    # --- RECONSTRUCTION RÉCURSIVE ---
     unique_levels = sorted([d["level"] for sig, d in hierarchy_map.items() if sig != "Root"], reverse=True)
     if "Root" in hierarchy_map: unique_levels.append(-1)
 
@@ -107,7 +108,8 @@ def rebuild_reciproque():
             xform = rs.BlockInstanceXform(pose_obj)
             inv_xform = rs.XformInverse(xform)
 
-            # --- TODO 3 : CONFIRMATION SI LE BLOC EXISTE DÉJÀ ---
+            # CONFIRMATION SI LE BLOC EXISTE DÉJÀ ---
+            #TODO : l'utilisateur peut au choix écraser la définition de bloc ou bien définir un nouveau nom
             confirm = "Oui"
             if rs.IsBlock(target_name):
                 rs.EnableRedraw(True)
@@ -124,7 +126,7 @@ def rebuild_reciproque():
                 cp = rs.CopyObject(g)
                 rs.TransformObject(cp, inv_xform)
                 
-                # --- TODO 4 : SUPPRESSION DES USERTEXTS HIERARCHIQUES INTERNES ---
+                # --- SUPPRESSION DES USERTEXTS HIERARCHIQUES INTERNES ---
                 internal_keys = rs.GetUserText(cp)
                 if internal_keys:
                     for k in internal_keys:
@@ -147,6 +149,7 @@ def rebuild_reciproque():
                     rs.SetUserText(new_inst, k, rs.GetUserText(geometries[0], k))
 
             # Nettoyage
+            #TODO : le nettoyage doit aussi concerné les nouvelles instances inséré depuis les levels précédents
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
             
