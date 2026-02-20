@@ -3,7 +3,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
 def get_hierarchy_data(obj_id):
-    """Extrait les niveaux {X: "Nom#Y"}."""
+    """Extrait les niveaux {X: "Nom#Y"} d'un objet."""
     keys = rs.GetUserText(obj_id)
     data = {}
     if not keys: return data
@@ -16,83 +16,82 @@ def get_hierarchy_data(obj_id):
     return data
 
 def main():
-    # On récupère les objets sélectionnés en premier
     selected = rs.SelectedObjects()
     
-    # TODO : Récupérer l'historique seulement si aucun objet n'est sélectionné
-    # (Ou pour comparer avec la sélection actuelle)
-    last_val = sc.sticky.get("last_hierarchy_value", None)
-    last_lvl = sc.sticky.get("last_hierarchy_level", None)
+    # Historique de la session (sticky)
+    last_val = sc.sticky.get("last_hierarchy_value")
+    last_lvl = sc.sticky.get("last_hierarchy_level")
     
     target_value = None
     target_level = None
 
     if selected:
-        # On analyse le premier objet pour obtenir sa structure
+        # Analyse du premier objet pour la structure de référence
         obj_id = selected[0]
         hierarchy = get_hierarchy_data(obj_id)
         
         if not hierarchy:
-            print("Aucune donnée hiérarchique sur cet objet.")
+            print("L'objet sélectionné ne possède pas de données hiérarchiques.")
             return
 
-        levels = sorted(hierarchy.keys()) # [0, 1, 2...]
+        # Niveaux triés (ex: [0, 1, 2] où 2 est le plus bas/profond)
+        levels = sorted(hierarchy.keys())
         
-        # TODO : On cherche pour commencer les objets du niveau hiérarchique le plus bas
-        # Mais avant, on vérifie si on doit monter en grade
+        # --- LOGIQUE DE CONTINUATION ---
         is_continuation = False
         
+        # TODO : On vérifie si le résultat précédent est compris dans la sélection actuelle
         if last_val and last_lvl is not None:
-            # On vérifie si la sélection actuelle correspond au dernier résultat produit
-            # 1. Est-ce que la valeur du niveau stocké correspond à l'objet ?
-            if hierarchy.get(last_lvl) == last_val:
-                # 2. TODO : Si le résultat est compris dans la sélection actuelle (tous les objets sélectionnés partagent cette valeur)
-                # On vérifie si le nombre d'objets sélectionnés correspond à ce qu'on attendrait d'un filtre sur last_val
-                # Pour simplifier et fiabiliser : on vérifie si la sélection est "le fruit" de la commande précédente
+            # On vérifie si TOUS les objets sélectionnés correspondent au dernier critère
+            match_count = 0
+            for s_id in selected:
+                if rs.GetUserText(s_id, "BlockNameLevel_{}".format(last_lvl)) == last_val:
+                    match_count += 1
+            
+            if match_count == len(selected):
                 is_continuation = True
-                key_str = "BlockNameLevel_{}".format(last_lvl)
-                for s_id in selected:
-                    if rs.GetUserText(s_id, key_str) != last_val:
-                        is_continuation = False
-                        break
 
         if is_continuation:
-            # TODO : On cherche le niveau hiérarchique supérieur
+            # TODO : Si c'est une continuation, on cherche le niveau hiérarchique supérieur (X-1)
             try:
-                idx_actuel = levels.index(last_lvl)
-                if idx_actuel > 0:
-                    target_level = levels[idx_actuel - 1]
+                current_idx = levels.index(last_lvl)
+                if current_idx > 0:
+                    target_level = levels[current_idx - 1]
                     target_value = hierarchy[target_level]
-                    print("Remontée hiérarchique : Niveau {} -> {}".format(last_lvl, target_level))
+                    print("Remontée : Niveau {} -> {}".format(last_lvl, target_level))
                 else:
+                    # On est déjà à la racine (Niveau 0)
                     target_level = levels[0]
                     target_value = hierarchy[target_level]
-                    print("Racine atteinte.")
+                    print("Niveau racine (0) déjà atteint.")
             except ValueError:
-                # Si le niveau stocké n'existe plus dans cet objet, on repart du bas
+                # Sécurité si l'index a sauté
                 target_level = levels[-1]
                 target_value = hierarchy[target_level]
         else:
-            # Pas de correspondance avec l'historique ou nouvel objet : niveau le plus bas
+            # TODO : Sinon (nouvelle sélection), on cherche le niveau le plus bas
             target_level = levels[-1]
             target_value = hierarchy[target_level]
-            print("Niveau le plus bas sélectionné : {}".format(target_value))
+            print("Départ au niveau le plus bas : {}".format(target_level))
 
     else:
-        # --- MODE RECHERCHE MANUELLE ---
-        # Ici on utilise l'historique pour proposer la complétion
-        prompt = "Valeur à chercher"
-        if last_val: prompt += " [Dernier: {}]".format(last_val)
+        # --- MODE MANUEL (Aucun objet sélectionné) ---
+        # TODO : L'historique n'est utilisé ici que pour aider la saisie utilisateur
+        prompt = "Entrez la valeur à chercher (Nom#Indice)"
+        if last_val:
+            prompt += " [Dernier : {}]".format(last_val)
         
         user_input = rs.GetString(prompt)
-        if user_input is None: return
         
+        if user_input is None: return # Annulation
+        
+        # Si Entrée sans texte, on prend la dernière valeur
         if user_input == "" and last_val:
             target_value = last_val
             target_level = last_lvl
         elif "#" in user_input:
             target_value = user_input
-            # On cherche le niveau correspondant dans le document
+            # On scanne le document pour trouver le niveau correspondant à cette valeur
             for obj in rs.AllObjects():
                 data = get_hierarchy_data(obj)
                 for l, v in data.items():
@@ -101,10 +100,10 @@ def main():
                         break
                 if target_level is not None: break
         else:
-            print("Format invalide.")
+            print("Format invalide ou aucune valeur en historique.")
             return
 
-    # Exécution de la sélection finale
+    # --- EXÉCUTION DE LA SÉLECTION ---
     if target_value and target_level is not None:
         all_objs = rs.AllObjects()
         to_select = []
@@ -120,10 +119,12 @@ def main():
             rs.SelectObjects(to_select)
             rs.EnableRedraw(True)
             
-            # Mise à jour de l'historique
+            # Mise à jour de l'historique pour le prochain appel
             sc.sticky["last_hierarchy_value"] = target_value
             sc.sticky["last_hierarchy_level"] = target_level
-            print("Sélection : {} ({} objets)".format(target_value, len(to_select)))
+            print("Sélectionné : {} ({} objets)".format(target_value, len(to_select)))
+        else:
+            print("Aucun objet trouvé pour {} au niveau {}.".format(target_value, target_level))
 
 if __name__ == "__main__":
     main()
