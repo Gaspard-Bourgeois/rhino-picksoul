@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import rhscriptsyntax as rs
+import rhinoscriptsyntax as rs
 
 def get_hierarchy_map(obj_ids):
     """
@@ -57,6 +57,7 @@ def rebuild_reciproque():
     hierarchy_map = get_hierarchy_map(initial_objs)
     
     # Recherche des niveaux manquant d'une "Pose"
+    # TODO : si tous les objets sont de même niveau et qu'il manque une pose alors le script propose de redéfinir cette origine (s'inspirer de la version précédente du script)
     missing_pose_levels = {}
     for sig, data in hierarchy_map.items():
         if sig == "Root": continue
@@ -65,7 +66,7 @@ def rebuild_reciproque():
             if lvl not in missing_pose_levels: missing_pose_levels[lvl] = []
             missing_pose_levels[lvl].extend(data["objects"])
 
-    # TODO: Si des origines manquent, on sélectionne le niveau le plus bas et on arrête
+    # Si des origines manquent, on sélectionne le niveau le plus bas et on arrête
     if missing_pose_levels:
         lowest_lvl = max(missing_pose_levels.keys())
         rs.UnselectAllObjects()
@@ -105,16 +106,18 @@ def rebuild_reciproque():
             for g in geometries:
                 cp = rs.CopyObject(g)
                 rs.TransformObject(cp, inv_xform)
+                #TODO : on supprime les usertexts de type BlockNameLevel_X des objets du nouveau bloc
                 copied_geos.append(cp)
 
             # Création/Mise à jour du bloc
+            #TODO : on ne demande une confirmation si le bloc existe déjà et doit être écrasé (s'inspirer de la version précédente du script)
             rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=True)
             
             # Insertion de la nouvelle instance
             new_inst = rs.InsertBlock(target_name, [0,0,0])
             rs.TransformObject(new_inst, xform)
             
-            # TODO: Transmission des UserTexts parents à la nouvelle instance
+            # Transmission des UserTexts parents à la nouvelle instance
             # (On retire le niveau actuel pour que l'objet remonte d'un cran)
             all_user_texts = rs.GetUserText(geometries[0])
             if all_user_texts:
