@@ -136,7 +136,7 @@ def rebuild_reciproque():
                     # La boucle continue pour vérifier si le NOUVEAU nom existe aussi
                 elif user_action == "Conserver":
                     skip_reconstruction = True
-                    break
+                    break # On conserve la définition existante
                 else: # Annuler ou Echap
                     user_action = "Annuler"
                     break
@@ -166,12 +166,15 @@ def rebuild_reciproque():
                     keys = rs.GetUserText(cp)
                     if keys:
                         for k in keys:
-                            if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, None)
+                            if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, "")
                     copied_geos.append(cp)
                 
+                # Définition du bloc SANS suppression automatique
                 rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=False)
+                # Suppression manuelle et propre des géométries de référence à l'origine
+                rs.DeleteObjects(copied_geos)
 
-            # Insertion nouvelle instance
+            # Insertion de la nouvelle instance (qu'elle soit nouvellement créée ou issue de "Conserver")
             new_inst = rs.InsertBlock(target_name, [0,0,0])
             rs.TransformObject(new_inst, xform)
             
@@ -185,7 +188,7 @@ def rebuild_reciproque():
                         if lvl_idx < current_lvl:
                             rs.SetUserText(new_inst, k, rs.GetUserText(sample_obj, k))
 
-            # Nettoyage
+            # Nettoyage des composants originaux éclatés dans l'espace
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
             
