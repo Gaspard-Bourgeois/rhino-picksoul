@@ -130,9 +130,9 @@ def rebuild_reciproque():
                 rs.DeleteObject(temp_compare)
                 
                 if user_action == "Ecraser":
-                    # On indexe l'ancien bloc pour libérer le nom target_name
-                    old_block_new_name = get_indexed_name(target_name)
-                    rs.RenameBlock(target_name, old_block_new_name)
+                    # TODO: On souhaite écraser le bloc existant, on n'utilise pas le nom temporaire et on continue la reconstruction
+                    # TODO : lorsque des blocs enfants sont conserver, il faut adapter le bloc parent pour ne pas perdre les références (ex : BlocA#1 contient BlocB#1, on conserve BlocB#1, si on écrase BlocA#1 par un nouveau BlocA#2, il faut que BlocB#1 soit à l'intérieur de BlocA#2)
+                    # TODO : dans le cas où le bloc à écraser est utilisé par d'autres objets que ceux en cours de reconstruction, il faudrait aussi les mettre à jour pour qu'ils pointent vers le nouveau bloc (ex : BlocA#1 est utilisé par des objets X,Y,Z, on crée BlocA#2 pour la reconstruction, il faut que X,Y,Z pointent vers BlocA#2 à la fin)
                     break 
                 elif user_action == "Renommer":
                     new_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
@@ -141,6 +141,7 @@ def rebuild_reciproque():
                         break
                     target_name = new_name
                 elif user_action == "Conserver":
+                    # TODO : si on souhaite conserver un bloc parent alors que ses enfants ont été écraser, il faut aussi conserver le bloc parent et ne pas le réécrire (ex : BlocA#1 contient BlocB#1, on écrase BlocA#1 par un nouveau BlocA#2, si on choisit de conserver BlocB#1 alors on ne crée pas BlocA#2 mais on réutilise BlocA#1)
                     skip_reconstruction = True
                     break
                 else:
