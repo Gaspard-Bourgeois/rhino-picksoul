@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
-import uuid
 
 def get_bbox_center(obj_id):
     """Calcule le centre d'une BoundingBox pour l'origine manuelle."""
@@ -9,6 +8,13 @@ def get_bbox_center(obj_id):
     pt_min = bbox[0]
     pt_max = bbox[6]
     return [(pt_min[i] + pt_max[i]) / 2.0 for i in range(3)]
+
+def get_indexed_name(base_name):
+    """Génère un nom du type Nom#1, Nom#2 basé sur la disponibilité."""
+    i = 1
+    while rs.IsBlock("{}#{}".format(base_name, i)):
+        i += 1
+    return "{}#{}".format(base_name, i)
 
 def ensure_pose_block():
     """S'assure que la définition du bloc 'Pose' existe."""
@@ -113,10 +119,9 @@ def rebuild_reciproque():
                 rs.SelectObjects(geometries)
                 rs.SelectObject(pose_obj)
                 
-                # Visualisation du bloc conflictuel
                 temp_compare = rs.InsertBlock(target_name, [0,0,0])
                 rs.TransformObject(temp_compare, xform)
-                rs.ObjectColor(temp_compare, [150, 150, 150]) # Gris
+                rs.ObjectColor(temp_compare, [150, 150, 150])
                 
                 rs.EnableRedraw(True)
                 msg = "Le bloc '{}' existe déjà. Souhaitez-vous l'écraser ?".format(target_name)
@@ -125,25 +130,26 @@ def rebuild_reciproque():
                 rs.DeleteObject(temp_compare)
                 
                 if user_action == "Ecraser":
-                    rs.RenameBlock(target_name, "temp_" + str(uuid.uuid4())[:8])
-                    break # On sort de la boucle, le nom est libre
+                    # On indexe l'ancien bloc pour libérer le nom target_name
+                    old_block_new_name = get_indexed_name(target_name)
+                    rs.RenameBlock(target_name, old_block_new_name)
+                    break 
                 elif user_action == "Renommer":
                     new_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
                     if not new_name:
                         user_action = "Annuler"
                         break
                     target_name = new_name
-                    # La boucle continue pour vérifier si le NOUVEAU nom existe aussi
                 elif user_action == "Conserver":
                     skip_reconstruction = True
-                    break # On conserve la définition existante
-                else: # Annuler ou Echap
+                    break
+                else:
                     user_action = "Annuler"
                     break
             
             if user_action == "Annuler": continue
 
-            # --- MISE À JOUR DES SIGNATURES (si le nom a changé) ---
+            # --- MISE À JOUR DES SIGNATURES ---
             if target_name != original_name:
                 old_prefix = original_name + "#"
                 new_prefix = target_name + "#"
@@ -169,16 +175,14 @@ def rebuild_reciproque():
                             if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, "")
                     copied_geos.append(cp)
                 
-                # Définition du bloc SANS suppression automatique
                 rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=False)
-                # Suppression manuelle et propre des géométries de référence à l'origine
                 rs.DeleteObjects(copied_geos)
 
-            # Insertion de la nouvelle instance (qu'elle soit nouvellement créée ou issue de "Conserver")
+            # Insertion instance
             new_inst = rs.InsertBlock(target_name, [0,0,0])
             rs.TransformObject(new_inst, xform)
             
-            # Transmission UserText parent
+            # Transmission UserText
             sample_obj = geometries[0]
             all_keys = rs.GetUserText(sample_obj)
             if all_keys:
@@ -188,7 +192,7 @@ def rebuild_reciproque():
                         if lvl_idx < current_lvl:
                             rs.SetUserText(new_inst, k, rs.GetUserText(sample_obj, k))
 
-            # Nettoyage des composants originaux éclatés dans l'espace
+            # Nettoyage
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
             
