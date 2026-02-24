@@ -1,112 +1,133 @@
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
+import scriptcontext as sc
+import Rhino
+import uuid
 
-def create_pose_block():
-    """Crée le bloc 'Pose' (trièdre RVB) s'il n'existe pas."""
-    if not rs.IsBlock("Pose"):
-        rs.EnableRedraw(False)
-        items = []
-        items.append(rs.AddLine([0,0,0], [1,0,0]))
-        rs.ObjectColor(items[-1], [255,0,0])
-        items.append(rs.AddLine([0,0,0], [0,1,0]))
-        rs.ObjectColor(items[-1], [0,255,0])
-        items.append(rs.AddLine([0,0,0], [0,0,1]))
-        rs.ObjectColor(items[-1], [0,0,255])
-        rs.AddBlock(items, [0,0,0], "Pose", True)
-        rs.EnableRedraw(True)
-    return "Pose"
-
-def get_next_instance_index(block_name):
-    """Trouve l'indice Y unique pour un block_name donné dans le document."""
-    max_index = 0
-    all_objs = rs.AllObjects()
-    for obj in all_objs:
+def _get_highest_level(obj_ids):
+    """Trouve le niveau X le plus élevé dans les clés 'BlockNameLevel_X'."""
+    max_level = -1
+    for obj in obj_ids:
         keys = rs.GetUserText(obj)
         if keys:
-            for key in keys:
-                if key.startswith("BlockNameLevel_"):
-                    value = rs.GetUserText(obj, key)
-                    if value and "#" in value:
-                        try:
-                            name_part, index_part = value.split("#")
-                            if name_part == block_name:
-                                idx = int(index_part)
-                                if idx > max_index: max_index = idx
-                        except: continue
-    return max_index + 1
+            for k in keys:
+                if k.startswith("BlockNameLevel_"):
+                    try:
+                        lvl = int(k.split("_")[-1])
+                        if lvl > max_level: max_level = lvl
+                    except: list
+    return max_level
 
-def get_current_hierarchy_info(obj_id):
-    """Récupère le niveau d'imbrication (X) et l'historique des UserTexts."""
-    keys = rs.GetUserText(obj_id)
-    max_level = -1
-    existing_data = {}
-    if keys:
-        for key in keys:
-            if key.startswith("BlockNameLevel_"):
-                try:
-                    lvl = int(key.split("_")[-1])
-                    if lvl > max_level: max_level = lvl
-                    existing_data[key] = rs.GetUserText(obj_id, key)
-                except: continue
-    return max_level + 1, existing_data
+def _update_or_create_block(block_name, geometries, xform_to_local):
+    """Crée ou met à jour la définition du bloc en utilisant RhinoCommon."""
+    parent_def = sc.doc.InstanceDefinitions.Find(block_name, False)
+    
+    new_geoms = []
+    new_attrs = []
+    
+    for g_id in geometries:
+        obj_rhino = rs.coercerhinoobject(g_id)
+        if not obj_rhino: continue
+        
+        # On duplique et on transforme vers l'origine du bloc (0,0,0)
+        geom = obj_rhino.Geometry.Duplicate()
+        geom.Transform(xform_to_local)
+        attr = obj_rhino.Attributes.Duplicate()
+        
+        # On retire la clé du niveau actuel pour les objets à l'intérieur du bloc
+        # pour éviter les conflits lors d'une future décomposition
+        new_geoms.append(geom)
+        new_attrs.append(attr)
 
-def decompose_reciproque():
-    object_ids = rs.GetObjects("Sélectionnez les blocs à décomposer", preselect=True)
-    if not object_ids: return
+    if not new_geoms: return False
 
-    all_results = []
-    create_pose_block()
+    if parent_def:
+        # Mise à jour
+        return sc.doc.InstanceDefinitions.ModifyGeometry(parent_def.Index, new_geoms, new_attrs)
+    else:
+        # Création (le point de base est 0,0,0 car on a déjà transformé la géométrie)
+        return sc.doc.InstanceDefinitions.Add(block_name, "", Rhino.Geometry.Point3d.Origin, new_geoms, new_attrs)
+
+def rebuild_from_deconstruction():
+    # 1. Sélection des objets
+    initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
+    if not initial_objs: return
+
+    # 2. Identifier le niveau de reconstruction (le plus haut)
+    level = _get_highest_level(initial_objs)
+    if level == -1:
+        print("Aucune information de déconstruction trouvée sur ces objets.")
+        return
+
+    level_key = "BlockNameLevel_{}".format(level)
+    
+    # 3. Grouper les objets par leur identifiant de bloc (Nom#Index)
+    groups = {}
+    for obj in initial_objs:
+        val = rs.GetUserText(obj, level_key)
+        if val:
+            if val not in groups: groups[val] = []
+            groups[val].append(obj)
+
     rs.EnableRedraw(False)
-    
-    for obj_id in object_ids:
-        # --- CAS 1 : INSTANCE DE BLOC ---
-        if rs.IsBlockInstance(obj_id):
-            block_name = rs.BlockInstanceName(obj_id)
-            
-            # SECURITE : On ne décompose JAMAIS le bloc "Pose"
-            if block_name == "Pose":
-                all_results.append(obj_id)
-                continue
 
-            block_xform = rs.BlockInstanceXform(obj_id)
-            
-            # Récupération hiérarchie et calcul de l'indice unique
-            next_level, hierarchy_history = get_current_hierarchy_info(obj_id)
-            instance_index = get_next_instance_index(block_name)
-            
-            # Explosion
-            exploded_items = rs.ExplodeBlockInstance(obj_id)
-            if not exploded_items: exploded_items = []
-            
-            # Création et ajout du bloc Pose (lui reste intact)
-            pose_id = rs.InsertBlock("Pose", [0,0,0])
-            rs.TransformObject(pose_id, block_xform)
-            
-            # Liste complète des nouveaux objets à marquer
-            targets = list(exploded_items) + [pose_id]
-            
-            for item in targets:
-                # 1. On recopie l'historique parent
-                for key, val in hierarchy_history.items():
-                    rs.SetUserText(item, key, val)
-                
-                # 2. On ajoute le niveau actuel
-                new_key = "BlockNameLevel_{}".format(next_level)
-                new_value = "{}#{}".format(block_name, instance_index)
-                rs.SetUserText(item, new_key, new_value)
-            
-            all_results.extend(targets)
+    for group_val, items in groups.items():
+        block_name = group_val.split("#")[0]
+        
+        # Trouver le bloc "Pose" dans ce groupe
+        pose_obj = None
+        other_geoms = []
+        for item in items:
+            if rs.IsBlockInstance(item) and rs.BlockInstanceName(item) == "Pose":
+                pose_obj = item
+            else:
+                other_geoms.append(item)
+        
+        if not pose_obj:
+            print("Avertissement : Bloc 'Pose' manquant pour {}. Reconstruction impossible.".format(group_val))
+            continue
 
-        # --- CAS 2 : GÉOMÉTRIE SIMPLE ---
+        # 4. Calculer la transformation
+        # M = Matrice de l'instance "Pose" (Position/Orientation actuelle)
+        # On veut l'inverse pour ramener les objets vers le 0,0,0 du bloc
+        pose_xform = rs.BlockInstanceXform(pose_obj)
+        success_inv, inv_xform = pose_xform.TryGetInverse()
+        
+        if not success_inv:
+            print("Erreur de calcul de matrice pour {}.".format(block_name))
+            continue
+
+        # 5. Créer/Modifier la définition
+        # On retire les UserTexts du niveau actuel sur les objets composants
+        for item in other_geoms:
+            rs.SetUserText(item, level_key, "")
+
+        if _update_or_create_block(block_name, other_geoms, inv_xform):
+            # 6. Insérer l'instance et nettoyer
+            new_inst = rs.InsertBlock(block_name, [0,0,0])
+            rs.TransformObject(new_inst, pose_xform)
+            
+            # Transférer les UserTexts des niveaux inférieurs au nouveau bloc instance
+            for item in items:
+                keys = rs.GetUserText(item)
+                if keys:
+                    for k in keys:
+                        # On ne garde que les niveaux inférieurs (ex: si on reconstruit le niveau 2, on garde 0 et 1)
+                        if k.startswith("BlockNameLevel_"):
+                            try:
+                                k_lvl = int(k.split("_")[-1])
+                                if k_lvl < level:
+                                    rs.SetUserText(new_inst, k, rs.GetUserText(item, k))
+                            except: pass
+            
+            # Supprimer les anciens objets et la Pose
+            rs.DeleteObjects(items)
+            rs.SelectObject(new_inst)
+            print("Reconstruit : {} (Niveau {})".format(block_name, level))
         else:
-            all_results.append(obj_id)
+            print("Erreur lors de la mise à jour de la définition : {}".format(block_name))
 
-    rs.UnselectAllObjects()
-    if all_results:
-        rs.SelectObjects(all_results)
-    
     rs.EnableRedraw(True)
-    print("Décomposition terminée : {} objets créés ou conservés.".format(len(all_results)))
 
 if __name__ == "__main__":
-    decompose_reciproque()
+    rebuild_from_deconstruction()
