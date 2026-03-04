@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
+import Rhino
+import scriptcontext as sc
 
 def create_pose_block():
     """Crée le bloc 'Pose' (trièdre RVB) s'il n'existe pas."""
@@ -51,14 +53,57 @@ def get_current_hierarchy_info(obj_id):
     return max_level + 1, existing_data
 
 def decompose_reciproque():
-    object_ids = rs.GetObjects("Sélectionnez les blocs à décomposer", preselect=True)
+    # --- 1. CONFIGURATION DE L'OUTIL DE SÉLECTION ---
+    go = Rhino.Input.Custom.GetObject()
+    go.SetCommandPrompt("Sélectionnez les blocs à décomposer")
+    go.EnablePreSelect(True, True)
+    go.EnablePostSelect(True)
+    
+    # --- 2. GESTION DES RÉGLAGES PERSISTANTS ---
+    # On récupère le dictionnaire de réglages propre à ce script
+    settings = sc.ad_settings("DecomposeReciproque")
+    
+    # On récupère la dernière valeur choisie (par défaut : False si c'est la première fois)
+    blocs_to_current_layer = settings.GetBool("BlocsToCurrentLayer", False)
+    
+    # Création du bouton booléen dans l'invite de commande
+    opt_toggle = Rhino.Input.Custom.OptionToggle(blocs_to_current_layer, "Non", "Oui")
+    go.AddOptionToggle("BlocsToCurrentLayer", opt_toggle)
+    
+    object_ids = []
+    
+    # --- 3. BOUCLE DE SÉLECTION ET GESTION DE L'OPTION ---
+    while True:
+        res = go.GetMultiple(1, 0)
+        
+        # Si l'utilisateur clique sur l'option BlocsToCurrentLayer
+        if res == Rhino.Input.GetResult.Option:
+            blocs_to_current_layer = opt_toggle.CurrentValue
+            # Sauvegarde immédiate du nouveau choix pour les prochains lancements
+            settings.SetBool("BlocsToCurrentLayer", blocs_to_current_layer)
+            continue
+            
+        # Si l'utilisateur a fini de sélectionner des objets (ou avait pré-sélectionné)
+        elif res == Rhino.Input.GetResult.Object:
+            object_ids = [obj.ObjectId for obj in go.Objects()]
+            break
+            
+        # Si annulation (Échap)
+        else:
+            return
+
     if not object_ids: return
 
     all_results = []
     create_pose_block()
     rs.EnableRedraw(False)
     
+    # Récupération de l'ID du calque actif
+    current_layer = rs.CurrentLayer()
+    
+    # --- 4. TRAITEMENT DES OBJETS ---
     for obj_id in object_ids:
+        
         # --- CAS 1 : INSTANCE DE BLOC ---
         if rs.IsBlockInstance(obj_id):
             block_name = rs.BlockInstanceName(obj_id)
@@ -86,6 +131,10 @@ def decompose_reciproque():
             targets = list(exploded_items) + [pose_id]
             
             for item in targets:
+                # -> APPLICATION DE L'OPTION CALQUE
+                if blocs_to_current_layer:
+                    rs.ObjectLayer(item, current_layer)
+
                 # 1. On recopie l'historique parent
                 for key, val in hierarchy_history.items():
                     rs.SetUserText(item, key, val)
