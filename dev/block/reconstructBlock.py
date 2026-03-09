@@ -3,19 +3,23 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
 
-def get_bbox_center(obj_ids):
-    bbox = rs.BoundingBox(obj_ids)
+def get_bbox_center(obj_id):
+    """Calcule le centre d'une BoundingBox pour l'origine manuelle."""
+    bbox = rs.BoundingBox(obj_id)
     if not bbox: return [0,0,0]
-    return [(bbox[0][i] + bbox[6][i]) / 2.0 for i in range(3)]
+    pt_min = bbox[0]
+    pt_max = bbox[6]
+    return [(pt_min[i] + pt_max[i]) / 2.0 for i in range(3)]
 
-def get_free_indexed_name():
+def get_indexed_name(base_name):
+    """Génère un nom du type Nom#1, Nom#2 basé sur la disponibilité."""
     i = 1
-    while True:
-        name = "new_bloc_{:02d}".format(i)
-        if not rs.IsBlock(name): return name
+    while rs.IsBlock("{}#{}".format(base_name, i)):
         i += 1
+    return "{}#{}".format(base_name, i)
 
 def ensure_pose_block():
+    """S'assure que la définition du bloc 'Pose' existe."""
     if not rs.IsBlock("Pose"):
         rs.EnableRedraw(False)
         p1 = [0,0,0]
@@ -32,7 +36,7 @@ def get_hierarchy_map(obj_ids):
         if not rs.IsObject(obj): continue
         keys = rs.GetUserText(obj)
         max_lvl = -1
-        signature = None
+        signature = "Root"
         if keys:
             for k in keys:
                 if k.startswith("BlockNameLevel_"):
@@ -42,141 +46,177 @@ def get_hierarchy_map(obj_ids):
                             max_lvl = lvl
                             signature = rs.GetUserText(obj, k)
                     except: continue
-        
-        if signature:
-            if signature not in mapping:
-                mapping[signature] = {"level": max_lvl, "objects": [], "pose": None}
-            if rs.IsBlockInstance(obj) and rs.BlockInstanceName(obj) == "Pose":
-                mapping[signature]["pose"] = obj
-            else:
-                mapping[signature]["objects"].append(obj)
+        if signature not in mapping:
+            mapping[signature] = {"level": max_lvl, "objects": [], "pose": None}
+        if rs.IsBlockInstance(obj) and rs.BlockInstanceName(obj) == "Pose":
+            mapping[signature]["pose"] = obj
+        else:
+            mapping[signature]["objects"].append(obj)
     return mapping
 
+def clean_name(signature):
+    name = signature.split("#")[0] if "#" in signature else signature
+    if name.lower().endswith("_base"): name = name[:-5]
+    if len(name) > 3 and name[-3] == "_" and name[-2:].isdigit(): name = name[:-3]
+    return name
+
 def rebuild_reciproque():
-    initial_objs = rs.GetObjects("Sélectionnez les objets", preselect=True)
+    initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
     if not initial_objs: return
 
     rs.EnableRedraw(False)
     ensure_pose_block()
     current_selection = list(initial_objs)
     
-    # --- 1. TRAITEMENT DES OBJETS SIMPLES (AVANT LA BOUCLE) ---
-    simple_objs = []
-    for o in current_selection:
-        keys = rs.GetUserText(o)
-        is_hier = any(k.startswith("BlockNameLevel_") for k in keys) if keys else False
-        if not is_hier and not (rs.IsBlockInstance(o) and rs.BlockInstanceName(o) == "Pose"):
-            simple_objs.append(o)
-            
-    if simple_objs:
-        temp_name = get_free_indexed_name()
-        center = get_bbox_center(simple_objs)
-        # Création d'un bloc temporaire "muet"
-        temp_geos = [rs.CopyObject(o) for o in simple_objs]
-        xform_to_zero = rs.XformTranslation(rs.PointScale(center, -1))
-        rs.TransformObjects(temp_geos, xform_to_zero)
-        rs.AddBlock(temp_geos, [0,0,0], temp_name, delete_input=True)
-        # On remplace les objets simples par l'instance + pose dans la sélection
-        new_inst = rs.InsertBlock(temp_name, center)
-        new_pose = rs.InsertBlock("Pose", center)
-        rs.SetUserText(new_inst, "BlockNameLevel_0", temp_name)
-        rs.SetUserText(new_pose, "BlockNameLevel_0", temp_name)
-        
-        for o in simple_objs: 
-            if o in current_selection: current_selection.remove(o)
-        rs.DeleteObjects(simple_objs)
-        current_selection.extend([new_inst, new_pose])
-
-    # --- 2. BOUCLE PRINCIPALE DE RECONSTRUCTION ---
+    # --- VÉRIFICATION ORIGINES ---
     h_map = get_hierarchy_map(current_selection)
-    unique_levels = sorted(list(set(d["level"] for d in h_map.values())), reverse=True)
+    missing = [sig for sig, d in h_map.items() if sig != "Root" and d["pose"] is None]
+    
+    if missing:
+        levels = [h_map[sig]["level"] for sig in missing]
+        low_lvl = max(levels)
+        objs_to_fix = [o for sig in missing if h_map[sig]["level"] == low_lvl for o in h_map[sig]["objects"]]
+        if set(current_selection) != set(objs_to_fix):
+            rs.UnselectAllObjects()
+            rs.SelectObjects(objs_to_fix)
+            rs.EnableRedraw(True)
+            print("Origine manquante au niveau {}.".format(low_lvl))
+            return
+        
+        rs.EnableRedraw(True)
+        for sig in missing:
+            ref_id = rs.GetObject("Origine pour {}. (Entrée = Monde)".format(sig))
+            xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformTranslation(get_bbox_center(ref_id)) if ref_id else rs.XformIdentity()
+            temp_pose = rs.InsertBlock("Pose", [0,0,0])
+            rs.TransformObject(temp_pose, xform)
+            ref_obj = h_map[sig]["objects"][0]
+            for k in rs.GetUserText(ref_obj):
+                if k.startswith("BlockNameLevel_"): rs.SetUserText(temp_pose, k, rs.GetUserText(ref_obj, k))
+            current_selection.append(temp_pose)
+        rs.EnableRedraw(False)
+
+    # --- RECONSTRUCTION ---
+    h_map = get_hierarchy_map(current_selection)
+    unique_levels = sorted([d["level"] for sig, d in h_map.items() if sig != "Root"], reverse=True)
 
     for current_lvl in unique_levels:
-        # On rafraîchit la map à chaque niveau
         current_map = get_hierarchy_map(current_selection)
         
         for sig, data in current_map.items():
-            if data["level"] != current_lvl: continue
+            if data["level"] != current_lvl or sig == "Root": continue
             
             pose_obj, geometries = data["pose"], data["objects"]
             if not pose_obj or not geometries: continue
 
-            original_sig = sig
-            target_name = sig.split("#")[0] if "#" in sig else sig
-            is_new_bloc = "new_bloc_" in sig
-            
-            # --- INTERFACE ---
-            rs.UnselectAllObjects()
-            rs.SelectObjects(geometries)
-            rs.SelectObject(pose_obj)
-            rs.EnableRedraw(True)
-            
-            if is_new_bloc:
-                # Si c'est un nouveau bloc, on demande nom et origine comme s'il n'en avait pas
-                target_name = rs.StringBox("Nom du nouveau bloc :", target_name)
-                if not target_name: return
-                
-                ref_origin = rs.GetObject("Désignez l'origine (Point, Objet ou Entrée pour centre)", preselect=False)
-                if ref_origin:
-                    new_pos = get_bbox_center([ref_origin])
-                    rs.MoveObject(pose_obj, new_pos - rs.BlockInstanceInsertPoint(pose_obj))
-                else:
-                    pt = rs.GetPoint("Ou cliquez un point (Entrée = centre actuel)")
-                    if pt: rs.MoveObject(pose_obj, pt - rs.BlockInstanceInsertPoint(pose_obj))
-                action = "Ecraser"
-            else:
-                action = rs.GetString("Bloc '{}' :".format(target_name), "Ecraser", ["Ecraser", "Renommer", "Conserver", "Annuler"])
-                if action == "Renommer":
-                    target_name = rs.StringBox("Nouveau nom :", target_name)
-                elif action == "Conserver": continue
-                elif action != "Ecraser": return
-
-            rs.EnableRedraw(False)
-
-            # Mise à jour des UserText si le nom a changé (pour ne pas casser les niveaux supérieurs)
-            if target_name != original_sig:
-                for o in current_selection:
-                    for k in (rs.GetUserText(o) or []):
-                        if k.startswith("BlockNameLevel_") and rs.GetUserText(o, k) == original_sig:
-                            rs.SetUserText(o, k, target_name)
-
-            # --- RECONSTRUCTION ---
+            original_name = clean_name(sig)
+            target_name = original_name
             xform = rs.BlockInstanceXform(pose_obj)
-            inv_xform = rs.XformInverse(xform)
             
-            temp_geos = []
-            for g in geometries:
-                cp = rs.CopyObject(g)
-                rs.TransformObject(cp, inv_xform)
-                # Nettoyage des niveaux internes
-                for k in (rs.GetUserText(cp) or []):
-                    if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, "")
-                temp_geos.append(cp)
+            skip_reconstruction = False
+            overwrite_block = False # Nouveau drapeau pour gérer l'écrasement natif
+            user_action = "Ecraser"
 
-            if rs.IsBlock(target_name):
-                idef = sc.doc.InstanceDefinitions.Find(target_name)
-                geos = [sc.doc.Objects.Find(g).Geometry for g in temp_geos]
-                attrs = [sc.doc.Objects.Find(g).Attributes for g in temp_geos]
-                sc.doc.InstanceDefinitions.ModifyGeometry(idef.Index, geos, attrs)
-                rs.DeleteObjects(temp_geos)
-            else:
-                rs.AddBlock(temp_geos, [0,0,0], target_name, delete_input=True)
-
-            final_inst = rs.InsertBlock(target_name, [0,0,0])
-            rs.TransformObject(final_inst, xform)
+            # --- BOUCLE DE VALIDATION DU NOM ---
+            while rs.IsBlock(target_name):
+                rs.UnselectAllObjects()
+                rs.SelectObjects(geometries)
+                rs.SelectObject(pose_obj)
+                
+                temp_compare = rs.InsertBlock(target_name, [0,0,0])
+                rs.TransformObject(temp_compare, xform)
+                rs.ObjectColor(temp_compare, [150, 150, 150])
+                
+                rs.EnableRedraw(True)
+                msg = "Le bloc '{}' existe déjà. Souhaitez-vous l'écraser ?".format(target_name)
+                user_action = rs.GetString(msg, "Ecraser", ["Ecraser", "Renommer", "Conserver", "Annuler"])
+                rs.EnableRedraw(False)
+                rs.DeleteObject(temp_compare)
+                
+                if user_action == "Ecraser":
+                    overwrite_block = True
+                    break 
+                elif user_action == "Renommer":
+                    new_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
+                    if not new_name:
+                        user_action = "Annuler"
+                        break
+                    target_name = new_name
+                elif user_action == "Conserver":
+                    skip_reconstruction = True
+                    break
+                else:
+                    user_action = "Annuler"
+                    break
             
-            # Transmission des UserText vers le haut
-            sample = geometries[0]
-            for k in (rs.GetUserText(sample) or []):
-                if k.startswith("BlockNameLevel_"):
-                    if int(k.split("_")[-1]) < current_lvl:
-                        rs.SetUserText(final_inst, k, rs.GetUserText(sample, k))
+            if user_action == "Annuler": continue
+
+            # --- MISE À JOUR DES SIGNATURES ---
+            if target_name != original_name:
+                old_prefix = original_name + "#"
+                new_prefix = target_name + "#"
+                for obj in current_selection:
+                    keys = rs.GetUserText(obj)
+                    if keys:
+                        for k in keys:
+                            if k.startswith("BlockNameLevel_"):
+                                val = rs.GetUserText(obj, k)
+                                if val and val.startswith(old_prefix):
+                                    rs.SetUserText(obj, k, val.replace(old_prefix, new_prefix))
+
+            # --- RECONSTRUCTION GÉOMÉTRIQUE ---
+            if not skip_reconstruction:
+                inv_xform = rs.XformInverse(xform)
+                copied_geos = []
+                for g in geometries:
+                    cp = rs.CopyObject(g)
+                    rs.TransformObject(cp, inv_xform)
+                    keys = rs.GetUserText(cp)
+                    if keys:
+                        for k in keys:
+                            if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, "")
+                    copied_geos.append(cp)
+                
+                # C'est ici que la magie de l'écrasement opère
+                if overwrite_block and rs.IsBlock(target_name):
+                    idef = sc.doc.InstanceDefinitions.Find(target_name)
+                    if idef:
+                        geo_list = []
+                        attr_list = []
+                        # On récupère les géométries bas niveau via RhinoCommon
+                        for guid in copied_geos:
+                            rh_obj = sc.doc.Objects.Find(guid)
+                            if rh_obj:
+                                geo_list.append(rh_obj.Geometry)
+                                attr_list.append(rh_obj.Attributes)
+                        
+                        # ModifyGeometry met à jour la définition. Les instances enfants conservées 
+                        # ou les blocs parents utilisant cette définition se mettent à jour d'un coup.
+                        sc.doc.InstanceDefinitions.ModifyGeometry(idef.Index, geo_list, attr_list)
+                    rs.DeleteObjects(copied_geos)
+                else:
+                    rs.AddBlock(copied_geos, [0,0,0], target_name, delete_input=False)
+                    rs.DeleteObjects(copied_geos)
+
+            # Insertion instance
+            new_inst = rs.InsertBlock(target_name, [0,0,0])
+            rs.TransformObject(new_inst, xform)
+            
+            # Transmission UserText
+            sample_obj = geometries[0]
+            all_keys = rs.GetUserText(sample_obj)
+            if all_keys:
+                for k in all_keys:
+                    if k.startswith("BlockNameLevel_"):
+                        lvl_idx = int(k.split("_")[-1])
+                        if lvl_idx < current_lvl:
+                            rs.SetUserText(new_inst, k, rs.GetUserText(sample_obj, k))
 
             # Nettoyage
             rs.DeleteObjects(geometries)
             rs.DeleteObject(pose_obj)
-            current_selection = [o for o in current_selection if o not in geometries and o != pose_obj]
-            current_selection.append(final_inst)
+            
+            current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
+            current_selection.append(new_inst)
 
     rs.EnableRedraw(True)
     if current_selection: rs.SelectObjects(current_selection)
