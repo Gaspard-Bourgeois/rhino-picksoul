@@ -34,7 +34,8 @@ def get_next_instance_index(block_name):
                             if name_part == block_name:
                                 idx = int(index_part)
                                 if idx > max_index: max_index = idx
-                        except: continue
+                        except ValueError:
+                            continue
     return max_index + 1
 
 def get_current_hierarchy_info(obj_id):
@@ -49,7 +50,8 @@ def get_current_hierarchy_info(obj_id):
                     lvl = int(key.split("_")[-1])
                     if lvl > max_level: max_level = lvl
                     existing_data[key] = rs.GetUserText(obj_id, key)
-                except: continue
+                except ValueError:
+                    continue
     return max_level + 1, existing_data
 
 def decompose_reciproque():
@@ -59,12 +61,16 @@ def decompose_reciproque():
     go.EnablePreSelect(True, True)
     go.EnablePostSelect(True)
     
-    # --- 2. GESTION DES RÉGLAGES PERSISTANTS ---
-    # On récupère le dictionnaire de réglages propre à ce script
-    settings = sc.ad_settings("DecomposeReciproque")
+    # --- 2. GESTION DES RÉGLAGES PERSISTANTS (Via Rhino.PersistentSettings) ---
+    # Récupération des paramètres globaux de l'application Rhino
+    rhino_settings = Rhino.PlugIns.PlugIn.GetPluginSettings(Rhino.RhinoApp.CurrentRhinoId, False)
     
-    # On récupère la dernière valeur choisie (par défaut : False si c'est la première fois)
-    blocs_to_current_layer = settings.GetBool("BlocsToCurrentLayer", False)
+    # Ajout ou récupération d'un sous-dossier de paramètres dédié à ce script
+    # Cela permet d'isoler vos réglages et de ne pas polluer les réglages natifs
+    script_settings = rhino_settings.AddChild("DecomposeReciproqueSettings")
+    
+    # Récupération de la dernière valeur choisie (par défaut : False)
+    blocs_to_current_layer = script_settings.GetBool("BlocsToCurrentLayer", False)
     
     # Création du bouton booléen dans l'invite de commande
     opt_toggle = Rhino.Input.Custom.OptionToggle(blocs_to_current_layer, "Non", "Oui")
@@ -79,8 +85,12 @@ def decompose_reciproque():
         # Si l'utilisateur clique sur l'option BlocsToCurrentLayer
         if res == Rhino.Input.GetResult.Option:
             blocs_to_current_layer = opt_toggle.CurrentValue
-            # Sauvegarde immédiate du nouveau choix pour les prochains lancements
-            settings.SetBool("BlocsToCurrentLayer", blocs_to_current_layer)
+            
+            # 1. Mise à jour de la valeur en mémoire
+            script_settings.SetBool("BlocsToCurrentLayer", blocs_to_current_layer)
+            # 2. Écriture immédiate sur le disque dur pour survivre au redémarrage
+            Rhino.PlugIns.PlugIn.SavePluginSettings(Rhino.RhinoApp.CurrentRhinoId)
+            
             continue
             
         # Si l'utilisateur a fini de sélectionner des objets (ou avait pré-sélectionné)
