@@ -10,50 +10,53 @@ def loadModuleAliases():
     
     module_aliases_dev = {
             #block
-            "editBlockXform" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/editBlockXform.py"',
             "copyBlockColor" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/copyBlockColor.py"',
-            "definePose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/definePose.py"',
             "decomposeReciproque" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/decomposeReciproque.py"',
-            "reconstructBlock" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/reconstructBlock.py"',
+            "definePose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/definePose.py"',
+            "editBlockXform" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/editBlockXform.py"',
             "extractFromBlock" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/extractFromBlock.py"',
+            "reconstructBlock" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/block/reconstructBlock.py"',
             #cplane
             "alignCPlaneToBFitPoints" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/cplane/alignCPlaneToBFitPoints.py"',
             "alignCPlaneToBlock" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/cplane/alignCPlaneToBlock.py"',
+            #gumball
+            "orientGumballWithCurrentCPlane" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/gumball/orientGumballWithCurrentCPlane.py"',
+            "moveGumballToSpecificBlock" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/gumball/moveGumballToSpecificBlock.py"',
             #insert
-            "insertPose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertPose.py"',
             "insertBoundingSphere" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertBoundingSphere.py"',
-            "insertShiftedCurvesOnSurface" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertShiftedCurvesOnSurface.py"',
             "insertCircleFromBFitPoints" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertCircleFromBFitPoints.py"',
+            "insertPose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertPose.py"',
+            "insertShiftedCurvesOnSurface" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/insert/insertShiftedCurvesOnSurface.py"',
             #IO
+            "exportByLayer" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/IO/exportByLayer.py"',
             "importYaskawaJBI" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/IO/importYaskawaJBI.py"',
             "rebuildPrograms" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/IO/rebuildPrograms.py"',
-            "exportByLayer" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/IO/exportByLayer.py"',
+            #label#
+            "blockCountLabel" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/blockCountLabel.py"',
+            "blockNameLabel" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/blockNameLabel.py"',
+            "updateAnnotationStyle" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/updateAnnotationStyle.py"',
             #layer
             "changeLayerInBlocks" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/changeLayerInBlocks.py"',
-            "showLayer" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/showLayer.py"',
             "hideLayer" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/hideLayer.py"',
             "pasteToCurrentLayer" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/pasteToCurrentLayer.py"',
+            "showLayer" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/layer/showLayer.py"',
             #material
-            "setMaterialData" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/material/setMaterialData.py"',
-            "getMass" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/material/getMass.py"',
             "getGravityCenter" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/material/getGravityCenter.py"',
-            #label#
-            "blockNameLabel" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/blockNameLabel.py"',
-            "blockCountLabel" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/blockCountLabel.py"',
-            "updateAnnotationStyle" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/label/updateAnnotationStyle.py"',
-            #selection#
-            "selectNext" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectNext.py"',
-            "selectNextOrigin" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectNextOrigin.py"',
-            "selectPrev" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectPrev.py"',
-            "selectPrevOrigin" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectPrevOrigin.py"',
-            "selectDuplicateNames" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectDuplicateNames.py"',
-            "selectFromDecompose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectFromDecompose.py"',
-            "selectPose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectPose.py"',
+            "getMass" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/material/getMass.py"',
+            "setMaterialData" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/material/setMaterialData.py"',
             #move#
             "copyBlockOrientation" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/move/copyBlockOrientation.py"',
             "orientBlock" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/move/orientBlock.py"',
-            "smartMove" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/move/smartMove.py"',
             "smartAlign" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/move/smartAlign.py"',
+            "smartMove" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/move/smartMove.py"',
+            #selection#
+            "selectDuplicateNames" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectDuplicateNames.py"',
+            "selectFromDecompose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectFromDecompose.py"',
+            "selectNext" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectNext.py"',
+            "selectNextOrigin" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectNextOrigin.py"',
+            "selectPose" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectPose.py"',
+            "selectPrev" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectPrev.py"',
+            "selectPrevOrigin" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/selection/selectPrevOrigin.py"',
             #utilities#
             "openPluginFolder" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/utilities/openPluginFolder.py"',
             "openRemotePanel" : '_NoEcho !-_RunPythonScript "../../7.0/Plug-ins/Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)/dev/utilities/openRemotePanel.py"'
