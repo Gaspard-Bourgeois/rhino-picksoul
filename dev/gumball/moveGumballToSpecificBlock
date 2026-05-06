@@ -1,0 +1,49 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 22/12/25
+"""
+import rhinoscriptsyntax as rs
+
+__commandname__ = "alignGumballToBlock"
+
+def moveGumballToSpecificBlock():
+  """
+  """
+  
+  objects = rs.SelectedObjects()
+  # rs.UnselectAllObjects()
+
+  obj = rs.GetObject("block to align gumball with")
+  if obj and rs.IsBlockInstance(obj):
+    arrMatrix = rs.BlockInstanceXform(obj)
+    if arrMatrix is not None:
+      cplane = rs.ViewCPlane()
+      planeDest = rs.WorldXYPlane()
+      xform = rs.XformRotation1(cplane, planeDest)
+      
+      
+      origin = (0,0,0)
+      x = (1,0,0)
+      y = (0,1,0)
+      b_points = []
+      for worldPoints in [origin, x, y]:
+        b_point = rs.PointTransform(worldPoints, arrMatrix)
+        b_point = rs.PointTransform(b_point, xform)
+        b_points.append(b_point)
+
+      b_origin, b_x, b_y = b_points
+
+      rs.SelectObjects(objects)
+      rs.Command("'_GumballRelocate {} {} {}".format(b_origin, b_x, b_y))
+      return 1
+  # you can optionally return a value from this function
+  # to signify command result. Return values that make
+  # sense are
+  #   0 == success
+  #   1 == cancel
+  # If this function does not return a value, success is assumed
+  return 0
+
+if __name__ == "__main__":
+    moveGumballToSpecificBlock()
