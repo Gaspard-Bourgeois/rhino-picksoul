@@ -1,0 +1,65 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 22/12/25
+"""
+import rhinoscriptsyntax as rs
+
+__commandname__ = "alignGumballWithCPlaneAtBlockPoint"
+
+def orientGumballWithCurrentCPlane():
+
+  objects = rs.SelectedObjects()
+  # rs.UnselectAllObjects()
+
+  if len(objects) == 1:
+    obj = objects[0]
+  else:
+    obj = rs.GetObject("block to align gumball point with")
+  if len(objects) == 0:
+    objects.append(obj)
+  
+  if obj and rs.IsBlockInstance(obj):
+    arrPoint = rs.BlockInstanceInsertPoint(obj)
+    vector = rs.CreateVector(arrPoint)
+    arrMatrix = rs.XformTranslation(vector)
+    if arrMatrix is not None:
+      cplane = rs.ViewCPlane()
+      worldPlane = rs.WorldXYPlane()
+      cplaneToWorld = rs.XformRotation1(cplane, worldPlane)
+
+
+      
+      origin = (0,0,0)
+      x = (1,0,0)
+      y = (0,1,0)
+      
+      cplanePoint = cplane.Origin
+      worldAtCplane = rs.MovePlane(worldPlane, cplanePoint)
+      orientCplaneToWorld = rs.XformRotation1(cplane, worldAtCplane)
+      # orientWorldToCplane = rs.XformInverse(orientCplaneToWorld)
+      b_points = []
+      for worldPoints in [origin, x, y]:
+        b_point = worldPoints
+        b_point = rs.PointTransform(b_point, cplaneToWorld)
+        b_point = rs.PointTransform(b_point, arrMatrix)        
+        # b_point = rs.PointTransform(b_point, orientWorldToCplane)        
+        b_point = rs.PointTransform(b_point, orientCplaneToWorld)        
+        b_points.append(b_point)
+
+      b_origin, b_x, b_y = b_points
+
+      rs.SelectObjects(objects)
+      rs.Command("'_GumballRelocate {} {} {}".format(b_origin, b_x, b_y))
+      return 1
+  # you can optionally return a value from this function
+  # to signify command result. Return values that make
+  # sense are
+  #   0 == success
+  #   1 == cancel
+  # If this function does not return a value, success is assumed
+  return 0
+
+
+if __name__ == "__main__":
+    orientGumballWithCurrentCPlane()
