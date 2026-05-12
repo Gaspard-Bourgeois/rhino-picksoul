@@ -5,6 +5,19 @@ import math
 
 KEY_NAME = "VolumicMass"
 
+# Types sans volume — ignorés silencieusement
+_SILENT_IGNORE_TYPES = frozenset([
+    Rhino.DocObjects.ObjectType.Point,
+    Rhino.DocObjects.ObjectType.PointSet,
+    Rhino.DocObjects.ObjectType.Curve,
+    Rhino.DocObjects.ObjectType.Annotation,
+    Rhino.DocObjects.ObjectType.Light,
+    Rhino.DocObjects.ObjectType.TextDot,
+    Rhino.DocObjects.ObjectType.Grip,
+    Rhino.DocObjects.ObjectType.Phantom,
+    Rhino.DocObjects.ObjectType.ClipPlane,
+])
+
 def get_doc_unit_scale_to_meter():
     us = sc.doc.ModelUnitSystem
     return Rhino.RhinoMath.UnitScale(us, Rhino.UnitSystem.Meters)
@@ -41,43 +54,52 @@ def get_obj_density(obj_id):
 
 def has_volume(obj_id):
     """
-    Vérifie si un objet est susceptible d'avoir un volume calculable.
-    Retourne (bool_has_volume, is_open_polysurface, type_label)
+    Retourne (has_vol: bool, is_open: bool, type_label: str)
+    Via un unique appel rs.ObjectType() pour minimiser les aller-retours COM.
     """
-    # Objets sans volume → ignorer silencieusement
-    if rs.IsPoint(obj_id):        return False, False, "Point"
-    if rs.IsCurve(obj_id):        return False, False, "Courbe"
-    if rs.IsAnnotation(obj_id):   return False, False, "Annotation"
-    if rs.IsLight(obj_id):        return False, False, "Lumière"
-    if rs.IsTextDot(obj_id):      return False, False, "TextDot"
-    if rs.IsGroup(obj_id):        return False, False, "Groupe"
+    obj_type = rs.ObjectType(obj_id)
 
-    # Polysurface ouverte → signaler, pas de calcul possible
-    if rs.IsPolysurface(obj_id) and not rs.IsPolysurfaceClosed(obj_id):
-        return False, True, "Polysurface ouverte"
+    # --- Ignorés silencieusement ---
+    if obj_type in _SILENT_IGNORE_TYPES:
+        return False, False, None
 
-    # Surface ouverte → signaler aussi
-    if rs.IsSurface(obj_id) and not rs.IsSurfaceClosed(obj_id):
-        return False, True, "Surface ouverte"
+    # --- Surfaces / Polysurfaces ---
+    if obj_type == Rhino.DocObjects.ObjectType.Brep:
+        geo = rs.coercegeometry(obj_id)
+        if geo is None:
+            return False, False, None
+        if geo.IsSolid:
+            return True, False, "Solide (Brep)"
+        # Distinguer surface simple et polysurface pour le message
+        label = "Polysurface ouverte" if geo.Faces.Count > 1 else "Surface ouverte"
+        return False, True, label
 
-    # Mesh ouvert → signaler
-    if rs.IsMesh(obj_id) and not rs.IsMeshClosed(obj_id):
+    # --- Mesh ---
+    if obj_type == Rhino.DocObjects.ObjectType.Mesh:
+        geo = rs.coercegeometry(obj_id)
+        if geo is None:
+            return False, False, None
+        if geo.IsClosed:
+            return True, False, "Solide (Mesh)"
         return False, True, "Mesh ouvert"
 
-    # Géométries valides pour le volume
-    if (rs.IsPolysurfaceClosed(obj_id) or
-        rs.IsSurfaceClosed(obj_id) or
-        rs.IsMeshClosed(obj_id)):
-        return True, False, "Solide"
+    # --- Extrusion (type natif Rhino) ---
+    if obj_type == Rhino.DocObjects.ObjectType.Extrusion:
+        geo = rs.coercegeometry(obj_id)
+        if geo is None:
+            return False, False, None
+        if geo.IsSolid():
+            return True, False, "Solide (Extrusion)"
+        return False, True, "Extrusion ouverte"
 
-    # Cas non identifié → ignorer silencieusement
-    return False, False, "Type inconnu"
+    # --- Bloc : traité en amont, ne devrait pas arriver ici ---
+    if obj_type == Rhino.DocObjects.ObjectType.InstanceReference:
+        return False, False, None
+
+    # --- Tout autre type non géré ---
+    return False, False, None
 
 def calculate_mass_recursive(obj_id, xform, stats_dict, warnings, scale_factor):
-    """
-    Parcourt récursivement les objets et blocs.
-    warnings : liste des avertissements à afficher en fin de script
-    """
     # --- Bloc imbriqué ---
     if rs.IsBlockInstance(obj_id):
         inst_xform = rs.BlockInstanceXform(obj_id)
@@ -93,60 +115,56 @@ def calculate_mass_recursive(obj_id, xform, stats_dict, warnings, scale_factor):
     has_vol, is_open, type_label = has_volume(obj_id)
 
     if is_open:
-        # On signale mais on n'arrête pas le traitement global
         obj_name = rs.ObjectName(obj_id) or str(obj_id)
-        warnings.append("  • [{}] {} — masse non calculable (géométrie ouverte)".format(
+        warnings.append("  • [{}] \"{}\" — masse non calculable (géométrie ouverte)".format(
             type_label, obj_name))
         return
 
     if not has_vol:
-        return  # Ignoré silencieusement (courbes, points, etc.)
+        return  # Ignoré silencieusement
 
-    # --- Calcul du volume ---
+    # --- Densité ---
     rho, mat_name = get_obj_density(obj_id)
     if rho <= 0:
         obj_name = rs.ObjectName(obj_id) or str(obj_id)
-        warnings.append("  • [{}] {} — ignoré (aucune densité définie pour \"{}\")".format(
+        warnings.append("  • [{}] \"{}\" — ignoré (aucune densité pour \"{}\")".format(
             type_label, obj_name, mat_name))
         return
 
+    # --- Géométrie déjà chargée dans has_volume, on la recharge (coerce est mis en cache par Rhino) ---
     geo = rs.coercegeometry(obj_id)
     if not geo:
-        warnings.append("  • Impossible de lire la géométrie de l'objet {}".format(obj_id))
+        warnings.append("  • Impossible de lire la géométrie de {}".format(obj_id))
         return
 
     mp = Rhino.Geometry.VolumeMassProperties.Compute(geo)
     if not mp:
         obj_name = rs.ObjectName(obj_id) or str(obj_id)
-        warnings.append("  • [{}] {} — calcul du volume échoué".format(type_label, obj_name))
+        warnings.append("  • [{}] \"{}\" — calcul du volume échoué".format(type_label, obj_name))
         return
 
     raw_vol = mp.Volume
     if raw_vol <= 0:
         obj_name = rs.ObjectName(obj_id) or str(obj_id)
-        warnings.append("  • [{}] {} — volume nul ou négatif, ignoré".format(type_label, obj_name))
+        warnings.append("  • [{}] \"{}\" — volume nul ou négatif, ignoré".format(type_label, obj_name))
         return
 
     det = xform.Determinant
-    final_vol_rhino_units = raw_vol * abs(det)
-    vol_m3 = final_vol_rhino_units * math.pow(scale_factor, 3)
+    vol_m3 = raw_vol * abs(det) * math.pow(scale_factor, 3)
     mass = vol_m3 * rho
 
-    if mat_name not in stats_dict:
-        stats_dict[mat_name] = 0.0
-    stats_dict[mat_name] += mass
+    stats_dict[mat_name] = stats_dict.get(mat_name, 0.0) + mass
 
 def main():
     ids = rs.GetObjects("Sélectionnez les objets pour le calcul de masse", preselect=True)
     if not ids: return
 
-    stats = {}
+    stats    = {}
     warnings = []
     scale_to_meter = get_doc_unit_scale_to_meter()
 
     print("Calcul en cours...")
     rs.EnableRedraw(False)
-
     identity = Rhino.Geometry.Transform.Identity
 
     for guid in ids:
@@ -154,29 +172,24 @@ def main():
 
     rs.EnableRedraw(True)
 
-    # --- Affichage des résultats ---
+    # --- Résultats ---
     msg = ""
-
     if stats:
         total_mass = sum(stats.values())
         msg += "MASSE TOTALE : {:.3f} kg\n".format(total_mass)
         msg += "-" * 10 + " Par matériau " + "-" * 10 + "\n"
-        for name, mass in stats.items():
+        for name, mass in sorted(stats.items()):
             msg += "  {}: {:.3f} kg\n".format(name, mass)
     else:
-        msg += "Aucun objet valide avec un matériau défini n'a été trouvé.\n"
+        msg += "Aucun objet valide avec matériau défini trouvé.\n"
 
     if warnings:
         msg += "\n⚠ Avertissements ({}) :\n".format(len(warnings))
         msg += "\n".join(warnings)
 
     print(msg)
-
-    # Affiche une boîte de dialogue seulement s'il y a des avertissements
-    # ou si aucun résultat n'a été trouvé
     if warnings or not stats:
-        icon = 48 if not stats else 64
-        rs.MessageBox(msg, icon, "Résultats Masse")
+        rs.MessageBox(msg, 48 if not stats else 64, "Résultats Masse")
 
 if __name__ == "__main__":
     main()
