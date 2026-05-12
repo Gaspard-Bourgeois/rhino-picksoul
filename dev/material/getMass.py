@@ -1,142 +1,182 @@
-# -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
 import math
 
 KEY_NAME = "VolumicMass"
-DENSITY_CACHE = {}
 
-def get_material_density_cached(mat_name):
-    if not mat_name or mat_name == "Non Defini": return 0.0
-    if mat_name in DENSITY_CACHE: return DENSITY_CACHE[mat_name]
-    
-    density = 0.0
+def get_doc_unit_scale_to_meter():
+    us = sc.doc.ModelUnitSystem
+    return Rhino.RhinoMath.UnitScale(us, Rhino.UnitSystem.Meters)
+
+def get_material_density_by_name_logic(mat_name):
+    if not mat_name: return 0.0
     for mat in sc.doc.Materials:
         if mat.Name == mat_name:
             s_val = mat.GetUserString(KEY_NAME)
-            try: density = float(s_val) if s_val else 0.0
-            except: density = 0.0
+            if s_val:
+                try:
+                    return float(s_val)
+                except:
+                    pass
             break
-    DENSITY_CACHE[mat_name] = density
-    return density
+    return 0.0
 
-def get_obj_info(obj_id):
+def get_obj_density(obj_id):
+    mat_name = None
     mat_index = rs.ObjectMaterialIndex(obj_id)
-    if mat_index == -1:
-        layer_name = rs.ObjectLayer(obj_id)
-        mat_index = rs.LayerMaterialIndex(layer_name)
-    
     if mat_index > -1:
-        mat = sc.doc.Materials[mat_index]
-        if mat:
-            name = mat.Name
-            return name, get_material_density_cached(name)
-    return "Non Defini", 0.0
+        temp_mat = sc.doc.Materials[mat_index]
+        if temp_mat: mat_name = temp_mat.Name
+    if not mat_name:
+        layer_name = rs.ObjectLayer(obj_id)
+        layer_mat_index = rs.LayerMaterialIndex(layer_name)
+        if layer_mat_index > -1:
+            temp_mat = sc.doc.Materials[layer_mat_index]
+            if temp_mat: mat_name = temp_mat.Name
+    if not mat_name:
+        return 0.0, "Non Defini"
+    density = get_material_density_by_name_logic(mat_name)
+    return density, mat_name
 
-def calculate_mass_recursive(obj_id, xform, stats_dict, scale_factor, errors, root_guid):
-    otype = rs.ObjectType(obj_id)
-    
-    # 1. Gestion des blocs
-    if otype == 4096: 
+def has_volume(obj_id):
+    """
+    Vérifie si un objet est susceptible d'avoir un volume calculable.
+    Retourne (bool_has_volume, is_open_polysurface, type_label)
+    """
+    # Objets sans volume → ignorer silencieusement
+    if rs.IsPoint(obj_id):        return False, False, "Point"
+    if rs.IsCurve(obj_id):        return False, False, "Courbe"
+    if rs.IsAnnotation(obj_id):   return False, False, "Annotation"
+    if rs.IsLight(obj_id):        return False, False, "Lumière"
+    if rs.IsTextDot(obj_id):      return False, False, "TextDot"
+    if rs.IsGroup(obj_id):        return False, False, "Groupe"
+
+    # Polysurface ouverte → signaler, pas de calcul possible
+    if rs.IsPolysurface(obj_id) and not rs.IsPolysurfaceClosed(obj_id):
+        return False, True, "Polysurface ouverte"
+
+    # Surface ouverte → signaler aussi
+    if rs.IsSurface(obj_id) and not rs.IsSurfaceClosed(obj_id):
+        return False, True, "Surface ouverte"
+
+    # Mesh ouvert → signaler
+    if rs.IsMesh(obj_id) and not rs.IsMeshClosed(obj_id):
+        return False, True, "Mesh ouvert"
+
+    # Géométries valides pour le volume
+    if (rs.IsPolysurfaceClosed(obj_id) or
+        rs.IsSurfaceClosed(obj_id) or
+        rs.IsMeshClosed(obj_id)):
+        return True, False, "Solide"
+
+    # Cas non identifié → ignorer silencieusement
+    return False, False, "Type inconnu"
+
+def calculate_mass_recursive(obj_id, xform, stats_dict, warnings, scale_factor):
+    """
+    Parcourt récursivement les objets et blocs.
+    warnings : liste des avertissements à afficher en fin de script
+    """
+    # --- Bloc imbriqué ---
+    if rs.IsBlockInstance(obj_id):
         inst_xform = rs.BlockInstanceXform(obj_id)
         total_xform = xform * inst_xform
-        block_objs = rs.BlockObjects(rs.BlockInstanceName(obj_id))
+        block_name = rs.BlockInstanceName(obj_id)
+        block_objs = rs.BlockObjects(block_name)
         if block_objs:
             for child in block_objs:
-                calculate_mass_recursive(child, total_xform, stats_dict, scale_factor, errors, root_guid)
+                calculate_mass_recursive(child, total_xform, stats_dict, warnings, scale_factor)
         return
 
-    # 2. Ignorer ce qui n'a pas de volume potentiel (courbes, points, etc.)
-    # 8=Srf, 16=PolySrf, 32=Mesh, 1073741824=Extrusion
-    if otype not in [8, 16, 32, 1073741824]: return
+    # --- Vérification du type ---
+    has_vol, is_open, type_label = has_volume(obj_id)
 
-    # 3. Vérification si l'objet est "Solide" (Fermé)
-    # Correction : rs.IsObjectSolid est plus fiable que l'accès direct à l'attribut .IsClosed
-    if not rs.IsObjectSolid(obj_id):
-        errors["open_objects"].add(root_guid)
+    if is_open:
+        # On signale mais on n'arrête pas le traitement global
+        obj_name = rs.ObjectName(obj_id) or str(obj_id)
+        warnings.append("  • [{}] {} — masse non calculable (géométrie ouverte)".format(
+            type_label, obj_name))
         return
 
-    # 4. Test Matériau et Densité
-    mat_name, rho = get_obj_info(obj_id)
-    if mat_name == "Non Defini":
-        errors["no_material"].add(root_guid)
-        return
+    if not has_vol:
+        return  # Ignoré silencieusement (courbes, points, etc.)
+
+    # --- Calcul du volume ---
+    rho, mat_name = get_obj_density(obj_id)
     if rho <= 0:
-        errors["no_density"].add(root_guid)
+        obj_name = rs.ObjectName(obj_id) or str(obj_id)
+        warnings.append("  • [{}] {} — ignoré (aucune densité définie pour \"{}\")".format(
+            type_label, obj_name, mat_name))
         return
 
-    # 5. Calcul du volume via RhinoCommon
     geo = rs.coercegeometry(obj_id)
-    if not geo: return
-    
+    if not geo:
+        warnings.append("  • Impossible de lire la géométrie de l'objet {}".format(obj_id))
+        return
+
     mp = Rhino.Geometry.VolumeMassProperties.Compute(geo)
-    if mp:
-        # Volume corrigé par l'échelle du bloc (déterminant)
-        vol = mp.Volume * abs(xform.Determinant)
-        # Conversion unités Rhino -> Mètres cubes puis x Densité
-        mass = (vol * math.pow(scale_factor, 3)) * rho
-        stats_dict[mat_name] = stats_dict.get(mat_name, 0.0) + mass
-    else:
-        errors["calc_failed"].add(root_guid)
+    if not mp:
+        obj_name = rs.ObjectName(obj_id) or str(obj_id)
+        warnings.append("  • [{}] {} — calcul du volume échoué".format(type_label, obj_name))
+        return
+
+    raw_vol = mp.Volume
+    if raw_vol <= 0:
+        obj_name = rs.ObjectName(obj_id) or str(obj_id)
+        warnings.append("  • [{}] {} — volume nul ou négatif, ignoré".format(type_label, obj_name))
+        return
+
+    det = xform.Determinant
+    final_vol_rhino_units = raw_vol * abs(det)
+    vol_m3 = final_vol_rhino_units * math.pow(scale_factor, 3)
+    mass = vol_m3 * rho
+
+    if mat_name not in stats_dict:
+        stats_dict[mat_name] = 0.0
+    stats_dict[mat_name] += mass
 
 def main():
     ids = rs.GetObjects("Sélectionnez les objets pour le calcul de masse", preselect=True)
     if not ids: return
 
-    DENSITY_CACHE.clear()
     stats = {}
-    errors = {
-        "open_objects": set(), 
-        "no_material": set(),  
-        "no_density": set(),   
-        "calc_failed": set()
-    }
-    
-    scale_to_meter = Rhino.RhinoMath.UnitScale(sc.doc.ModelUnitSystem, Rhino.UnitSystem.Meters)
-    
+    warnings = []
+    scale_to_meter = get_doc_unit_scale_to_meter()
+
+    print("Calcul en cours...")
     rs.EnableRedraw(False)
+
     identity = Rhino.Geometry.Transform.Identity
+
     for guid in ids:
-        calculate_mass_recursive(guid, identity, stats, scale_to_meter, errors, guid)
+        calculate_mass_recursive(guid, identity, stats, warnings, scale_to_meter)
+
     rs.EnableRedraw(True)
 
-    # --- AFFICHAGE DES RÉSULTATS ---
-    print("\n" + "="*40)
-    print(" BILAN DU CALCUL DE MASSE")
-    print("="*40)
-    
+    # --- Affichage des résultats ---
+    msg = ""
+
     if stats:
-        for name, mass in sorted(stats.items()):
-            print(" • {}: {:.3f} kg".format(name.ljust(20), mass))
-        print("-" * 40)
-        print(" TOTAL : {:.3f} kg".format(sum(stats.values())))
+        total_mass = sum(stats.values())
+        msg += "MASSE TOTALE : {:.3f} kg\n".format(total_mass)
+        msg += "-" * 10 + " Par matériau " + "-" * 10 + "\n"
+        for name, mass in stats.items():
+            msg += "  {}: {:.3f} kg\n".format(name, mass)
     else:
-        print(" Aucun objet valide trouvé.")
+        msg += "Aucun objet valide avec un matériau défini n'a été trouvé.\n"
 
-    # --- GESTION DES ERREURS ---
-    err_lists = {
-        "Objets OUVERTS (Masse non calculable)": list(errors["open_objects"]),
-        "Objets SANS MATÉRIAU": list(errors["no_material"]),
-        "MATÉRIAUX sans densité (VolumicMass)": list(errors["no_density"]),
-        "ÉCHECS de calcul géométrique": list(errors["calc_failed"])
-    }
+    if warnings:
+        msg += "\n⚠ Avertissements ({}) :\n".format(len(warnings))
+        msg += "\n".join(warnings)
 
-    available_fixes = [k for k, v in err_lists.items() if len(v) > 0]
+    print(msg)
 
-    if available_fixes:
-        print("\n" + "!"*10 + " ALERTES " + "!"*10)
-        for key in available_fixes:
-            print(" [!] {} : {} objet(s)".format(key, len(err_lists[key])))
-        
-        choice = rs.ListBox(available_fixes, 
-                           "Certains objets ont été ignorés.\nSélectionner les objets problématiques ?", 
-                           "Correcteur de masse")
-        
-        if choice:
-            rs.UnselectAllObjects()
-            rs.SelectObjects(err_lists[choice])
-            print("\n>>> Objets sélectionnés : " + choice)
+    # Affiche une boîte de dialogue seulement s'il y a des avertissements
+    # ou si aucun résultat n'a été trouvé
+    if warnings or not stats:
+        icon = 48 if not stats else 64
+        rs.MessageBox(msg, icon, "Résultats Masse")
 
 if __name__ == "__main__":
     main()
