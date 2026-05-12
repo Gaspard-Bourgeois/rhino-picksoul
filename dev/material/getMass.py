@@ -35,13 +35,10 @@ def get_obj_info(obj_id):
     return "Non Defini", 0.0
 
 def calculate_mass_recursive(obj_id, xform, stats_dict, scale_factor, errors, root_guid):
-    """
-    root_guid : l'ID de l'objet sélectionné au départ (utile pour sélectionner 
-                le bloc entier si une erreur est à l'intérieur).
-    """
     otype = rs.ObjectType(obj_id)
     
-    if otype == 4096: # Bloc
+    # 1. Gestion des blocs
+    if otype == 4096: 
         inst_xform = rs.BlockInstanceXform(obj_id)
         total_xform = xform * inst_xform
         block_objs = rs.BlockObjects(rs.BlockInstanceName(obj_id))
@@ -50,9 +47,17 @@ def calculate_mass_recursive(obj_id, xform, stats_dict, scale_factor, errors, ro
                 calculate_mass_recursive(child, total_xform, stats_dict, scale_factor, errors, root_guid)
         return
 
+    # 2. Ignorer ce qui n'a pas de volume potentiel (courbes, points, etc.)
+    # 8=Srf, 16=PolySrf, 32=Mesh, 1073741824=Extrusion
     if otype not in [8, 16, 32, 1073741824]: return
 
-    # --- 1. TEST MATÉRIAU ---
+    # 3. Vérification si l'objet est "Solide" (Fermé)
+    # Correction : rs.IsObjectSolid est plus fiable que l'accès direct à l'attribut .IsClosed
+    if not rs.IsObjectSolid(obj_id):
+        errors["open_objects"].add(root_guid)
+        return
+
+    # 4. Test Matériau et Densité
     mat_name, rho = get_obj_info(obj_id)
     if mat_name == "Non Defini":
         errors["no_material"].add(root_guid)
@@ -61,17 +66,15 @@ def calculate_mass_recursive(obj_id, xform, stats_dict, scale_factor, errors, ro
         errors["no_density"].add(root_guid)
         return
 
-    # --- 2. TEST GÉOMÉTRIE ---
+    # 5. Calcul du volume via RhinoCommon
     geo = rs.coercegeometry(obj_id)
     if not geo: return
-    if not geo.IsClosed:
-        errors["open_objects"].add(root_guid)
-        return
-
-    # --- 3. CALCUL ---
+    
     mp = Rhino.Geometry.VolumeMassProperties.Compute(geo)
     if mp:
+        # Volume corrigé par l'échelle du bloc (déterminant)
         vol = mp.Volume * abs(xform.Determinant)
+        # Conversion unités Rhino -> Mètres cubes puis x Densité
         mass = (vol * math.pow(scale_factor, 3)) * rho
         stats_dict[mat_name] = stats_dict.get(mat_name, 0.0) + mass
     else:
@@ -83,7 +86,6 @@ def main():
 
     DENSITY_CACHE.clear()
     stats = {}
-    # On utilise des 'set' pour éviter les doublons d'IDs
     errors = {
         "open_objects": set(), 
         "no_material": set(),  
@@ -99,43 +101,42 @@ def main():
         calculate_mass_recursive(guid, identity, stats, scale_to_meter, errors, guid)
     rs.EnableRedraw(True)
 
-    # --- RAPPORT CONSOLE ---
+    # --- AFFICHAGE DES RÉSULTATS ---
     print("\n" + "="*40)
-    print(" BILAN DU CALCUL")
+    print(" BILAN DU CALCUL DE MASSE")
     print("="*40)
+    
     if stats:
-        for name, mass in stats.items():
+        for name, mass in sorted(stats.items()):
             print(" • {}: {:.3f} kg".format(name.ljust(20), mass))
         print("-" * 40)
         print(" TOTAL : {:.3f} kg".format(sum(stats.values())))
     else:
-        print(" Aucun objet valide pour le calcul.")
+        print(" Aucun objet valide trouvé.")
 
-    # --- GESTION DES ERREURS ET SÉLECTION ---
+    # --- GESTION DES ERREURS ---
     err_lists = {
-        "Objets OUVERTS (Volume impossible)": list(errors["open_objects"]),
+        "Objets OUVERTS (Masse non calculable)": list(errors["open_objects"]),
         "Objets SANS MATÉRIAU": list(errors["no_material"]),
         "MATÉRIAUX sans densité (VolumicMass)": list(errors["no_density"]),
         "ÉCHECS de calcul géométrique": list(errors["calc_failed"])
     }
 
-    # Filtrer uniquement les catégories qui ont des erreurs
     available_fixes = [k for k, v in err_lists.items() if len(v) > 0]
 
     if available_fixes:
-        print("\n" + "!"*10 + " ERREURS DÉTECTÉES " + "!"*10)
+        print("\n" + "!"*10 + " ALERTES " + "!"*10)
         for key in available_fixes:
             print(" [!] {} : {} objet(s)".format(key, len(err_lists[key])))
         
-        # Menu interactif pour l'utilisateur
         choice = rs.ListBox(available_fixes, 
-                           "Des erreurs empêchent le calcul complet.\nChoisissez une catégorie à sélectionner :", 
-                           "Correcteur de Masse")
+                           "Certains objets ont été ignorés.\nSélectionner les objets problématiques ?", 
+                           "Correcteur de masse")
         
         if choice:
             rs.UnselectAllObjects()
             rs.SelectObjects(err_lists[choice])
-            print("\n>>> {} objets de type '{}' ont été sélectionnés.".format(len(err_lists[choice]), choice))
+            print("\n>>> Objets sélectionnés : " + choice)
 
 if __name__ == "__main__":
     main()
