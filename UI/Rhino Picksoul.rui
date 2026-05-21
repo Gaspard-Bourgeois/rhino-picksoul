@@ -33,7 +33,7 @@
         <sidebar guid="7491ffac-ebf2-4214-bf42-d3d1e4e0f0e1">62fe6843-cf54-40a5-96b4-fa6aa27d6bff</sidebar>
         <tool_bar_id>a41a3fb3-f064-48bc-abbb-7cdbc105aeb3</tool_bar_id>
       </tool_bar_group_item>
-      <dock_bar_info dpi_scale="150" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59442" mru_width="502" float_point="91,83" rect_mru_dock_pos="0,0,1111,37" dock_location_u="59419" dock_location="top" float_size="584,121" />
+      <dock_bar_info dpi_scale="150" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59442" mru_width="348" float_point="63,58" rect_mru_dock_pos="0,0,772,26" dock_location_u="59419" dock_location="top" float_size="584,121" />
     </tool_bar_group>
   </tool_bar_groups>
   <tool_bars>
@@ -3485,285 +3485,6 @@
         <left_macro_id>e50d7857-6532-419a-802c-62cf2268455f</left_macro_id>
       </tool_bar_item>
     </tool_bar>
-    <tool_bar guid="67e6b11c-0744-41e1-93fd-cdb8e10418fd" bitmap_id="bb3a8f4b-676c-487c-a8c5-addfc1be1ebe">
-      <text>
-        <locale_1036>Volet RP</locale_1036>
-      </text>
-      <tool_bar_item guid="1e440704-273d-4b30-bdc2-a8059a0210b2">
-        <text>
-          <locale_1036>Élément de barre d'outils</locale_1036>
-        </text>
-        <left_macro_id>2f437724-9969-4869-a057-143105607bde</left_macro_id>
-        <right_macro_id>9d46e77d-5a52-47cd-8596-ab40ffa6f750</right_macro_id>
-        <link style="normal">d2eb9f7d-4a82-4ee7-93d8-b667fdd6d878</link>
-      </tool_bar_item>
-      <tool_bar_item guid="22c4239b-e986-402e-a0f7-20c15a1335d9">
-        <text>
-          <locale_1036>Élément de barre d'outils 06</locale_1036>
-        </text>
-        <left_macro_id>bb89640c-1a16-4b65-815b-117c1926248e</left_macro_id>
-        <right_macro_id>b2b2e8fb-4fad-46ef-8803-53e390809696</right_macro_id>
-        <link style="normal">e176ff15-96c4-4300-a721-d546fd8b0184</link>
-      </tool_bar_item>
-      <tool_bar_item guid="4753841b-0835-4e49-afc3-cff688c33b87">
-        <left_macro_id>8f7f46dd-3120-4d69-996b-541faf9c41bb</left_macro_id>
-        <right_macro_id>f6c95499-e8e6-4a74-aeec-2e320a03007b</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="5a6907b5-9aee-4414-b701-e8aea6d22ddf">
-        <text>
-          <locale_1036>Élément de barre d'outils 08</locale_1036>
-        </text>
-        <left_macro_id>04e7a10c-d8ea-413d-987a-b6273a20d269</left_macro_id>
-        <right_macro_id>739dbda3-fb6c-4ac8-893e-ceb874dddc79</right_macro_id>
-        <link style="normal">7dece462-e881-414a-85c8-1a79bf759892</link>
-      </tool_bar_item>
-      <tool_bar_item guid="6e08ba9d-1325-47e5-a192-acd279094bd9">
-        <text>
-          <locale_1036>Élément de barre d'outils 10</locale_1036>
-        </text>
-        <left_macro_id>61202d13-30f0-4f6c-9b27-90a074d8f53d</left_macro_id>
-        <right_macro_id>47b4fa03-414c-4ffb-a5f2-8279d07d57e1</right_macro_id>
-        <link style="normal">f365d555-158b-4c1b-a371-788165b43a2a</link>
-      </tool_bar_item>
-      <tool_bar_item guid="8eb91175-05da-4912-9590-433c73033c02">
-        <left_macro_id>0742dadf-b63c-44e6-9947-7dfed2197368</left_macro_id>
-        <right_macro_id>663f2f13-5e2e-4c61-9cd4-7d146d5767f0</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="2aaffaf0-f5e3-41e7-96fa-a7a130c47c93">
-        <text>
-          <locale_1036>Élément de barre d'outils 11</locale_1036>
-        </text>
-        <left_macro_id>d0723547-208f-43cc-9779-ca88db3e9339</left_macro_id>
-        <right_macro_id>2b19efb4-fbe4-4f01-b0b8-28032caeaa0d</right_macro_id>
-        <link style="normal">2b77eec6-da51-4549-9577-ffb188c074ef</link>
-      </tool_bar_item>
-      <tool_bar_item guid="0b31b77c-ef07-4f44-955b-d964da5f8d5c">
-        <text>
-          <locale_1036>Élément de barre d'outils 12</locale_1036>
-        </text>
-        <left_macro_id>f319d550-173c-4ea7-b1ac-7aac5eeda486</left_macro_id>
-        <right_macro_id>3cf74cba-ef1c-4606-ba39-74c25233cb5a</right_macro_id>
-        <link style="normal">048b0009-ee79-4a6c-af45-3afcdfa244b1</link>
-      </tool_bar_item>
-      <tool_bar_item guid="a898f70f-a325-4d28-8985-5d5d7c369cb9">
-        <text>
-          <locale_1036>Élément de barre d'outils 13</locale_1036>
-        </text>
-        <left_macro_id>cb62a524-a5e5-4d07-87e7-0f7bcb98ba2b</left_macro_id>
-        <right_macro_id>507ee59c-4df0-479d-95a5-67488fba2d26</right_macro_id>
-        <link style="normal">4222c551-d7dd-451f-aa38-7076a51631b2</link>
-      </tool_bar_item>
-      <tool_bar_item guid="997024d7-bfa8-4ed6-8a8f-f07aa31f43b6">
-        <text>
-          <locale_1036>Élément de barre d'outils 14</locale_1036>
-        </text>
-        <left_macro_id>f0f1d5ed-6f4c-4af5-8feb-70ab9ddf2dca</left_macro_id>
-        <right_macro_id>39eb92f9-e78d-4a02-a54e-b1bbb5c8f49b</right_macro_id>
-        <link style="normal">86f58569-f260-4955-91bf-cc5ac8690eaf</link>
-      </tool_bar_item>
-      <tool_bar_item guid="c5c81318-e70d-4b58-8d4d-6da9cda0bdc9">
-        <left_macro_id>e4573d7f-9ccf-477b-8f01-d631ddfcea51</left_macro_id>
-        <right_macro_id>054fd02c-1f05-4f10-9722-24dbe74846b1</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="a92f0db1-dac5-4bec-8817-f666bd06f495">
-        <left_macro_id>7840c162-6345-4e4d-ae66-43a3e565c6a6</left_macro_id>
-        <right_macro_id>ac9fabe3-64e5-435b-8365-c6e2e3803ff1</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="f7d11d2f-d445-4e77-81fa-65cf373cd1d2">
-        <text>
-          <locale_1036>Élément de barre d'outils 17</locale_1036>
-        </text>
-        <left_macro_id>79630c0c-f742-48da-98a0-7c539d91971a</left_macro_id>
-        <right_macro_id>069291ae-84b3-4d75-b154-bc79d7fe3baa</right_macro_id>
-        <link style="normal">1b4b6a90-90ce-46c0-a5b1-c4d3fa6dbc88</link>
-      </tool_bar_item>
-      <tool_bar_item guid="fd723d82-4ed4-442a-b2b9-9628700f0937">
-        <left_macro_id>582392e5-360a-424b-8a27-46493fab9f47</left_macro_id>
-        <right_macro_id>0c3d18cb-0b51-4de0-8888-0d1aea7f03a7</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="3fc2dc20-701d-470f-8eed-20723eae1230">
-        <left_macro_id>adceb154-42b0-4576-b929-311da9be2094</left_macro_id>
-        <right_macro_id>b14a4370-954b-485e-8e40-dadc3c1e8d2b</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="e34c721a-55e5-4629-91e0-374f5e163d1e">
-        <left_macro_id>0b413bdf-01b8-43c6-a030-b1b37cfb5241</left_macro_id>
-        <right_macro_id>5c78c006-2c8e-4a8f-9e8c-c3e36b27502f</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="51fe1a28-f9c4-4b4d-9ae1-430c5be12efb">
-        <left_macro_id>11a65b2b-122b-4f6c-a3a0-cc7263d31a2f</left_macro_id>
-        <right_macro_id>4d9666e0-8020-4387-baf3-c67e5126e592</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="29425f1b-3038-41f5-996f-2980de350be6">
-        <left_macro_id>6d0a32b1-52c9-4681-ac2c-d5eedbad7752</left_macro_id>
-        <right_macro_id>c54fbca5-cae9-4bb8-b440-44754d3dd936</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="5c75848f-3bd7-4d0f-b03e-540083f34a44">
-        <text>
-          <locale_1036>Élément de barre d'outils</locale_1036>
-        </text>
-        <left_macro_id>e7b5ffff-b2fb-4637-8408-28fa9cf21554</left_macro_id>
-        <right_macro_id>31eca8cd-37a7-4cd9-814c-6db7405a4311</right_macro_id>
-        <link style="normal">4a2b7747-c4fa-4b9b-903f-c0cdb4cfdd39</link>
-      </tool_bar_item>
-      <tool_bar_item guid="47f116a2-21b5-4099-9245-31f058e33b82">
-        <text>
-          <locale_1036>Élément de barre d'outils 18</locale_1036>
-        </text>
-        <left_macro_id>c568289d-8d69-428f-846c-07bfc5bd16e4</left_macro_id>
-        <right_macro_id>30ac5081-8461-4a70-bd13-68c21cf7b237</right_macro_id>
-        <link style="normal">3befd215-e0a1-48cb-ab15-5597b0cd4ee7</link>
-      </tool_bar_item>
-      <tool_bar_item guid="d3f18af3-f8e8-4bd2-ab7b-f0b009fb7d8f">
-        <left_macro_id>b3a6644a-1326-4235-9cb0-5dd7fd0282fe</left_macro_id>
-        <right_macro_id>2b3a08bb-d75a-42e6-b6b0-4d399381b3b7</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="35e6f79f-bcdc-4111-8915-e392dedaf51a">
-        <text>
-          <locale_1036>Élément de barre d'outils 19</locale_1036>
-        </text>
-        <left_macro_id>0c05e79a-8c41-4bf7-8756-7a3900504571</left_macro_id>
-        <right_macro_id>f6f699e0-f665-4e7c-bbc3-f4b9a6dacb42</right_macro_id>
-        <link style="normal">8b838cd6-7d4b-4052-9d0c-f44580fe9619</link>
-      </tool_bar_item>
-      <tool_bar_item guid="aef793dd-8b7e-4276-896b-d7f8699b94ca">
-        <left_macro_id>5f12c284-58f2-408a-8aba-4afce4f49f82</left_macro_id>
-        <right_macro_id>53ba4165-d0b7-499a-a920-32812b78fd7e</right_macro_id>
-        <link source_file_guid="c7da84fc-2991-4824-832a-4f2509bd0ede" style="normal">33652801-1197-47ca-b0d6-5a185a22a5f3</link>
-      </tool_bar_item>
-      <tool_bar_item guid="3f348fa3-7bd1-4127-a7a5-112be4a88f76">
-        <text>
-          <locale_1036>Élément de barre d'outils 21</locale_1036>
-        </text>
-        <left_macro_id>9f34feb2-a97b-44f0-9958-29fecb46598e</left_macro_id>
-        <right_macro_id>c1d6aa1f-3098-42b5-af7b-2105a6c9d971</right_macro_id>
-        <link style="normal">4705af42-da82-4f80-b070-ed0badea1684</link>
-      </tool_bar_item>
-      <tool_bar_item guid="bd406c19-5eae-407c-b852-ce6487089d8e">
-        <left_macro_id>305f87a5-32e9-4a5b-b5c8-8d9e2d4a7910</left_macro_id>
-        <right_macro_id>afed4c8a-8da8-49c3-9f27-5f8cfeb4ca1f</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="f84f3a8b-0436-4e90-ba6e-8b897b5a19d8">
-        <text>
-          <locale_1036>Élément de barre d'outils 23</locale_1036>
-        </text>
-        <left_macro_id>41baa16e-9dbb-4ae8-ab9a-7a8681a59a2d</left_macro_id>
-        <right_macro_id>b0711f61-e66a-4fa4-9edf-973311f7a76e</right_macro_id>
-        <link style="normal">94c5331b-43e6-418a-922e-6109fdd4601b</link>
-      </tool_bar_item>
-      <tool_bar_item guid="64df477e-339e-4bb0-b9ec-831a2dd73557">
-        <left_macro_id>8e6b0c2b-d88c-4aa8-a9d7-e64378721dde</left_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="70f9c540-4f40-44ba-86e0-0bfcc83dc725">
-        <left_macro_id>ef7af4db-9245-4039-af5f-d6e15f2c1585</left_macro_id>
-        <right_macro_id>277e7be8-ecec-433f-bd33-92611245c661</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="c5a744e0-789d-4b20-94db-737aa16c3174">
-        <left_macro_id>d38a017c-8494-41be-b657-721082ad1478</left_macro_id>
-        <right_macro_id>0c05e79a-8c41-4bf7-8756-7a3900504571</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="2aca0475-d92d-4fc2-99e1-b6f6041348bb">
-        <left_macro_id>8f6548b5-c3b5-47f7-b61e-8ee7900c6153</left_macro_id>
-        <right_macro_id>c6a78342-4ae6-456f-88dc-17683bde7028</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="c8df9f2c-d662-4a18-80cc-ccbfe7e0417e">
-        <left_macro_id>97c4a735-1497-4cc1-b139-753863259fd5</left_macro_id>
-        <right_macro_id>3a1d217b-e66a-4a84-abf9-a239ae1ab074</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="594aebba-bfa6-4b4a-899e-44fab6a2ce56">
-        <text>
-          <locale_1036>Élément de barre d'outils</locale_1036>
-        </text>
-        <left_macro_id>84684901-18b4-43dd-a6f7-d156e85c0716</left_macro_id>
-        <right_macro_id>cf58d541-e0c4-477a-842e-b87a78cbcbba</right_macro_id>
-        <link style="normal">a711d5e9-cd25-4024-97b5-02b6f5d76dbe</link>
-      </tool_bar_item>
-      <tool_bar_item guid="e4a818a5-32d7-44fc-90d1-c3b29f171508">
-        <left_macro_id>e7695af9-afdf-4d32-b575-60d20be5994d</left_macro_id>
-        <right_macro_id>c18926c0-5bf1-432d-947c-8a7bb515fc0b</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="0f6c6b84-b371-49dc-9b92-100146ee79ca">
-        <text>
-          <locale_1036>Élément de barre d'outils 25</locale_1036>
-        </text>
-        <left_macro_id>83f02a83-302e-4f88-94a7-f77ad2d7a566</left_macro_id>
-        <right_macro_id>9bf1fa79-d912-41ca-ac72-b11ec89eda98</right_macro_id>
-        <link style="normal">99de35dd-7fd2-4e21-b33b-8d9a5a6c80d9</link>
-      </tool_bar_item>
-      <tool_bar_item guid="bdc0f941-2969-4e0c-974d-33ca61e3b34d">
-        <text>
-          <locale_1036>Élément de barre d'outils 26</locale_1036>
-        </text>
-        <left_macro_id>63d7c31a-c34c-4b51-9d34-411db0e9f352</left_macro_id>
-        <right_macro_id>735f99af-56e9-496a-a168-f8d4580e2f66</right_macro_id>
-        <link style="normal">ec54b5bb-b94b-4691-9491-99d2f358898b</link>
-      </tool_bar_item>
-      <tool_bar_item guid="973b3c97-a84d-47db-9e83-73d8b57cf8a7">
-        <left_macro_id>8fc184fb-5504-49da-a5d6-749aa3c633ee</left_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="e7e93928-8340-4104-9bd5-4452583b248e">
-        <text>
-          <locale_1036>Élément de barre d'outils 28</locale_1036>
-        </text>
-        <left_macro_id>4d2de8da-63bb-4c91-9a08-4ce9e47be968</left_macro_id>
-        <right_macro_id>ceacd0fa-0dc0-4db7-aba5-1f5808e19621</right_macro_id>
-        <link style="normal">37cef578-66c8-4f97-abcb-1d9b572f0a83</link>
-      </tool_bar_item>
-      <tool_bar_item guid="1ab0bbd2-f7b4-4889-b62d-71f209956304">
-        <text>
-          <locale_1036>Élément de barre d'outils 29</locale_1036>
-        </text>
-        <left_macro_id>9d30e42b-e3c5-4a26-9f42-a481814a2a08</left_macro_id>
-        <right_macro_id>eb72ac12-75b5-4c15-9c73-3bba52df657f</right_macro_id>
-        <link style="normal">03b87e13-e9c7-4c8d-a375-c30496ad765b</link>
-      </tool_bar_item>
-      <tool_bar_item guid="e6ac2a35-39a9-456c-9b6a-444d5a67a1d8">
-        <left_macro_id>18ba97bc-82fa-4aed-9ef8-3e70b9385913</left_macro_id>
-        <right_macro_id>b233ba19-6708-46e9-9709-ed4aff45e6a4</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="ad286a4d-ad06-4ce4-8efc-38ce82b56052">
-        <left_macro_id>c043818c-b70f-4e22-b4dc-2a8e3d36171a</left_macro_id>
-        <right_macro_id>c2d9dab2-045c-444a-9809-94bb5597dd5b</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="8eb21c8f-3f76-4f83-915e-5ba7da1a7369">
-        <text>
-          <locale_1036>Élément de barre d'outils 32</locale_1036>
-        </text>
-        <left_macro_id>a80360d2-a30f-45f8-8341-ff34d5f2fc2d</left_macro_id>
-        <link style="normal">1b6d29e7-c62e-404d-ba76-dc7b26f65f78</link>
-      </tool_bar_item>
-      <tool_bar_item guid="acc3b84e-b19e-48fe-ae08-7f0337da0c28">
-        <left_macro_id>e98c8ee4-ca47-45b7-a64d-d78377d0a7ef</left_macro_id>
-        <right_macro_id>82bcbc74-3025-40fa-99b3-56e53c928176</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="0a84d1bd-9fd6-4156-bb3b-1e56c5ffd44d">
-        <left_macro_id>752384fe-be99-47a6-92fa-0915ea88fe51</left_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="575dae5a-6a6e-4639-b68d-5d06c176ba6d">
-        <left_macro_id>0b4c0ad5-9ce9-40f8-addb-c0eeb4663d2b</left_macro_id>
-        <right_macro_id>080845b1-181c-492a-b151-0e5a24903377</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="0cbc24d4-c5ab-4304-a778-434b5ef86d64">
-        <left_macro_id>b55a607c-09c1-49c6-99a4-3777f083d9ba</left_macro_id>
-        <right_macro_id>c6a902c5-1a51-48d0-9556-e520cab1ef39</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="d676c703-2ea2-47e6-988a-38e1199ceafc">
-        <left_macro_id>62b36508-7afb-46e6-b12e-bb02f5f5c8bb</left_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="d00e1f0c-a120-40c0-a3e8-48dd8bbe2579">
-        <text>
-          <locale_1036>Élément de barre d'outils 00</locale_1036>
-        </text>
-        <left_macro_id>ade68f73-d65d-438a-9a7f-93ef3e723336</left_macro_id>
-        <right_macro_id>efa55d90-a6b1-478e-8bc9-7287eda00f9a</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="0f47a355-93b8-4f4b-9e94-39088e55c11a">
-        <text>
-          <locale_1036>Élément de barre d'outils</locale_1036>
-        </text>
-        <left_macro_id>7266bb76-99b9-4681-a193-2757550f415a</left_macro_id>
-        <right_macro_id>25f8eae3-0807-4e14-a9ef-28f88c9ff5db</right_macro_id>
-      </tool_bar_item>
-    </tool_bar>
     <tool_bar guid="e2170f92-eaa0-4598-8a02-b0c107e76115" bitmap_id="ec793594-8e28-4c0f-9db8-56cd61fe2efa">
       <text>
         <locale_1033>Geometry Fix</locale_1033>
@@ -3901,59 +3622,6 @@
         <left_macro_id>d535a41b-0aa7-438c-be2a-1dbb4442bc23</left_macro_id>
       </tool_bar_item>
     </tool_bar>
-    <tool_bar guid="a41a3fb3-f064-48bc-abbb-7cdbc105aeb3">
-      <text>
-        <locale_1036>Avancé</locale_1036>
-      </text>
-      <tool_bar_item guid="044f225c-6866-4fe4-b873-e90c313fee0c">
-        <text>
-          <locale_1036>Élément de barre d'outils 00</locale_1036>
-        </text>
-        <left_macro_id>201f91a6-0a92-431d-96ce-df32eeff5e3f</left_macro_id>
-        <right_macro_id>e243ae03-6556-4e92-96c7-ddae6b1a42e0</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="984eade9-6dce-472b-b1a6-d0bb5a399297">
-        <text>
-          <locale_1036>Élément de barre d'outils 01</locale_1036>
-        </text>
-        <left_macro_id>1c53423c-ff3d-46cc-8c8c-d647db15428a</left_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="d93fb5be-16f8-4cbb-80e5-815eb6d64c6c">
-        <text>
-          <locale_1036>Élément de barre d'outils 02</locale_1036>
-        </text>
-        <left_macro_id>7c3e8cbb-ff27-4e1e-93a6-bf7265c05095</left_macro_id>
-        <right_macro_id>2d312e42-ab9b-478a-969b-ee2273d7acac</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="b6a2fc8e-7f41-43e2-b010-239e3b401836">
-        <text>
-          <locale_1036>Élément de barre d'outils 03</locale_1036>
-        </text>
-        <left_macro_id>2f464491-b870-435e-8021-0581c66ae814</left_macro_id>
-        <right_macro_id>2e8ee0d3-e2d3-4d28-a2b8-a65e6d1bf63e</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="3917e6fd-3d75-4e23-9a93-393ecef67885">
-        <text>
-          <locale_1036>Élément de barre d'outils 04</locale_1036>
-        </text>
-        <left_macro_id>753e97f0-db7b-446a-a042-3213d7ca2459</left_macro_id>
-        <right_macro_id>f8566ffe-7210-4822-ae1b-63bf743a4afb</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="c5644a51-35fb-425b-9567-52c5f0ee1da2">
-        <text>
-          <locale_1036>Élément de barre d'outils 05</locale_1036>
-        </text>
-        <left_macro_id>93d840bb-20e1-4c63-9ef7-b6470a69c3f5</left_macro_id>
-        <right_macro_id>14d7f602-4158-4612-a1f6-9dee1e1b0dd0</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="c3bb9389-72a7-4b3f-bc97-8bbc40b2e752" button_style="spacer" />
-      <tool_bar_item guid="367abd90-8ef9-4e1c-8b55-21d776922e42">
-        <left_macro_id>60068cdd-0120-4c66-8add-9b5a5ab58e68</left_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="f310f489-f5a5-42f1-9af6-9cd1870397be">
-        <left_macro_id>f5d788d3-55d4-4fb1-bb15-e1d6f9e1eb4f</left_macro_id>
-      </tool_bar_item>
-    </tool_bar>
     <tool_bar guid="86f58569-f260-4955-91bf-cc5ac8690eaf" bitmap_id="07524805-5117-40c9-8e46-b4535cde99a7">
       <text>
         <locale_1036>Outils pour les courbes</locale_1036>
@@ -4076,152 +3744,6 @@
         <left_macro_id>e7b5ffff-b2fb-4637-8408-28fa9cf21554</left_macro_id>
         <right_macro_id>5191b034-5a80-4156-9163-aa0e303c55db</right_macro_id>
         <link style="normal">4a2b7747-c4fa-4b9b-903f-c0cdb4cfdd39</link>
-      </tool_bar_item>
-    </tool_bar>
-    <tool_bar guid="237bd6b7-50b4-4c5e-a722-4ac33bdd47f5" bitmap_id="fcada1c3-354e-4a6f-9415-980de894ac4e">
-      <text>
-        <locale_1036>Rhino Picksoul</locale_1036>
-      </text>
-      <tool_bar_item guid="9ea20a1d-9982-41ac-8b17-d45c730eef41">
-        <text>
-          <locale_1036>Toolbar item 13</locale_1036>
-        </text>
-        <left_macro_id>8027e318-9328-4769-bee8-4ac9a8bb148f</left_macro_id>
-        <right_macro_id>3f39eebb-8b08-4c68-b94d-84fa664c23e4</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="55ca5c68-2a6e-4d4d-a252-31babdadb0bc">
-        <text>
-          <locale_1036>Plug-in manager</locale_1036>
-        </text>
-        <left_macro_id>1781edcf-0d83-4d98-acda-6944a2467307</left_macro_id>
-        <right_macro_id>56694add-1b81-479a-9e4b-dad55b9b697d</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="2e93ab08-dad3-4b05-95cf-4548cd32c7f5">
-        <text>
-          <locale_1036>Set CPlane origin</locale_1036>
-        </text>
-        <left_macro_id>6ad687c7-af72-478e-b7b9-689b931083c5</left_macro_id>
-        <right_macro_id>701475be-0998-4fdd-9596-dc0e86675547</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="b6c021bc-4108-4ea3-8b55-9a7b9f2ee34f" button_style="spacer" />
-      <tool_bar_item guid="248a94f6-ee0b-4713-9a91-d9d8bcb2efc2">
-        <text>
-          <locale_1036>Élément de barre d'outils 05</locale_1036>
-        </text>
-        <left_macro_id>8c6e1250-e44a-4d08-a53b-7047f89ae7db</left_macro_id>
-        <right_macro_id>2aec92c8-f587-4b51-947d-756232c8f85e</right_macro_id>
-        <link style="normal">d4ef1229-aefa-43d8-a49e-176cece92cbc</link>
-      </tool_bar_item>
-      <tool_bar_item guid="c032e894-f63f-49df-8de3-81f929a7aa64" button_style="spacer" />
-      <tool_bar_item guid="cdcd975a-b5ef-478c-b5d2-f29b3fb28911">
-        <text>
-          <locale_1036>Set model base point</locale_1036>
-        </text>
-        <left_macro_id>1d2dffea-dcac-4bb9-9f14-3848475e5f63</left_macro_id>
-        <right_macro_id>58d4c2b2-c057-48c1-8456-342b743e81ab</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="80facc0b-22b9-4d15-bf95-fe07e1b99ba0">
-        <text>
-          <locale_1036>Block definition</locale_1036>
-        </text>
-        <left_macro_id>cfdf5b75-e136-4bea-a2e8-7b2e96db7175</left_macro_id>
-        <right_macro_id>7e965e0f-34a9-44da-9cba-9da7d3ebbada</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="84bb8b4e-55ec-4df0-a16c-0a4b652c6f50">
-        <text>
-          <locale_1036>Élément de barre d'outils</locale_1036>
-        </text>
-        <left_macro_id>96503a02-e87b-466e-8583-35431460f710</left_macro_id>
-        <right_macro_id>5062e647-9dae-4020-9859-f2752f7b6c56</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="4e21b571-9d66-4822-af34-d2863df53092" button_style="spacer" />
-      <tool_bar_item guid="3c591911-a3b8-47d5-a3dc-fa02e7ca8ac0">
-        <text>
-          <locale_1036>Toolbar item 04</locale_1036>
-        </text>
-        <left_macro_id>81b9e6af-0818-43cd-b57c-4b7e351b77c8</left_macro_id>
-        <right_macro_id>29204b87-8acc-4c94-85e1-b2bcf60eb018</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="91a23160-95ac-439f-afec-1aa7bf8eab6f">
-        <text>
-          <locale_1036>Toolbar item 00</locale_1036>
-        </text>
-        <left_macro_id>d29ba15d-97e3-49fc-97b5-4c48b9e3dbe2</left_macro_id>
-        <right_macro_id>1eb85705-ee42-470f-b2f9-6aecfd85a311</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="554fcb1a-0686-4db7-96c7-4eadbb93a583">
-        <text>
-          <locale_1036>Toolbar item 01</locale_1036>
-        </text>
-        <left_macro_id>0a8ac195-86c2-4cb9-8247-3344ee00af4e</left_macro_id>
-        <right_macro_id>18e884f8-582d-4e92-a16d-34dbe836a18c</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="4c511825-621a-4320-b528-59e20154044b" button_style="spacer" />
-      <tool_bar_item guid="68f2c09b-d271-477b-a78e-b6220191738c">
-        <text>
-          <locale_1036>Élément de barre d'outils 00</locale_1036>
-        </text>
-        <left_macro_id>b4fcdba6-8682-46f5-ae65-154377541b0a</left_macro_id>
-        <right_macro_id>0c1a84d6-90f6-4181-8939-a3f238115fd0</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="7c7e46da-3c84-40f8-81d4-bea3c1456bf7">
-        <text>
-          <locale_1036>Toolbar item 11</locale_1036>
-        </text>
-        <left_macro_id>406c0b7e-83b2-4807-938d-4c9ba1275325</left_macro_id>
-        <right_macro_id>14f0991b-d497-4c95-b557-046764728cf0</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="f1b61673-0498-47bd-bfee-fdb96df515cb">
-        <text>
-          <locale_1036>Toolbar item 02</locale_1036>
-        </text>
-        <left_macro_id>4c6f8d0f-cfc3-4e5c-a002-6f1fc16aadaa</left_macro_id>
-        <right_macro_id>b81f774d-fa22-4fed-9ebc-c77ee7471933</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="c05a317f-ffb4-4903-b248-d68841d54aa9" button_style="spacer" />
-      <tool_bar_item guid="60a6e2a4-5636-435f-98c5-42f1b32830ac">
-        <text>
-          <locale_1036>Élément de barre d'outils 01</locale_1036>
-        </text>
-        <left_macro_id>bdbabd51-5a85-46be-9d43-997ef0f92717</left_macro_id>
-        <right_macro_id>1a79c58f-93c9-4937-b8d9-c56f818c23ec</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="60b7899c-63c7-41fe-b4d3-19eb7a6e4508">
-        <text>
-          <locale_1036>Élément de barre d'outils 02</locale_1036>
-        </text>
-        <left_macro_id>2daec730-41ae-4398-be09-62f49bcfbaf0</left_macro_id>
-        <right_macro_id>cb8ce3f6-6d9f-45d2-9e6d-e489ca4d9f4a</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="c6caec69-0f89-4ba8-9e99-01391bb0ddd4" button_style="spacer" />
-      <tool_bar_item guid="580ca7aa-52ba-4c31-b8e7-5869c68accb5">
-        <text>
-          <locale_1036>Élément de barre d'outils 03</locale_1036>
-        </text>
-        <left_macro_id>00af6069-c1ec-4dc7-979d-43a6e37ae92f</left_macro_id>
-        <right_macro_id>af85b016-34ee-42d4-af72-79979d4b92c4</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="7eeaddc7-52e3-478c-af41-34d1837b8917">
-        <text>
-          <locale_1036>Élément de barre d'outils 04</locale_1036>
-        </text>
-        <left_macro_id>215c39c9-2724-45d9-98ac-3613bd3d5d70</left_macro_id>
-        <right_macro_id>b5cb8ee1-6820-4689-a3a7-85858b8d5988</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="eacfcbb3-9d4b-4831-9a0b-83b31db14aaa" button_style="spacer" />
-      <tool_bar_item guid="0623da38-7afc-4e01-b256-dfda0ad6fffd">
-        <text>
-          <locale_1036>Block definition 00</locale_1036>
-        </text>
-        <left_macro_id>dee23626-63ff-4840-8fb0-ed2ab4020c45</left_macro_id>
-        <right_macro_id>03b2274a-3472-4b54-a65b-4463985d222a</right_macro_id>
-      </tool_bar_item>
-      <tool_bar_item guid="2b9e7d3a-4b7d-4f4b-9a03-9ba1f82c30f4">
-        <text>
-          <locale_1036>Block definition 01</locale_1036>
-        </text>
-        <left_macro_id>bf8201c3-b5f2-4aa2-b713-7bf4a321ae29</left_macro_id>
-        <right_macro_id>a9edf974-f18e-4f31-bf6d-9aaebc2b0c21</right_macro_id>
       </tool_bar_item>
     </tool_bar>
     <tool_bar guid="f365d555-158b-4c1b-a371-788165b43a2a" bitmap_id="a6d89770-9cc2-44e4-a49e-30e070a5ee67">
@@ -4874,6 +4396,484 @@
         <left_macro_id>f24ecf99-8d86-47e9-9bfa-f1bca8fb005d</left_macro_id>
       </tool_bar_item>
     </tool_bar>
+    <tool_bar guid="237bd6b7-50b4-4c5e-a722-4ac33bdd47f5" bitmap_id="fcada1c3-354e-4a6f-9415-980de894ac4e">
+      <text>
+        <locale_1036>Rhino Picksoul</locale_1036>
+      </text>
+      <tool_bar_item guid="9ea20a1d-9982-41ac-8b17-d45c730eef41">
+        <text>
+          <locale_1036>Toolbar item 13</locale_1036>
+        </text>
+        <left_macro_id>8027e318-9328-4769-bee8-4ac9a8bb148f</left_macro_id>
+        <right_macro_id>3f39eebb-8b08-4c68-b94d-84fa664c23e4</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="55ca5c68-2a6e-4d4d-a252-31babdadb0bc">
+        <text>
+          <locale_1036>Plug-in manager</locale_1036>
+        </text>
+        <left_macro_id>1781edcf-0d83-4d98-acda-6944a2467307</left_macro_id>
+        <right_macro_id>56694add-1b81-479a-9e4b-dad55b9b697d</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="2e93ab08-dad3-4b05-95cf-4548cd32c7f5">
+        <text>
+          <locale_1036>Set CPlane origin</locale_1036>
+        </text>
+        <left_macro_id>6ad687c7-af72-478e-b7b9-689b931083c5</left_macro_id>
+        <right_macro_id>701475be-0998-4fdd-9596-dc0e86675547</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="b6c021bc-4108-4ea3-8b55-9a7b9f2ee34f" button_style="spacer" />
+      <tool_bar_item guid="248a94f6-ee0b-4713-9a91-d9d8bcb2efc2">
+        <text>
+          <locale_1036>Élément de barre d'outils 05</locale_1036>
+        </text>
+        <left_macro_id>8c6e1250-e44a-4d08-a53b-7047f89ae7db</left_macro_id>
+        <right_macro_id>2aec92c8-f587-4b51-947d-756232c8f85e</right_macro_id>
+        <link style="normal">d4ef1229-aefa-43d8-a49e-176cece92cbc</link>
+      </tool_bar_item>
+      <tool_bar_item guid="c032e894-f63f-49df-8de3-81f929a7aa64" button_style="spacer" />
+      <tool_bar_item guid="cdcd975a-b5ef-478c-b5d2-f29b3fb28911">
+        <text>
+          <locale_1036>Set model base point</locale_1036>
+        </text>
+        <left_macro_id>1d2dffea-dcac-4bb9-9f14-3848475e5f63</left_macro_id>
+        <right_macro_id>58d4c2b2-c057-48c1-8456-342b743e81ab</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="80facc0b-22b9-4d15-bf95-fe07e1b99ba0">
+        <text>
+          <locale_1036>Block definition</locale_1036>
+        </text>
+        <left_macro_id>cfdf5b75-e136-4bea-a2e8-7b2e96db7175</left_macro_id>
+        <right_macro_id>7e965e0f-34a9-44da-9cba-9da7d3ebbada</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="84bb8b4e-55ec-4df0-a16c-0a4b652c6f50">
+        <text>
+          <locale_1036>Élément de barre d'outils</locale_1036>
+        </text>
+        <left_macro_id>96503a02-e87b-466e-8583-35431460f710</left_macro_id>
+        <right_macro_id>5062e647-9dae-4020-9859-f2752f7b6c56</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="4e21b571-9d66-4822-af34-d2863df53092" button_style="spacer" />
+      <tool_bar_item guid="3c591911-a3b8-47d5-a3dc-fa02e7ca8ac0">
+        <text>
+          <locale_1036>Toolbar item 04</locale_1036>
+        </text>
+        <left_macro_id>81b9e6af-0818-43cd-b57c-4b7e351b77c8</left_macro_id>
+        <right_macro_id>29204b87-8acc-4c94-85e1-b2bcf60eb018</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="91a23160-95ac-439f-afec-1aa7bf8eab6f">
+        <text>
+          <locale_1036>Toolbar item 00</locale_1036>
+        </text>
+        <left_macro_id>d29ba15d-97e3-49fc-97b5-4c48b9e3dbe2</left_macro_id>
+        <right_macro_id>1eb85705-ee42-470f-b2f9-6aecfd85a311</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="554fcb1a-0686-4db7-96c7-4eadbb93a583">
+        <text>
+          <locale_1036>Toolbar item 01</locale_1036>
+        </text>
+        <left_macro_id>0a8ac195-86c2-4cb9-8247-3344ee00af4e</left_macro_id>
+        <right_macro_id>18e884f8-582d-4e92-a16d-34dbe836a18c</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="4c511825-621a-4320-b528-59e20154044b" button_style="spacer" />
+      <tool_bar_item guid="68f2c09b-d271-477b-a78e-b6220191738c">
+        <text>
+          <locale_1036>Élément de barre d'outils 00</locale_1036>
+        </text>
+        <left_macro_id>b4fcdba6-8682-46f5-ae65-154377541b0a</left_macro_id>
+        <right_macro_id>0c1a84d6-90f6-4181-8939-a3f238115fd0</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="7c7e46da-3c84-40f8-81d4-bea3c1456bf7">
+        <text>
+          <locale_1036>Toolbar item 11</locale_1036>
+        </text>
+        <left_macro_id>406c0b7e-83b2-4807-938d-4c9ba1275325</left_macro_id>
+        <right_macro_id>14f0991b-d497-4c95-b557-046764728cf0</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="f1b61673-0498-47bd-bfee-fdb96df515cb">
+        <text>
+          <locale_1036>Toolbar item 02</locale_1036>
+        </text>
+        <left_macro_id>4c6f8d0f-cfc3-4e5c-a002-6f1fc16aadaa</left_macro_id>
+        <right_macro_id>b81f774d-fa22-4fed-9ebc-c77ee7471933</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="c05a317f-ffb4-4903-b248-d68841d54aa9" button_style="spacer" />
+      <tool_bar_item guid="60a6e2a4-5636-435f-98c5-42f1b32830ac">
+        <text>
+          <locale_1036>Élément de barre d'outils 01</locale_1036>
+        </text>
+        <left_macro_id>bdbabd51-5a85-46be-9d43-997ef0f92717</left_macro_id>
+        <right_macro_id>1a79c58f-93c9-4937-b8d9-c56f818c23ec</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="60b7899c-63c7-41fe-b4d3-19eb7a6e4508">
+        <text>
+          <locale_1036>Élément de barre d'outils 02</locale_1036>
+        </text>
+        <left_macro_id>2daec730-41ae-4398-be09-62f49bcfbaf0</left_macro_id>
+        <right_macro_id>cb8ce3f6-6d9f-45d2-9e6d-e489ca4d9f4a</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="c6caec69-0f89-4ba8-9e99-01391bb0ddd4" button_style="spacer" />
+      <tool_bar_item guid="580ca7aa-52ba-4c31-b8e7-5869c68accb5">
+        <text>
+          <locale_1036>Élément de barre d'outils 03</locale_1036>
+        </text>
+        <left_macro_id>00af6069-c1ec-4dc7-979d-43a6e37ae92f</left_macro_id>
+        <right_macro_id>af85b016-34ee-42d4-af72-79979d4b92c4</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="7eeaddc7-52e3-478c-af41-34d1837b8917">
+        <text>
+          <locale_1036>Élément de barre d'outils 04</locale_1036>
+        </text>
+        <left_macro_id>215c39c9-2724-45d9-98ac-3613bd3d5d70</left_macro_id>
+        <right_macro_id>b5cb8ee1-6820-4689-a3a7-85858b8d5988</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="eacfcbb3-9d4b-4831-9a0b-83b31db14aaa" button_style="spacer" />
+      <tool_bar_item guid="0623da38-7afc-4e01-b256-dfda0ad6fffd">
+        <text>
+          <locale_1036>Block definition 00</locale_1036>
+        </text>
+        <left_macro_id>dee23626-63ff-4840-8fb0-ed2ab4020c45</left_macro_id>
+        <right_macro_id>03b2274a-3472-4b54-a65b-4463985d222a</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="2b9e7d3a-4b7d-4f4b-9a03-9ba1f82c30f4">
+        <text>
+          <locale_1036>Block definition 01</locale_1036>
+        </text>
+        <left_macro_id>bf8201c3-b5f2-4aa2-b713-7bf4a321ae29</left_macro_id>
+        <right_macro_id>a9edf974-f18e-4f31-bf6d-9aaebc2b0c21</right_macro_id>
+      </tool_bar_item>
+    </tool_bar>
+    <tool_bar guid="67e6b11c-0744-41e1-93fd-cdb8e10418fd" bitmap_id="bb3a8f4b-676c-487c-a8c5-addfc1be1ebe">
+      <text>
+        <locale_1036>2_Volet RP</locale_1036>
+      </text>
+      <tool_bar_item guid="1e440704-273d-4b30-bdc2-a8059a0210b2">
+        <text>
+          <locale_1036>Élément de barre d'outils</locale_1036>
+        </text>
+        <left_macro_id>2f437724-9969-4869-a057-143105607bde</left_macro_id>
+        <right_macro_id>9d46e77d-5a52-47cd-8596-ab40ffa6f750</right_macro_id>
+        <link style="normal">d2eb9f7d-4a82-4ee7-93d8-b667fdd6d878</link>
+      </tool_bar_item>
+      <tool_bar_item guid="22c4239b-e986-402e-a0f7-20c15a1335d9">
+        <text>
+          <locale_1036>Élément de barre d'outils 06</locale_1036>
+        </text>
+        <left_macro_id>bb89640c-1a16-4b65-815b-117c1926248e</left_macro_id>
+        <right_macro_id>b2b2e8fb-4fad-46ef-8803-53e390809696</right_macro_id>
+        <link style="normal">e176ff15-96c4-4300-a721-d546fd8b0184</link>
+      </tool_bar_item>
+      <tool_bar_item guid="4753841b-0835-4e49-afc3-cff688c33b87">
+        <left_macro_id>8f7f46dd-3120-4d69-996b-541faf9c41bb</left_macro_id>
+        <right_macro_id>f6c95499-e8e6-4a74-aeec-2e320a03007b</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="5a6907b5-9aee-4414-b701-e8aea6d22ddf">
+        <text>
+          <locale_1036>Élément de barre d'outils 08</locale_1036>
+        </text>
+        <left_macro_id>04e7a10c-d8ea-413d-987a-b6273a20d269</left_macro_id>
+        <right_macro_id>739dbda3-fb6c-4ac8-893e-ceb874dddc79</right_macro_id>
+        <link style="normal">7dece462-e881-414a-85c8-1a79bf759892</link>
+      </tool_bar_item>
+      <tool_bar_item guid="6e08ba9d-1325-47e5-a192-acd279094bd9">
+        <text>
+          <locale_1036>Élément de barre d'outils 10</locale_1036>
+        </text>
+        <left_macro_id>61202d13-30f0-4f6c-9b27-90a074d8f53d</left_macro_id>
+        <right_macro_id>47b4fa03-414c-4ffb-a5f2-8279d07d57e1</right_macro_id>
+        <link style="normal">f365d555-158b-4c1b-a371-788165b43a2a</link>
+      </tool_bar_item>
+      <tool_bar_item guid="8eb91175-05da-4912-9590-433c73033c02">
+        <left_macro_id>0742dadf-b63c-44e6-9947-7dfed2197368</left_macro_id>
+        <right_macro_id>663f2f13-5e2e-4c61-9cd4-7d146d5767f0</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="2aaffaf0-f5e3-41e7-96fa-a7a130c47c93">
+        <text>
+          <locale_1036>Élément de barre d'outils 11</locale_1036>
+        </text>
+        <left_macro_id>d0723547-208f-43cc-9779-ca88db3e9339</left_macro_id>
+        <right_macro_id>2b19efb4-fbe4-4f01-b0b8-28032caeaa0d</right_macro_id>
+        <link style="normal">2b77eec6-da51-4549-9577-ffb188c074ef</link>
+      </tool_bar_item>
+      <tool_bar_item guid="0b31b77c-ef07-4f44-955b-d964da5f8d5c">
+        <text>
+          <locale_1036>Élément de barre d'outils 12</locale_1036>
+        </text>
+        <left_macro_id>f319d550-173c-4ea7-b1ac-7aac5eeda486</left_macro_id>
+        <right_macro_id>3cf74cba-ef1c-4606-ba39-74c25233cb5a</right_macro_id>
+        <link style="normal">048b0009-ee79-4a6c-af45-3afcdfa244b1</link>
+      </tool_bar_item>
+      <tool_bar_item guid="a898f70f-a325-4d28-8985-5d5d7c369cb9">
+        <text>
+          <locale_1036>Élément de barre d'outils 13</locale_1036>
+        </text>
+        <left_macro_id>cb62a524-a5e5-4d07-87e7-0f7bcb98ba2b</left_macro_id>
+        <right_macro_id>507ee59c-4df0-479d-95a5-67488fba2d26</right_macro_id>
+        <link style="normal">4222c551-d7dd-451f-aa38-7076a51631b2</link>
+      </tool_bar_item>
+      <tool_bar_item guid="997024d7-bfa8-4ed6-8a8f-f07aa31f43b6">
+        <text>
+          <locale_1036>Élément de barre d'outils 14</locale_1036>
+        </text>
+        <left_macro_id>f0f1d5ed-6f4c-4af5-8feb-70ab9ddf2dca</left_macro_id>
+        <right_macro_id>39eb92f9-e78d-4a02-a54e-b1bbb5c8f49b</right_macro_id>
+        <link style="normal">86f58569-f260-4955-91bf-cc5ac8690eaf</link>
+      </tool_bar_item>
+      <tool_bar_item guid="c5c81318-e70d-4b58-8d4d-6da9cda0bdc9">
+        <left_macro_id>e4573d7f-9ccf-477b-8f01-d631ddfcea51</left_macro_id>
+        <right_macro_id>054fd02c-1f05-4f10-9722-24dbe74846b1</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="a92f0db1-dac5-4bec-8817-f666bd06f495">
+        <left_macro_id>7840c162-6345-4e4d-ae66-43a3e565c6a6</left_macro_id>
+        <right_macro_id>ac9fabe3-64e5-435b-8365-c6e2e3803ff1</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="f7d11d2f-d445-4e77-81fa-65cf373cd1d2">
+        <text>
+          <locale_1036>Élément de barre d'outils 17</locale_1036>
+        </text>
+        <left_macro_id>79630c0c-f742-48da-98a0-7c539d91971a</left_macro_id>
+        <right_macro_id>069291ae-84b3-4d75-b154-bc79d7fe3baa</right_macro_id>
+        <link style="normal">1b4b6a90-90ce-46c0-a5b1-c4d3fa6dbc88</link>
+      </tool_bar_item>
+      <tool_bar_item guid="fd723d82-4ed4-442a-b2b9-9628700f0937">
+        <left_macro_id>582392e5-360a-424b-8a27-46493fab9f47</left_macro_id>
+        <right_macro_id>0c3d18cb-0b51-4de0-8888-0d1aea7f03a7</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="3fc2dc20-701d-470f-8eed-20723eae1230">
+        <left_macro_id>adceb154-42b0-4576-b929-311da9be2094</left_macro_id>
+        <right_macro_id>b14a4370-954b-485e-8e40-dadc3c1e8d2b</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="e34c721a-55e5-4629-91e0-374f5e163d1e">
+        <left_macro_id>0b413bdf-01b8-43c6-a030-b1b37cfb5241</left_macro_id>
+        <right_macro_id>5c78c006-2c8e-4a8f-9e8c-c3e36b27502f</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="51fe1a28-f9c4-4b4d-9ae1-430c5be12efb">
+        <left_macro_id>11a65b2b-122b-4f6c-a3a0-cc7263d31a2f</left_macro_id>
+        <right_macro_id>4d9666e0-8020-4387-baf3-c67e5126e592</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="29425f1b-3038-41f5-996f-2980de350be6">
+        <left_macro_id>6d0a32b1-52c9-4681-ac2c-d5eedbad7752</left_macro_id>
+        <right_macro_id>c54fbca5-cae9-4bb8-b440-44754d3dd936</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="5c75848f-3bd7-4d0f-b03e-540083f34a44">
+        <text>
+          <locale_1036>Élément de barre d'outils</locale_1036>
+        </text>
+        <left_macro_id>e7b5ffff-b2fb-4637-8408-28fa9cf21554</left_macro_id>
+        <right_macro_id>31eca8cd-37a7-4cd9-814c-6db7405a4311</right_macro_id>
+        <link style="normal">4a2b7747-c4fa-4b9b-903f-c0cdb4cfdd39</link>
+      </tool_bar_item>
+      <tool_bar_item guid="47f116a2-21b5-4099-9245-31f058e33b82">
+        <text>
+          <locale_1036>Élément de barre d'outils 18</locale_1036>
+        </text>
+        <left_macro_id>c568289d-8d69-428f-846c-07bfc5bd16e4</left_macro_id>
+        <right_macro_id>30ac5081-8461-4a70-bd13-68c21cf7b237</right_macro_id>
+        <link style="normal">3befd215-e0a1-48cb-ab15-5597b0cd4ee7</link>
+      </tool_bar_item>
+      <tool_bar_item guid="d3f18af3-f8e8-4bd2-ab7b-f0b009fb7d8f">
+        <left_macro_id>b3a6644a-1326-4235-9cb0-5dd7fd0282fe</left_macro_id>
+        <right_macro_id>2b3a08bb-d75a-42e6-b6b0-4d399381b3b7</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="35e6f79f-bcdc-4111-8915-e392dedaf51a">
+        <text>
+          <locale_1036>Élément de barre d'outils 19</locale_1036>
+        </text>
+        <left_macro_id>0c05e79a-8c41-4bf7-8756-7a3900504571</left_macro_id>
+        <right_macro_id>f6f699e0-f665-4e7c-bbc3-f4b9a6dacb42</right_macro_id>
+        <link style="normal">8b838cd6-7d4b-4052-9d0c-f44580fe9619</link>
+      </tool_bar_item>
+      <tool_bar_item guid="aef793dd-8b7e-4276-896b-d7f8699b94ca">
+        <left_macro_id>5f12c284-58f2-408a-8aba-4afce4f49f82</left_macro_id>
+        <right_macro_id>53ba4165-d0b7-499a-a920-32812b78fd7e</right_macro_id>
+        <link source_file_guid="c7da84fc-2991-4824-832a-4f2509bd0ede" style="normal">33652801-1197-47ca-b0d6-5a185a22a5f3</link>
+      </tool_bar_item>
+      <tool_bar_item guid="3f348fa3-7bd1-4127-a7a5-112be4a88f76">
+        <text>
+          <locale_1036>Élément de barre d'outils 21</locale_1036>
+        </text>
+        <left_macro_id>9f34feb2-a97b-44f0-9958-29fecb46598e</left_macro_id>
+        <right_macro_id>c1d6aa1f-3098-42b5-af7b-2105a6c9d971</right_macro_id>
+        <link style="normal">4705af42-da82-4f80-b070-ed0badea1684</link>
+      </tool_bar_item>
+      <tool_bar_item guid="bd406c19-5eae-407c-b852-ce6487089d8e">
+        <left_macro_id>305f87a5-32e9-4a5b-b5c8-8d9e2d4a7910</left_macro_id>
+        <right_macro_id>afed4c8a-8da8-49c3-9f27-5f8cfeb4ca1f</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="f84f3a8b-0436-4e90-ba6e-8b897b5a19d8">
+        <text>
+          <locale_1036>Élément de barre d'outils 23</locale_1036>
+        </text>
+        <left_macro_id>41baa16e-9dbb-4ae8-ab9a-7a8681a59a2d</left_macro_id>
+        <right_macro_id>b0711f61-e66a-4fa4-9edf-973311f7a76e</right_macro_id>
+        <link style="normal">94c5331b-43e6-418a-922e-6109fdd4601b</link>
+      </tool_bar_item>
+      <tool_bar_item guid="64df477e-339e-4bb0-b9ec-831a2dd73557">
+        <left_macro_id>8e6b0c2b-d88c-4aa8-a9d7-e64378721dde</left_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="70f9c540-4f40-44ba-86e0-0bfcc83dc725">
+        <left_macro_id>ef7af4db-9245-4039-af5f-d6e15f2c1585</left_macro_id>
+        <right_macro_id>277e7be8-ecec-433f-bd33-92611245c661</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="c5a744e0-789d-4b20-94db-737aa16c3174">
+        <left_macro_id>d38a017c-8494-41be-b657-721082ad1478</left_macro_id>
+        <right_macro_id>0c05e79a-8c41-4bf7-8756-7a3900504571</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="2aca0475-d92d-4fc2-99e1-b6f6041348bb">
+        <left_macro_id>8f6548b5-c3b5-47f7-b61e-8ee7900c6153</left_macro_id>
+        <right_macro_id>c6a78342-4ae6-456f-88dc-17683bde7028</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="c8df9f2c-d662-4a18-80cc-ccbfe7e0417e">
+        <left_macro_id>97c4a735-1497-4cc1-b139-753863259fd5</left_macro_id>
+        <right_macro_id>3a1d217b-e66a-4a84-abf9-a239ae1ab074</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="594aebba-bfa6-4b4a-899e-44fab6a2ce56">
+        <text>
+          <locale_1036>Élément de barre d'outils</locale_1036>
+        </text>
+        <left_macro_id>84684901-18b4-43dd-a6f7-d156e85c0716</left_macro_id>
+        <right_macro_id>cf58d541-e0c4-477a-842e-b87a78cbcbba</right_macro_id>
+        <link style="normal">a711d5e9-cd25-4024-97b5-02b6f5d76dbe</link>
+      </tool_bar_item>
+      <tool_bar_item guid="e4a818a5-32d7-44fc-90d1-c3b29f171508">
+        <left_macro_id>e7695af9-afdf-4d32-b575-60d20be5994d</left_macro_id>
+        <right_macro_id>c18926c0-5bf1-432d-947c-8a7bb515fc0b</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="0f6c6b84-b371-49dc-9b92-100146ee79ca">
+        <text>
+          <locale_1036>Élément de barre d'outils 25</locale_1036>
+        </text>
+        <left_macro_id>83f02a83-302e-4f88-94a7-f77ad2d7a566</left_macro_id>
+        <right_macro_id>9bf1fa79-d912-41ca-ac72-b11ec89eda98</right_macro_id>
+        <link style="normal">99de35dd-7fd2-4e21-b33b-8d9a5a6c80d9</link>
+      </tool_bar_item>
+      <tool_bar_item guid="bdc0f941-2969-4e0c-974d-33ca61e3b34d">
+        <text>
+          <locale_1036>Élément de barre d'outils 26</locale_1036>
+        </text>
+        <left_macro_id>63d7c31a-c34c-4b51-9d34-411db0e9f352</left_macro_id>
+        <right_macro_id>735f99af-56e9-496a-a168-f8d4580e2f66</right_macro_id>
+        <link style="normal">ec54b5bb-b94b-4691-9491-99d2f358898b</link>
+      </tool_bar_item>
+      <tool_bar_item guid="973b3c97-a84d-47db-9e83-73d8b57cf8a7">
+        <left_macro_id>8fc184fb-5504-49da-a5d6-749aa3c633ee</left_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="e7e93928-8340-4104-9bd5-4452583b248e">
+        <text>
+          <locale_1036>Élément de barre d'outils 28</locale_1036>
+        </text>
+        <left_macro_id>4d2de8da-63bb-4c91-9a08-4ce9e47be968</left_macro_id>
+        <right_macro_id>ceacd0fa-0dc0-4db7-aba5-1f5808e19621</right_macro_id>
+        <link style="normal">37cef578-66c8-4f97-abcb-1d9b572f0a83</link>
+      </tool_bar_item>
+      <tool_bar_item guid="1ab0bbd2-f7b4-4889-b62d-71f209956304">
+        <text>
+          <locale_1036>Élément de barre d'outils 29</locale_1036>
+        </text>
+        <left_macro_id>9d30e42b-e3c5-4a26-9f42-a481814a2a08</left_macro_id>
+        <right_macro_id>eb72ac12-75b5-4c15-9c73-3bba52df657f</right_macro_id>
+        <link style="normal">03b87e13-e9c7-4c8d-a375-c30496ad765b</link>
+      </tool_bar_item>
+      <tool_bar_item guid="e6ac2a35-39a9-456c-9b6a-444d5a67a1d8">
+        <left_macro_id>18ba97bc-82fa-4aed-9ef8-3e70b9385913</left_macro_id>
+        <right_macro_id>b233ba19-6708-46e9-9709-ed4aff45e6a4</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="ad286a4d-ad06-4ce4-8efc-38ce82b56052">
+        <left_macro_id>c043818c-b70f-4e22-b4dc-2a8e3d36171a</left_macro_id>
+        <right_macro_id>c2d9dab2-045c-444a-9809-94bb5597dd5b</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="8eb21c8f-3f76-4f83-915e-5ba7da1a7369">
+        <text>
+          <locale_1036>Élément de barre d'outils 32</locale_1036>
+        </text>
+        <left_macro_id>a80360d2-a30f-45f8-8341-ff34d5f2fc2d</left_macro_id>
+        <link style="normal">1b6d29e7-c62e-404d-ba76-dc7b26f65f78</link>
+      </tool_bar_item>
+      <tool_bar_item guid="acc3b84e-b19e-48fe-ae08-7f0337da0c28">
+        <left_macro_id>e98c8ee4-ca47-45b7-a64d-d78377d0a7ef</left_macro_id>
+        <right_macro_id>82bcbc74-3025-40fa-99b3-56e53c928176</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="0a84d1bd-9fd6-4156-bb3b-1e56c5ffd44d">
+        <left_macro_id>752384fe-be99-47a6-92fa-0915ea88fe51</left_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="575dae5a-6a6e-4639-b68d-5d06c176ba6d">
+        <left_macro_id>0b4c0ad5-9ce9-40f8-addb-c0eeb4663d2b</left_macro_id>
+        <right_macro_id>080845b1-181c-492a-b151-0e5a24903377</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="0cbc24d4-c5ab-4304-a778-434b5ef86d64">
+        <left_macro_id>b55a607c-09c1-49c6-99a4-3777f083d9ba</left_macro_id>
+        <right_macro_id>c6a902c5-1a51-48d0-9556-e520cab1ef39</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="d676c703-2ea2-47e6-988a-38e1199ceafc">
+        <left_macro_id>62b36508-7afb-46e6-b12e-bb02f5f5c8bb</left_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="d00e1f0c-a120-40c0-a3e8-48dd8bbe2579">
+        <text>
+          <locale_1036>Élément de barre d'outils 00</locale_1036>
+        </text>
+        <left_macro_id>ade68f73-d65d-438a-9a7f-93ef3e723336</left_macro_id>
+        <right_macro_id>efa55d90-a6b1-478e-8bc9-7287eda00f9a</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="0f47a355-93b8-4f4b-9e94-39088e55c11a">
+        <text>
+          <locale_1036>Élément de barre d'outils</locale_1036>
+        </text>
+        <left_macro_id>7266bb76-99b9-4681-a193-2757550f415a</left_macro_id>
+        <right_macro_id>25f8eae3-0807-4e14-a9ef-28f88c9ff5db</right_macro_id>
+      </tool_bar_item>
+    </tool_bar>
+    <tool_bar guid="a41a3fb3-f064-48bc-abbb-7cdbc105aeb3">
+      <text>
+        <locale_1036>Avancé</locale_1036>
+      </text>
+      <tool_bar_item guid="044f225c-6866-4fe4-b873-e90c313fee0c">
+        <text>
+          <locale_1036>Élément de barre d'outils 00</locale_1036>
+        </text>
+        <left_macro_id>201f91a6-0a92-431d-96ce-df32eeff5e3f</left_macro_id>
+        <right_macro_id>e243ae03-6556-4e92-96c7-ddae6b1a42e0</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="984eade9-6dce-472b-b1a6-d0bb5a399297">
+        <text>
+          <locale_1036>Élément de barre d'outils 01</locale_1036>
+        </text>
+        <left_macro_id>1c53423c-ff3d-46cc-8c8c-d647db15428a</left_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="d93fb5be-16f8-4cbb-80e5-815eb6d64c6c">
+        <text>
+          <locale_1036>Élément de barre d'outils 02</locale_1036>
+        </text>
+        <left_macro_id>7c3e8cbb-ff27-4e1e-93a6-bf7265c05095</left_macro_id>
+        <right_macro_id>2d312e42-ab9b-478a-969b-ee2273d7acac</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="b6a2fc8e-7f41-43e2-b010-239e3b401836">
+        <text>
+          <locale_1036>Élément de barre d'outils 03</locale_1036>
+        </text>
+        <left_macro_id>2f464491-b870-435e-8021-0581c66ae814</left_macro_id>
+        <right_macro_id>2e8ee0d3-e2d3-4d28-a2b8-a65e6d1bf63e</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="3917e6fd-3d75-4e23-9a93-393ecef67885">
+        <text>
+          <locale_1036>Élément de barre d'outils 04</locale_1036>
+        </text>
+        <left_macro_id>753e97f0-db7b-446a-a042-3213d7ca2459</left_macro_id>
+        <right_macro_id>f8566ffe-7210-4822-ae1b-63bf743a4afb</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="c5644a51-35fb-425b-9567-52c5f0ee1da2">
+        <text>
+          <locale_1036>Élément de barre d'outils 05</locale_1036>
+        </text>
+        <left_macro_id>93d840bb-20e1-4c63-9ef7-b6470a69c3f5</left_macro_id>
+        <right_macro_id>14d7f602-4158-4612-a1f6-9dee1e1b0dd0</right_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="c3bb9389-72a7-4b3f-bc97-8bbc40b2e752" button_style="spacer" />
+      <tool_bar_item guid="367abd90-8ef9-4e1c-8b55-21d776922e42">
+        <left_macro_id>60068cdd-0120-4c66-8add-9b5a5ab58e68</left_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="f310f489-f5a5-42f1-9af6-9cd1870397be">
+        <left_macro_id>f5d788d3-55d4-4fb1-bb15-e1d6f9e1eb4f</left_macro_id>
+      </tool_bar_item>
+    </tool_bar>
     <tool_bar guid="62814057-dd4d-4eec-abd8-050f6e894644">
       <text>
         <locale_1036>Standard</locale_1036>
@@ -4994,13 +4994,13 @@
         <right_macro_id>18e884f8-582d-4e92-a16d-34dbe836a18c</right_macro_id>
       </tool_bar_item>
       <tool_bar_item guid="5bcaabe3-a6f7-4d86-b7b9-57de4aef49b9" button_style="spacer" />
-      <tool_bar_item guid="4bdecbed-ebce-4a6d-a23e-aa3c030b6989">
+      <tool_bar_item guid="c67ca5b4-ede4-42e2-9616-2c9571f979ee">
         <text>
-          <locale_1036>Block definition</locale_1036>
+          <locale_1033>Block definition</locale_1033>
         </text>
-        <left_macro_id>ef4f0bae-ae13-4b0a-9bbc-e992ba9157c5</left_macro_id>
-        <right_macro_id>78f0b8c4-2871-455c-a073-41b6e784e794</right_macro_id>
-        <link style="normal">4694b557-5ab4-4f4a-ad05-e22d74337665</link>
+        <left_macro_id>90d7a0f2-4930-4306-b595-629a69d86870</left_macro_id>
+        <right_macro_id>d66c861d-7ad1-46af-b526-2d8bf820514c</right_macro_id>
+        <link source_file_guid="c7da84fc-2991-4824-832a-4f2509bd0ede" style="normal">badb0194-9889-49c2-a6dd-d2c7dcec5691</link>
       </tool_bar_item>
       <tool_bar_item guid="b5e09872-3caf-44a3-9559-f2f97d5e9cd4">
         <text>
@@ -33333,25 +33333,6 @@ _Solid=_Yes</script>
       </tooltip>
       <script>!</script>
     </macro_item>
-    <macro_item guid="8027e318-9328-4769-bee8-4ac9a8bb148f" bitmap_id="3f24cb03-095b-4f62-bff4-f33c3284c05d">
-      <text>
-        <locale_1036>Load module - dev mode</locale_1036>
-      </text>
-      <tooltip>
-        <locale_1036>Load module - dev mode</locale_1036>
-      </tooltip>
-      <button_text>
-        <locale_1036>Load module</locale_1036>
-      </button_text>
-    </macro_item>
-    <macro_item guid="3f39eebb-8b08-4c68-b94d-84fa664c23e4" bitmap_id="749d33f6-fbf9-4dd4-b88d-eb6f0c8d2ad3">
-      <text>
-        <locale_1036>Load module - stable mode</locale_1036>
-      </text>
-      <tooltip>
-        <locale_1036>Load module - stable mode</locale_1036>
-      </tooltip>
-    </macro_item>
     <macro_item guid="14f0991b-d497-4c95-b557-046764728cf0" bitmap_id="d0b21bbd-a7d9-4778-bb91-c3cb1f4c3735">
       <text>
         <locale_1036>Macro 100 - Copier - Copier</locale_1036>
@@ -33361,311 +33342,224 @@ _Solid=_Yes</script>
       </tooltip>
       <script>!</script>
     </macro_item>
+    <macro_item guid="8027e318-9328-4769-bee8-4ac9a8bb148f" bitmap_id="3f24cb03-095b-4f62-bff4-f33c3284c05d">
+      <text>
+        <locale_1036>Load module - dev mode</locale_1036>
+      </text>
+      <script>!-_RunPythonScript "..\..\7.0\Plug-ins\Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)\dev\utilities\loadModuleAliases.py"</script>
+    </macro_item>
+    <macro_item guid="3f39eebb-8b08-4c68-b94d-84fa664c23e4" bitmap_id="749d33f6-fbf9-4dd4-b88d-eb6f0c8d2ad3">
+      <text>
+        <locale_1036>Load module - stable mode</locale_1036>
+      </text>
+      <script>!-_RunPythonScript "..\..\7.0\Plug-ins\Rhino Picksoul (4a97e0e1-48sz-s842-5s58-d4fs5sd541fs)\dev\utilities\loadModuleAliases.py" _l</script>
+    </macro_item>
+    <macro_item guid="530704c5-16ca-4c64-9855-a0f7c3051a43" bitmap_id="79809340-a76b-43e3-87e7-47fd23182324">
+      <text>
+        <locale_1036>Définition de bloc 00 01</locale_1036>
+      </text>
+      <tooltip>
+        <locale_1036>defineBlock</locale_1036>
+      </tooltip>
+      <help_text>
+        <locale_1036>Définition de bloc</locale_1036>
+      </help_text>
+      <button_text>
+        <locale_1036>Définition de bloc</locale_1036>
+      </button_text>
+      <menu_text>
+        <locale_1036>Définition de bloc</locale_1036>
+      </menu_text>
+      <script>defineBlock</script>
+    </macro_item>
+    <macro_item guid="90d7a0f2-4930-4306-b595-629a69d86870" bitmap_id="9e50cc25-8bcb-4068-90ea-5f932a5decbd">
+      <text />
+      <tooltip>
+        <locale_1036>defineBlock</locale_1036>
+      </tooltip>
+      <help_text>
+        <locale_1036>Définir un bloc</locale_1036>
+      </help_text>
+      <button_text>
+        <locale_1036>Définir un bloc</locale_1036>
+      </button_text>
+      <menu_text>
+        <locale_1036>Définir un bloc</locale_1036>
+      </menu_text>
+      <script>defineBlock</script>
+    </macro_item>
+    <macro_item guid="d66c861d-7ad1-46af-b526-2d8bf820514c" bitmap_id="6d1f0b36-ddb1-45cb-a7f7-b8260510d73a">
+      <text />
+      <tooltip>
+        <locale_1036>Gestionnaire de Blocs</locale_1036>
+      </tooltip>
+      <help_text>
+        <locale_1036>Modifier une définition de bloc</locale_1036>
+      </help_text>
+      <button_text>
+        <locale_1036>BlocModifier</locale_1036>
+      </button_text>
+      <menu_text>
+        <locale_1036>Modifier un bloc</locale_1036>
+      </menu_text>
+      <script>! _BlockManager</script>
+    </macro_item>
   </macros>
   <icons>
-    <icon guid="3a98771b-b85d-45e3-b06c-a9ae0ef64a1c" name="3a98771b-b85d-45e3-b06c-a9ae0ef64a1c.svg" />
-    <icon guid="fcada1c3-354e-4a6f-9415-980de894ac4e" name="fcada1c3-354e-4a6f-9415-980de894ac4e.svg" />
-    <icon guid="14eb835e-f08b-4b95-af56-8e736996ff77" name="14eb835e-f08b-4b95-af56-8e736996ff77.svg" />
-    <icon guid="aa518aba-7637-4e19-8980-6b62aa9657c8" name="aa518aba-7637-4e19-8980-6b62aa9657c8.svg" />
-    <icon guid="9917c939-0668-4aa1-b2e1-161e23b890b1" name="9917c939-0668-4aa1-b2e1-161e23b890b1.svg" />
-    <icon guid="5aa3668c-f2f1-48d9-8e8c-a79ad8f3f31f" name="5aa3668c-f2f1-48d9-8e8c-a79ad8f3f31f.svg" />
-    <icon guid="0cd33888-6234-4d66-9795-88b18b6d02b4" name="0cd33888-6234-4d66-9795-88b18b6d02b4.svg" />
-    <icon guid="6b123e93-a16e-4e12-9b77-cbc82ae60c51" name="6b123e93-a16e-4e12-9b77-cbc82ae60c51.svg" />
-    <icon guid="5569877b-15e7-4002-bd4c-bf909bccec77" name="5569877b-15e7-4002-bd4c-bf909bccec77.svg" />
-    <icon guid="bab29a71-2dc5-4a03-8853-f0a9b9afd65f" name="bab29a71-2dc5-4a03-8853-f0a9b9afd65f.svg" />
-    <icon guid="5bf22bd7-bdb7-40bb-81fe-c585b2c7dfea" name="5bf22bd7-bdb7-40bb-81fe-c585b2c7dfea.svg" />
-    <icon guid="16e9259e-30bd-4158-83fa-514989a93e5e" name="16e9259e-30bd-4158-83fa-514989a93e5e.svg" />
-    <icon guid="04dfc0e7-491b-43d5-8d26-725744dcca57" name="04dfc0e7-491b-43d5-8d26-725744dcca57.svg" />
-    <icon guid="59aec386-93d0-4e4b-85da-576ea1059167" name="59aec386-93d0-4e4b-85da-576ea1059167.svg" />
-    <icon guid="36681d0e-af1a-4ae4-b7d1-4b68b56bd765" name="36681d0e-af1a-4ae4-b7d1-4b68b56bd765.svg" />
-    <icon guid="d3572f6d-8d3a-4c6a-b89d-7671d02fb03f" name="d3572f6d-8d3a-4c6a-b89d-7671d02fb03f.svg" />
-    <icon guid="bb3a8f4b-676c-487c-a8c5-addfc1be1ebe" name="bb3a8f4b-676c-487c-a8c5-addfc1be1ebe.svg" />
-    <icon guid="effaa0d7-5e8f-458c-9ae0-8305c1561de5" name="effaa0d7-5e8f-458c-9ae0-8305c1561de5.svg" />
-    <icon guid="f9836917-a01b-48e5-b23f-3b7d6c9dd050" name="f9836917-a01b-48e5-b23f-3b7d6c9dd050.svg" />
-    <icon guid="07524805-5117-40c9-8e46-b4535cde99a7" name="07524805-5117-40c9-8e46-b4535cde99a7.svg" />
-    <icon guid="e8ab6fa8-f278-4876-9265-456bd6d73315" name="e8ab6fa8-f278-4876-9265-456bd6d73315.svg" />
-    <icon guid="32d4913a-62e5-49f8-8255-e4d4b2fc22db" name="32d4913a-62e5-49f8-8255-e4d4b2fc22db.svg" />
-    <icon guid="cfee89bd-4866-4847-880c-38a0c43e7dbc" name="cfee89bd-4866-4847-880c-38a0c43e7dbc.svg" />
-    <icon guid="67e5322e-9c8f-4eaa-93a3-e713a4e9e142" name="67e5322e-9c8f-4eaa-93a3-e713a4e9e142.svg" />
-    <icon guid="c7f946bb-120b-44a4-a547-128e4a23581b" name="c7f946bb-120b-44a4-a547-128e4a23581b.svg" />
-    <icon guid="b159761d-73d5-4cf7-a37b-ac8dfbefc6ff" name="b159761d-73d5-4cf7-a37b-ac8dfbefc6ff.svg" />
-    <icon guid="a425d290-d96d-4812-839e-258e27c32f19" name="a425d290-d96d-4812-839e-258e27c32f19.svg" />
-    <icon guid="f44c933d-8a34-4493-8c82-d3dd7464216a" name="f44c933d-8a34-4493-8c82-d3dd7464216a.svg" />
-    <icon guid="a278209a-fde9-472a-a1fb-ff11b35ab0a4" name="a278209a-fde9-472a-a1fb-ff11b35ab0a4.svg" />
-    <icon guid="86438473-7d4a-4604-b17f-fc1a0f75b205" name="86438473-7d4a-4604-b17f-fc1a0f75b205.svg" />
-    <icon guid="68a6d929-8862-46e8-8da5-d821cf9bb1e9" name="68a6d929-8862-46e8-8da5-d821cf9bb1e9.svg" />
-    <icon guid="a5365491-ab85-4852-9c96-3b32b84ea073" name="a5365491-ab85-4852-9c96-3b32b84ea073.svg" />
-    <icon guid="fb358df6-41b4-4375-9ebf-2a998ae0b934" name="fb358df6-41b4-4375-9ebf-2a998ae0b934.svg" />
-    <icon guid="70290499-9836-40f4-b5aa-9d226324e020" name="70290499-9836-40f4-b5aa-9d226324e020.svg" />
-    <icon guid="958c296c-93d3-4b97-8ace-83ee87319e38" name="958c296c-93d3-4b97-8ace-83ee87319e38.svg" />
-    <icon guid="bb6bada0-0c4b-463f-999f-f57e8acbf34a" name="bb6bada0-0c4b-463f-999f-f57e8acbf34a.svg" />
-    <icon guid="a2c97bc4-2736-4b24-81b6-5471eb63f020" name="a2c97bc4-2736-4b24-81b6-5471eb63f020.svg" />
-    <icon guid="cc13680c-fd20-421b-aa72-e517f4216e74" name="cc13680c-fd20-421b-aa72-e517f4216e74.svg" />
-    <icon guid="79fc22b0-6f4b-44b0-a59d-c011bde8e2a9" name="79fc22b0-6f4b-44b0-a59d-c011bde8e2a9.svg" />
-    <icon guid="b71f5287-324b-4eaf-9cfb-5d56bf58b1c7" name="b71f5287-324b-4eaf-9cfb-5d56bf58b1c7.svg" />
-    <icon guid="428fb448-01a6-438e-98ca-a81a87007f66" name="428fb448-01a6-438e-98ca-a81a87007f66.svg" />
-    <icon guid="cb9c8c0b-d6c1-48c8-ae49-a69415a8078b" name="cb9c8c0b-d6c1-48c8-ae49-a69415a8078b.svg" />
-    <icon guid="4ed38284-67cd-40fe-9049-9ab0873c68b8" name="4ed38284-67cd-40fe-9049-9ab0873c68b8.svg" />
-    <icon guid="7cbdcd3c-3185-459f-81d1-eab7ac52d05f" name="7cbdcd3c-3185-459f-81d1-eab7ac52d05f.svg" />
-    <icon guid="ded8142c-4e73-4b5f-baf5-091f278ab7eb" name="ded8142c-4e73-4b5f-baf5-091f278ab7eb.svg" />
-    <icon guid="b75e6fd2-cc2b-4321-983d-bfeff6f3de6d" name="b75e6fd2-cc2b-4321-983d-bfeff6f3de6d.svg" />
-    <icon guid="9c126606-cc99-46fa-97a8-d1037d5741ac" name="9c126606-cc99-46fa-97a8-d1037d5741ac.svg" />
-    <icon guid="396b9ba4-f754-4868-b2ea-61a7548aa59c" name="396b9ba4-f754-4868-b2ea-61a7548aa59c.svg" />
-    <icon guid="fd977823-4db7-47d0-ba50-3f58b552461c" name="fd977823-4db7-47d0-ba50-3f58b552461c.svg" />
-    <icon guid="a9ab5c29-1b2d-4935-bc12-0fda053e2e81" name="a9ab5c29-1b2d-4935-bc12-0fda053e2e81.svg" />
-    <icon guid="602df9f3-ee4c-4b17-9f43-c46a727a47c5" name="602df9f3-ee4c-4b17-9f43-c46a727a47c5.svg" />
-    <icon guid="3e2af5b5-d83a-4d8b-a86f-e40318578e21" name="3e2af5b5-d83a-4d8b-a86f-e40318578e21.svg" />
-    <icon guid="9735cf36-9767-4833-a3df-b98737a595fa" name="9735cf36-9767-4833-a3df-b98737a595fa.svg" />
-    <icon guid="0c48ba7e-d0ac-435b-8e0e-72ec60020c28" name="0c48ba7e-d0ac-435b-8e0e-72ec60020c28.svg" />
-    <icon guid="dc396bf7-9cae-4673-a049-9fc3a7f7d322" name="dc396bf7-9cae-4673-a049-9fc3a7f7d322.svg" />
-    <icon guid="1e7f08db-4509-41a8-9197-b02403365498" name="1e7f08db-4509-41a8-9197-b02403365498.svg" />
-    <icon guid="f3ec98aa-1fc7-4e61-b0ea-2c5e73aa4110" name="f3ec98aa-1fc7-4e61-b0ea-2c5e73aa4110.svg" />
-    <icon guid="d72dea5e-a796-4479-b6bb-088754d5b087" name="d72dea5e-a796-4479-b6bb-088754d5b087.svg" />
-    <icon guid="3447674f-f2aa-4d67-92ac-f5694b789e35" name="3447674f-f2aa-4d67-92ac-f5694b789e35.svg" />
-    <icon guid="09e40a6b-1d19-4faa-8b31-b11fbb421abf" name="09e40a6b-1d19-4faa-8b31-b11fbb421abf.svg" />
-    <icon guid="061e2b0a-95ea-41a7-aced-2ff8ac51ccf8" name="061e2b0a-95ea-41a7-aced-2ff8ac51ccf8.svg" />
-    <icon guid="c5fbf351-fef1-46c5-930a-93cef0d8757a" name="c5fbf351-fef1-46c5-930a-93cef0d8757a.svg" />
-    <icon guid="7521b03f-6c2b-46a9-9d32-b37def6631e7" name="7521b03f-6c2b-46a9-9d32-b37def6631e7.svg" />
-    <icon guid="db3eb59e-b260-48da-98bf-499816fa622f" name="db3eb59e-b260-48da-98bf-499816fa622f.svg" />
-    <icon guid="3e5c30c3-e817-46c0-adc0-c756a91dd258" name="3e5c30c3-e817-46c0-adc0-c756a91dd258.svg" />
-    <icon guid="6360be8c-8051-4cb8-b68c-a6a6163470f7" name="6360be8c-8051-4cb8-b68c-a6a6163470f7.svg" />
-    <icon guid="80f17b7b-3c59-4f41-898e-92de3772114b" name="80f17b7b-3c59-4f41-898e-92de3772114b.svg" />
-    <icon guid="45ffdfed-92e4-450b-bf5b-0918f4fe850f" name="45ffdfed-92e4-450b-bf5b-0918f4fe850f.svg" />
-    <icon guid="5aa08335-0e98-4e7e-8a1b-2e12026c579d" name="5aa08335-0e98-4e7e-8a1b-2e12026c579d.svg" />
-    <icon guid="4dcd0a81-6258-4d9a-ac18-a14e920d2b22" name="4dcd0a81-6258-4d9a-ac18-a14e920d2b22.svg" />
-    <icon guid="962c9ea6-15ad-4441-ad4a-319ce33178fa" name="962c9ea6-15ad-4441-ad4a-319ce33178fa.svg" />
-    <icon guid="9ad12488-12f2-437c-9628-66b9def5d04b" name="9ad12488-12f2-437c-9628-66b9def5d04b.svg" />
-    <icon guid="f9d56e27-4056-4970-9fa1-302b4ce5d8e6" name="f9d56e27-4056-4970-9fa1-302b4ce5d8e6.svg" />
-    <icon guid="896ce12a-a28b-45d7-8617-01cbc5718e3e" name="896ce12a-a28b-45d7-8617-01cbc5718e3e.svg" />
-    <icon guid="484741f5-a9c8-420f-b249-fde07a4dde9e" name="484741f5-a9c8-420f-b249-fde07a4dde9e.svg" />
-    <icon guid="c891f50b-5534-4672-9995-4d380dda2464" name="c891f50b-5534-4672-9995-4d380dda2464.svg" />
-    <icon guid="d31acc3b-b061-446b-947b-b512a5494643" name="d31acc3b-b061-446b-947b-b512a5494643.svg" />
-    <icon guid="7b899357-ec3a-4f1a-b0bd-01360be48c87" name="7b899357-ec3a-4f1a-b0bd-01360be48c87.svg" />
-    <icon guid="423fd7b2-ae35-47f6-be6e-0ad92cf86b23" name="423fd7b2-ae35-47f6-be6e-0ad92cf86b23.svg" />
-    <icon guid="99d103fd-41d8-47fc-976c-f0c7280c0b3e" name="99d103fd-41d8-47fc-976c-f0c7280c0b3e.svg" />
-    <icon guid="f92f08ba-603b-44da-b1ca-084040563fa7" name="f92f08ba-603b-44da-b1ca-084040563fa7.svg" />
-    <icon guid="6d6d469f-1e49-41cb-a263-d89d98f1980b" name="6d6d469f-1e49-41cb-a263-d89d98f1980b.svg" />
-    <icon guid="345c300c-c716-4266-8c49-dda848b60a10" name="345c300c-c716-4266-8c49-dda848b60a10.svg" />
-    <icon guid="09578798-7faa-4d43-bb26-801d6c75dd53" name="09578798-7faa-4d43-bb26-801d6c75dd53.svg" />
-    <icon guid="d6760507-7876-4c93-941a-3366e23147c1" name="d6760507-7876-4c93-941a-3366e23147c1.svg" />
-    <icon guid="229e02d0-8157-4241-9913-e7848fccf27a" name="229e02d0-8157-4241-9913-e7848fccf27a.svg" />
-    <icon guid="40f513fc-dd91-4902-8e42-170942a4405e" name="40f513fc-dd91-4902-8e42-170942a4405e.svg" />
-    <icon guid="17b17625-d580-4b26-8073-67ddfae69ae6" name="17b17625-d580-4b26-8073-67ddfae69ae6.svg" />
-    <icon guid="1464a6cf-9a38-4df0-bec3-78dfdb330f1f" name="1464a6cf-9a38-4df0-bec3-78dfdb330f1f.svg" />
-    <icon guid="db7fe0c9-4925-4ba6-92b7-fdbd4337b8ab" name="db7fe0c9-4925-4ba6-92b7-fdbd4337b8ab.svg" />
-    <icon guid="bdd0f78c-1bcd-41cc-beca-7ecf6ed98017" name="bdd0f78c-1bcd-41cc-beca-7ecf6ed98017.svg" />
-    <icon guid="6c958f94-d8c8-47ba-bbef-4327dc9e2a4f" name="6c958f94-d8c8-47ba-bbef-4327dc9e2a4f.svg" />
-    <icon guid="8dbbcde2-3caa-4751-a5ae-a6afee10c4d0" name="8dbbcde2-3caa-4751-a5ae-a6afee10c4d0.svg" />
-    <icon guid="5417fcf0-d4f4-40e5-b4e9-54d56fdf7193" name="5417fcf0-d4f4-40e5-b4e9-54d56fdf7193.svg" />
-    <icon guid="4449a4c0-18d1-4718-b420-59adce08c26e" name="4449a4c0-18d1-4718-b420-59adce08c26e.svg" />
-    <icon guid="8c714ceb-7f2a-4230-b429-b6ddbc958911" name="8c714ceb-7f2a-4230-b429-b6ddbc958911.svg" />
-    <icon guid="c0e82e00-cb40-42d1-a45e-08c750d6b405" name="c0e82e00-cb40-42d1-a45e-08c750d6b405.svg" />
-    <icon guid="c39d3207-e039-41f0-a868-fd476924e5b7" name="c39d3207-e039-41f0-a868-fd476924e5b7.svg" />
-    <icon guid="b09988c4-f270-4c9e-8dc8-25038b246870" name="b09988c4-f270-4c9e-8dc8-25038b246870.svg" />
-    <icon guid="77415143-25ce-447c-9eda-67160d4cc154" name="77415143-25ce-447c-9eda-67160d4cc154.svg" />
-    <icon guid="54a6ddd7-3ae5-45d3-b15f-0b9aafb8559c" name="54a6ddd7-3ae5-45d3-b15f-0b9aafb8559c.svg" />
-    <icon guid="b044d1c0-e10a-46a6-af6b-f23ac39506ee" name="b044d1c0-e10a-46a6-af6b-f23ac39506ee.svg" />
-    <icon guid="79aae886-5aa1-48a2-9b33-6a83c6bcc83d" name="79aae886-5aa1-48a2-9b33-6a83c6bcc83d.svg" />
-    <icon guid="c6c4109a-c154-46b9-9dcf-32be1cc74f72" name="c6c4109a-c154-46b9-9dcf-32be1cc74f72.svg" />
-    <icon guid="24418085-5341-4f22-83c8-fc5243f0e1e0" name="24418085-5341-4f22-83c8-fc5243f0e1e0.svg" />
-    <icon guid="474a2647-b82c-4f1d-8065-b7b3886df770" name="474a2647-b82c-4f1d-8065-b7b3886df770.svg" />
-    <icon guid="adcb9e72-d933-48d6-b82b-45510e109fd6" name="adcb9e72-d933-48d6-b82b-45510e109fd6.svg" />
-    <icon guid="64a9bd0b-f044-404b-9fa4-671b5801bba1" name="64a9bd0b-f044-404b-9fa4-671b5801bba1.svg" />
-    <icon guid="c49d9f50-b50d-4715-8834-e45ce1f37693" name="c49d9f50-b50d-4715-8834-e45ce1f37693.svg" />
-    <icon guid="7da41e16-7f35-4af5-a07b-6deccb43ebab" name="7da41e16-7f35-4af5-a07b-6deccb43ebab.svg" />
-    <icon guid="0f5221cc-5436-4319-8ff9-c2ea0e97405d" name="0f5221cc-5436-4319-8ff9-c2ea0e97405d.svg" />
-    <icon guid="01885130-ba1c-4ec8-a28d-767acec5b5c6" name="01885130-ba1c-4ec8-a28d-767acec5b5c6.svg" />
-    <icon guid="f3b4ac16-8920-4e71-8b54-fa2dd931f5fc" name="f3b4ac16-8920-4e71-8b54-fa2dd931f5fc.svg" />
-    <icon guid="e6f545d7-9950-42b0-b998-0b5a01919006" name="e6f545d7-9950-42b0-b998-0b5a01919006.svg" />
-    <icon guid="ebd67038-b4cc-49a4-8d01-4afd04762725" name="ebd67038-b4cc-49a4-8d01-4afd04762725.svg" />
-    <icon guid="b8797da6-bd71-4360-b588-8f67742d888d" name="b8797da6-bd71-4360-b588-8f67742d888d.svg" />
+    <icon guid="09964bb2-4868-4bb5-a0cc-a4c94805dc77" name="09964bb2-4868-4bb5-a0cc-a4c94805dc77.svg" />
     <icon guid="ed3ba8c3-1ff1-46d4-97bb-788b12928853" name="ed3ba8c3-1ff1-46d4-97bb-788b12928853.svg" />
+    <icon guid="9735cf36-9767-4833-a3df-b98737a595fa" name="9735cf36-9767-4833-a3df-b98737a595fa.svg" />
+    <icon guid="1fe7f462-2fb0-4ef6-ac4c-8f410501b8cb" name="1fe7f462-2fb0-4ef6-ac4c-8f410501b8cb.svg" />
+    <icon guid="3a98771b-b85d-45e3-b06c-a9ae0ef64a1c" name="3a98771b-b85d-45e3-b06c-a9ae0ef64a1c.svg" />
+    <icon guid="bb55e477-433e-4e51-ad91-22db93579fdc" name="bb55e477-433e-4e51-ad91-22db93579fdc.svg" />
+    <icon guid="f9da9db0-4712-425a-a235-d03410eaf0ab" name="f9da9db0-4712-425a-a235-d03410eaf0ab.svg" />
+    <icon guid="3e843cfb-c00b-4536-8497-f242905f8b69" name="3e843cfb-c00b-4536-8497-f242905f8b69.svg" />
+    <icon guid="c6f8b0d6-b565-46f9-be57-36da1aee1d98" name="c6f8b0d6-b565-46f9-be57-36da1aee1d98.svg" />
+    <icon guid="6adb5c90-3c16-4f8e-bcf3-ae24e4813d23" name="6adb5c90-3c16-4f8e-bcf3-ae24e4813d23.svg" />
+    <icon guid="9586f4a3-baf0-47cf-8f6a-018ae37ccc1a" name="9586f4a3-baf0-47cf-8f6a-018ae37ccc1a.svg" />
+    <icon guid="6360be8c-8051-4cb8-b68c-a6a6163470f7" name="6360be8c-8051-4cb8-b68c-a6a6163470f7.svg" />
+    <icon guid="3e6fda75-d989-406f-a82e-e32dc1d19249" name="3e6fda75-d989-406f-a82e-e32dc1d19249.svg" />
+    <icon guid="3ed7b37b-7bff-4449-ae8e-f49a6e07b081" name="3ed7b37b-7bff-4449-ae8e-f49a6e07b081.svg" />
+    <icon guid="866b45b8-2cd3-45e7-b6f7-fb25a4adc56b" name="866b45b8-2cd3-45e7-b6f7-fb25a4adc56b.svg" />
+    <icon guid="f4d079c9-4735-4584-be67-19c6700e49a7" name="f4d079c9-4735-4584-be67-19c6700e49a7.svg" />
+    <icon guid="fb14d7dd-8e83-4af0-923a-c043eed5afc9" name="fb14d7dd-8e83-4af0-923a-c043eed5afc9.svg" />
+    <icon guid="f9d56e27-4056-4970-9fa1-302b4ce5d8e6" name="f9d56e27-4056-4970-9fa1-302b4ce5d8e6.svg" />
+    <icon guid="a5365491-ab85-4852-9c96-3b32b84ea073" name="a5365491-ab85-4852-9c96-3b32b84ea073.svg" />
+    <icon guid="0cd33888-6234-4d66-9795-88b18b6d02b4" name="0cd33888-6234-4d66-9795-88b18b6d02b4.svg" />
+    <icon guid="04dfc0e7-491b-43d5-8d26-725744dcca57" name="04dfc0e7-491b-43d5-8d26-725744dcca57.svg" />
+    <icon guid="67e5322e-9c8f-4eaa-93a3-e713a4e9e142" name="67e5322e-9c8f-4eaa-93a3-e713a4e9e142.svg" />
+    <icon guid="9814efcb-993f-4fb2-8de3-381ff171fa5e" name="9814efcb-993f-4fb2-8de3-381ff171fa5e.svg" />
+    <icon guid="4786ef9f-5d4a-4f22-9f39-8f63bab3a0b8" name="4786ef9f-5d4a-4f22-9f39-8f63bab3a0b8.svg" />
+    <icon guid="2058c19c-94ec-4431-a29d-7921aa656de9" name="2058c19c-94ec-4431-a29d-7921aa656de9.svg" />
+    <icon guid="db7fe0c9-4925-4ba6-92b7-fdbd4337b8ab" name="db7fe0c9-4925-4ba6-92b7-fdbd4337b8ab.svg" />
+    <icon guid="3e2af5b5-d83a-4d8b-a86f-e40318578e21" name="3e2af5b5-d83a-4d8b-a86f-e40318578e21.svg" />
+    <icon guid="2c0cb6dc-179c-4377-9c0e-6dc45cb667f8" name="2c0cb6dc-179c-4377-9c0e-6dc45cb667f8.svg" />
+    <icon guid="037c5f8f-4fb3-4460-8b4b-f89462babc88" name="037c5f8f-4fb3-4460-8b4b-f89462babc88.svg" />
+    <icon guid="b1f22b47-1182-443d-aa9d-a07b72f796c1" name="b1f22b47-1182-443d-aa9d-a07b72f796c1.svg" />
     <icon guid="c898a4e0-9676-4166-8adc-a2b949666093" name="c898a4e0-9676-4166-8adc-a2b949666093.svg" />
-    <icon guid="2fdab7cb-8db3-4199-8880-8c68beb99288" name="2fdab7cb-8db3-4199-8880-8c68beb99288.svg" />
+    <icon guid="db3eb59e-b260-48da-98bf-499816fa622f" name="db3eb59e-b260-48da-98bf-499816fa622f.svg" />
+    <icon guid="99d103fd-41d8-47fc-976c-f0c7280c0b3e" name="99d103fd-41d8-47fc-976c-f0c7280c0b3e.svg" />
+    <icon guid="a88e6d36-9dfd-4579-ae0f-262f2789b960" name="a88e6d36-9dfd-4579-ae0f-262f2789b960.svg" />
+    <icon guid="109a2d2a-8894-431c-bcca-f20ac260c051" name="109a2d2a-8894-431c-bcca-f20ac260c051.svg" />
+    <icon guid="c1eb6c78-2f2f-491d-aadc-b73cef3f2519" name="c1eb6c78-2f2f-491d-aadc-b73cef3f2519.svg" />
+    <icon guid="bab29a71-2dc5-4a03-8853-f0a9b9afd65f" name="bab29a71-2dc5-4a03-8853-f0a9b9afd65f.svg" />
+    <icon guid="c0e82e00-cb40-42d1-a45e-08c750d6b405" name="c0e82e00-cb40-42d1-a45e-08c750d6b405.svg" />
+    <icon guid="d6760507-7876-4c93-941a-3366e23147c1" name="d6760507-7876-4c93-941a-3366e23147c1.svg" />
+    <icon guid="3ae591c5-8874-41f5-8e02-1e3ce3b5582c" name="3ae591c5-8874-41f5-8e02-1e3ce3b5582c.svg" />
+    <icon guid="ebd67038-b4cc-49a4-8d01-4afd04762725" name="ebd67038-b4cc-49a4-8d01-4afd04762725.svg" />
+    <icon guid="ed52b342-befc-4177-985e-359131d25b02" name="ed52b342-befc-4177-985e-359131d25b02.svg" />
+    <icon guid="32d4913a-62e5-49f8-8255-e4d4b2fc22db" name="32d4913a-62e5-49f8-8255-e4d4b2fc22db.svg" />
+    <icon guid="c5fbf351-fef1-46c5-930a-93cef0d8757a" name="c5fbf351-fef1-46c5-930a-93cef0d8757a.svg" />
+    <icon guid="8427d5d8-47b6-4e00-832e-8515765adbc2" name="8427d5d8-47b6-4e00-832e-8515765adbc2.svg" />
+    <icon guid="345c300c-c716-4266-8c49-dda848b60a10" name="345c300c-c716-4266-8c49-dda848b60a10.svg" />
+    <icon guid="229e02d0-8157-4241-9913-e7848fccf27a" name="229e02d0-8157-4241-9913-e7848fccf27a.svg" />
+    <icon guid="ec5c6389-9aa4-404a-bc74-ea164b8f7918" name="ec5c6389-9aa4-404a-bc74-ea164b8f7918.svg" />
+    <icon guid="00bfaea3-428a-44b7-bb84-cf7f6249623b" name="00bfaea3-428a-44b7-bb84-cf7f6249623b.svg" />
+    <icon guid="9c126606-cc99-46fa-97a8-d1037d5741ac" name="9c126606-cc99-46fa-97a8-d1037d5741ac.svg" />
+    <icon guid="5aa3668c-f2f1-48d9-8e8c-a79ad8f3f31f" name="5aa3668c-f2f1-48d9-8e8c-a79ad8f3f31f.svg" />
+    <icon guid="d31acc3b-b061-446b-947b-b512a5494643" name="d31acc3b-b061-446b-947b-b512a5494643.svg" />
+    <icon guid="1df90888-e1e0-4ab7-afdb-c5808a50576c" name="1df90888-e1e0-4ab7-afdb-c5808a50576c.svg" />
+    <icon guid="cc6a366a-7bfa-4f7f-982b-9db2268898fb" name="cc6a366a-7bfa-4f7f-982b-9db2268898fb.svg" />
+    <icon guid="7b2a460a-b73c-4345-95b9-8c1388508423" name="7b2a460a-b73c-4345-95b9-8c1388508423.svg" />
+    <icon guid="01885130-ba1c-4ec8-a28d-767acec5b5c6" name="01885130-ba1c-4ec8-a28d-767acec5b5c6.svg" />
+    <icon guid="64a9bd0b-f044-404b-9fa4-671b5801bba1" name="64a9bd0b-f044-404b-9fa4-671b5801bba1.svg" />
+    <icon guid="9450f7ad-be5f-4fec-a1bb-dbd02877f781" name="9450f7ad-be5f-4fec-a1bb-dbd02877f781.svg" />
+    <icon guid="4dcd0a81-6258-4d9a-ac18-a14e920d2b22" name="4dcd0a81-6258-4d9a-ac18-a14e920d2b22.svg" />
+    <icon guid="958c296c-93d3-4b97-8ace-83ee87319e38" name="958c296c-93d3-4b97-8ace-83ee87319e38.svg" />
+    <icon guid="86438473-7d4a-4604-b17f-fc1a0f75b205" name="86438473-7d4a-4604-b17f-fc1a0f75b205.svg" />
+    <icon guid="53443f13-eaee-4a1d-b99e-ec30d8fb9834" name="53443f13-eaee-4a1d-b99e-ec30d8fb9834.svg" />
+    <icon guid="7b899357-ec3a-4f1a-b0bd-01360be48c87" name="7b899357-ec3a-4f1a-b0bd-01360be48c87.svg" />
+    <icon guid="f3ec98aa-1fc7-4e61-b0ea-2c5e73aa4110" name="f3ec98aa-1fc7-4e61-b0ea-2c5e73aa4110.svg" />
+    <icon guid="79809340-a76b-43e3-87e7-47fd23182324" name="79809340-a76b-43e3-87e7-47fd23182324.svg" />
+    <icon guid="1e7f08db-4509-41a8-9197-b02403365498" name="1e7f08db-4509-41a8-9197-b02403365498.svg" />
+    <icon guid="1f6ba890-1da5-40ca-b3ca-cd6068d6ec3f" name="1f6ba890-1da5-40ca-b3ca-cd6068d6ec3f.svg" />
+    <icon guid="f0813c2c-e8cc-4b1b-ad42-27bd4541d3f9" name="f0813c2c-e8cc-4b1b-ad42-27bd4541d3f9.svg" />
+    <icon guid="c49d9f50-b50d-4715-8834-e45ce1f37693" name="c49d9f50-b50d-4715-8834-e45ce1f37693.svg" />
+    <icon guid="f0bf76d4-2f70-4611-88ed-540208e5112b" name="f0bf76d4-2f70-4611-88ed-540208e5112b.svg" />
+    <icon guid="98f86efc-c9de-4d97-8c0a-1a8d948ac5e9" name="98f86efc-c9de-4d97-8c0a-1a8d948ac5e9.svg" />
+    <icon guid="9af98354-23ef-4ba5-8c01-57c50c2ec355" name="9af98354-23ef-4ba5-8c01-57c50c2ec355.svg" />
+    <icon guid="ebc074bc-8f97-44e2-a1bc-77dc18a22516" name="ebc074bc-8f97-44e2-a1bc-77dc18a22516.svg" />
+    <icon guid="407befd7-6da4-4b07-aeac-9f445a8aa515" name="407befd7-6da4-4b07-aeac-9f445a8aa515.svg" />
+    <icon guid="38c294cb-6fa1-4a65-9a03-2a4e06fc790a" name="38c294cb-6fa1-4a65-9a03-2a4e06fc790a.svg" />
+    <icon guid="0f5221cc-5436-4319-8ff9-c2ea0e97405d" name="0f5221cc-5436-4319-8ff9-c2ea0e97405d.svg" />
+    <icon guid="79f93dc1-3f81-461c-9dc9-81ec0b9cfb76" name="79f93dc1-3f81-461c-9dc9-81ec0b9cfb76.svg" />
+    <icon guid="24418085-5341-4f22-83c8-fc5243f0e1e0" name="24418085-5341-4f22-83c8-fc5243f0e1e0.svg" />
+    <icon guid="8a4f6073-1cfc-4ae1-8c20-5680c8a620a7" name="8a4f6073-1cfc-4ae1-8c20-5680c8a620a7.svg" />
+    <icon guid="033adc0b-cff6-459e-81a4-810734ee5714" name="033adc0b-cff6-459e-81a4-810734ee5714.svg" />
+    <icon guid="1265e4a1-ca5b-4076-bab3-2cc22ee31eb9" name="1265e4a1-ca5b-4076-bab3-2cc22ee31eb9.svg" />
+    <icon guid="7cbdcd3c-3185-459f-81d1-eab7ac52d05f" name="7cbdcd3c-3185-459f-81d1-eab7ac52d05f.svg" />
+    <icon guid="36681d0e-af1a-4ae4-b7d1-4b68b56bd765" name="36681d0e-af1a-4ae4-b7d1-4b68b56bd765.svg" />
+    <icon guid="6d981bad-3523-475c-9aa6-8ff6151ee2c2" name="6d981bad-3523-475c-9aa6-8ff6151ee2c2.svg" />
+    <icon guid="a2c97bc4-2736-4b24-81b6-5471eb63f020" name="a2c97bc4-2736-4b24-81b6-5471eb63f020.svg" />
+    <icon guid="43faa799-0908-4a6d-b966-0b425cdc1ff8" name="43faa799-0908-4a6d-b966-0b425cdc1ff8.svg" />
+    <icon guid="40f513fc-dd91-4902-8e42-170942a4405e" name="40f513fc-dd91-4902-8e42-170942a4405e.svg" />
+    <icon guid="061e2b0a-95ea-41a7-aced-2ff8ac51ccf8" name="061e2b0a-95ea-41a7-aced-2ff8ac51ccf8.svg" />
+    <icon guid="b09988c4-f270-4c9e-8dc8-25038b246870" name="b09988c4-f270-4c9e-8dc8-25038b246870.svg" />
+    <icon guid="a19873e2-7f57-48c8-9b3e-b2ad07ac60d4" name="a19873e2-7f57-48c8-9b3e-b2ad07ac60d4.svg" />
+    <icon guid="79a4f736-a054-4a7a-b7fd-28ba72440f51" name="79a4f736-a054-4a7a-b7fd-28ba72440f51.svg" />
+    <icon guid="b159761d-73d5-4cf7-a37b-ac8dfbefc6ff" name="b159761d-73d5-4cf7-a37b-ac8dfbefc6ff.svg" />
+    <icon guid="80f17b7b-3c59-4f41-898e-92de3772114b" name="80f17b7b-3c59-4f41-898e-92de3772114b.svg" />
+    <icon guid="f3b4ac16-8920-4e71-8b54-fa2dd931f5fc" name="f3b4ac16-8920-4e71-8b54-fa2dd931f5fc.svg" />
+    <icon guid="b4aa3eb0-1539-496c-863b-6ae253585a59" name="b4aa3eb0-1539-496c-863b-6ae253585a59.svg" />
+    <icon guid="a9ab5c29-1b2d-4935-bc12-0fda053e2e81" name="a9ab5c29-1b2d-4935-bc12-0fda053e2e81.svg" />
+    <icon guid="6b123e93-a16e-4e12-9b77-cbc82ae60c51" name="6b123e93-a16e-4e12-9b77-cbc82ae60c51.svg" />
+    <icon guid="d406f64c-1c0d-40ac-b60c-a547a4dc01ce" name="d406f64c-1c0d-40ac-b60c-a547a4dc01ce.svg" />
+    <icon guid="6f25cb86-c7b9-44fe-8c90-6fe81544edcb" name="6f25cb86-c7b9-44fe-8c90-6fe81544edcb.svg" />
+    <icon guid="9917c939-0668-4aa1-b2e1-161e23b890b1" name="9917c939-0668-4aa1-b2e1-161e23b890b1.svg" />
+    <icon guid="0a4c0aab-f3c9-4243-8e19-721dd712c7a2" name="0a4c0aab-f3c9-4243-8e19-721dd712c7a2.svg" />
+    <icon guid="85b42eea-b1c0-4768-9d3c-face88548a92" name="85b42eea-b1c0-4768-9d3c-face88548a92.svg" />
+    <icon guid="ec09d9c9-e306-4d9d-a80d-5ac7c865b5f3" name="ec09d9c9-e306-4d9d-a80d-5ac7c865b5f3.svg" />
+    <icon guid="5aa08335-0e98-4e7e-8a1b-2e12026c579d" name="5aa08335-0e98-4e7e-8a1b-2e12026c579d.svg" />
+    <icon guid="edfa845b-7da2-4528-bb6e-f9480eab86aa" name="edfa845b-7da2-4528-bb6e-f9480eab86aa.svg" />
+    <icon guid="70290499-9836-40f4-b5aa-9d226324e020" name="70290499-9836-40f4-b5aa-9d226324e020.svg" />
+    <icon guid="40fb663b-a621-4feb-97bd-27a3d45002b0" name="40fb663b-a621-4feb-97bd-27a3d45002b0.svg" />
+    <icon guid="bb3a8f4b-676c-487c-a8c5-addfc1be1ebe" name="bb3a8f4b-676c-487c-a8c5-addfc1be1ebe.svg" />
+    <icon guid="7d050f86-68f7-4a0d-a1ac-f80762253b73" name="7d050f86-68f7-4a0d-a1ac-f80762253b73.svg" />
+    <icon guid="b8797da6-bd71-4360-b588-8f67742d888d" name="b8797da6-bd71-4360-b588-8f67742d888d.svg" />
+    <icon guid="3d8377bc-6b9a-4c4a-a88d-fff5f1b79b87" name="3d8377bc-6b9a-4c4a-a88d-fff5f1b79b87.svg" />
+    <icon guid="adcb9e72-d933-48d6-b82b-45510e109fd6" name="adcb9e72-d933-48d6-b82b-45510e109fd6.svg" />
+    <icon guid="81da4b3a-6463-454d-b224-ee397a384f7e" name="81da4b3a-6463-454d-b224-ee397a384f7e.svg" />
+    <icon guid="423fd7b2-ae35-47f6-be6e-0ad92cf86b23" name="423fd7b2-ae35-47f6-be6e-0ad92cf86b23.svg" />
+    <icon guid="484741f5-a9c8-420f-b249-fde07a4dde9e" name="484741f5-a9c8-420f-b249-fde07a4dde9e.svg" />
+    <icon guid="0306d012-2623-4cb9-a36c-f8f7301c15ab" name="0306d012-2623-4cb9-a36c-f8f7301c15ab.svg" />
+    <icon guid="dc55f5a5-e177-4cef-9db2-70a6160fc2f5" name="dc55f5a5-e177-4cef-9db2-70a6160fc2f5.svg" />
+    <icon guid="9dc8dfb6-d1f7-4822-8465-1d40c7d02614" name="9dc8dfb6-d1f7-4822-8465-1d40c7d02614.svg" />
+    <icon guid="f03c5d0c-c444-40ff-95aa-00de883fb581" name="f03c5d0c-c444-40ff-95aa-00de883fb581.svg" />
+    <icon guid="3f24cb03-095b-4f62-bff4-f33c3284c05d" name="3f24cb03-095b-4f62-bff4-f33c3284c05d.svg" />
+    <icon guid="bb6bada0-0c4b-463f-999f-f57e8acbf34a" name="bb6bada0-0c4b-463f-999f-f57e8acbf34a.svg" />
+    <icon guid="34d6b39e-9f62-48d8-9b01-91ad20b8b2ed" name="34d6b39e-9f62-48d8-9b01-91ad20b8b2ed.svg" />
+    <icon guid="15e53347-902e-4115-a3ac-dce1c42a7633" name="15e53347-902e-4115-a3ac-dce1c42a7633.svg" />
+    <icon guid="79aae886-5aa1-48a2-9b33-6a83c6bcc83d" name="79aae886-5aa1-48a2-9b33-6a83c6bcc83d.svg" />
+    <icon guid="72850533-4ca4-4351-ab14-322ba2f6dee9" name="72850533-4ca4-4351-ab14-322ba2f6dee9.svg" />
+    <icon guid="73bfc85d-8592-4083-960d-00d8ea4cb8bb" name="73bfc85d-8592-4083-960d-00d8ea4cb8bb.svg" />
+    <icon guid="2788da41-28b8-4f9f-b18d-2d72330487ad" name="2788da41-28b8-4f9f-b18d-2d72330487ad.svg" />
+    <icon guid="4316e647-d2ff-4456-b60e-1ef962a85640" name="4316e647-d2ff-4456-b60e-1ef962a85640.svg" />
+    <icon guid="1bb0fd76-731d-4383-bc8a-0deca7d750a1" name="1bb0fd76-731d-4383-bc8a-0deca7d750a1.svg" />
+    <icon guid="46965c5c-6e37-4b43-b9cd-8a4d1b599e13" name="46965c5c-6e37-4b43-b9cd-8a4d1b599e13.svg" />
+    <icon guid="09578798-7faa-4d43-bb26-801d6c75dd53" name="09578798-7faa-4d43-bb26-801d6c75dd53.svg" />
+    <icon guid="1f90dff1-af0f-4f9b-82ad-f8f07e744b82" name="1f90dff1-af0f-4f9b-82ad-f8f07e744b82.svg" />
     <icon guid="b433c49a-c039-46b5-828e-0110dee6a86a" name="b433c49a-c039-46b5-828e-0110dee6a86a.svg" />
-    <icon guid="983f8c67-85aa-449a-aad2-2abcc637b0a7" name="983f8c67-85aa-449a-aad2-2abcc637b0a7.svg" />
-    <icon guid="945ee0ed-15da-41c6-8151-0a68c58cdd0e" name="945ee0ed-15da-41c6-8151-0a68c58cdd0e.svg" />
-    <icon guid="d76718d0-4e79-4406-975b-4f2715cba011" name="d76718d0-4e79-4406-975b-4f2715cba011.svg" />
-    <icon guid="a4f544fb-478a-4fe8-a873-b87ccf96c3bc" name="a4f544fb-478a-4fe8-a873-b87ccf96c3bc.svg" />
+    <icon guid="b71f5287-324b-4eaf-9cfb-5d56bf58b1c7" name="b71f5287-324b-4eaf-9cfb-5d56bf58b1c7.svg" />
+    <icon guid="aa361d21-ab3e-472d-99ee-9e1a895d40c5" name="aa361d21-ab3e-472d-99ee-9e1a895d40c5.svg" />
+    <icon guid="4856c3fa-82b3-4264-8955-6b56eefa6437" name="4856c3fa-82b3-4264-8955-6b56eefa6437.svg" />
+    <icon guid="d72dea5e-a796-4479-b6bb-088754d5b087" name="d72dea5e-a796-4479-b6bb-088754d5b087.svg" />
+    <icon guid="4683dfbc-74ee-4d81-8819-59441c938e1c" name="4683dfbc-74ee-4d81-8819-59441c938e1c.svg" />
+    <icon guid="a425d290-d96d-4812-839e-258e27c32f19" name="a425d290-d96d-4812-839e-258e27c32f19.svg" />
+    <icon guid="effaa0d7-5e8f-458c-9ae0-8305c1561de5" name="effaa0d7-5e8f-458c-9ae0-8305c1561de5.svg" />
+    <icon guid="717c93b2-87f2-44dd-8be9-8dbc44c85c05" name="717c93b2-87f2-44dd-8be9-8dbc44c85c05.svg" />
+    <icon guid="f92f08ba-603b-44da-b1ca-084040563fa7" name="f92f08ba-603b-44da-b1ca-084040563fa7.svg" />
+    <icon guid="883e9b2a-9b8a-4c11-9922-571496839a24" name="883e9b2a-9b8a-4c11-9922-571496839a24.svg" />
+    <icon guid="d3572f6d-8d3a-4c6a-b89d-7671d02fb03f" name="d3572f6d-8d3a-4c6a-b89d-7671d02fb03f.svg" />
+    <icon guid="54a6ddd7-3ae5-45d3-b15f-0b9aafb8559c" name="54a6ddd7-3ae5-45d3-b15f-0b9aafb8559c.svg" />
+    <icon guid="17910d05-6305-40b5-b164-bceb526299e5" name="17910d05-6305-40b5-b164-bceb526299e5.svg" />
+    <icon guid="aa518aba-7637-4e19-8980-6b62aa9657c8" name="aa518aba-7637-4e19-8980-6b62aa9657c8.svg" />
+    <icon guid="db764229-45d8-4456-b2c0-88844f2b6ed3" name="db764229-45d8-4456-b2c0-88844f2b6ed3.svg" />
+    <icon guid="26dc00b2-2f4d-4851-b239-48c45e679bfc" name="26dc00b2-2f4d-4851-b239-48c45e679bfc.svg" />
     <icon guid="186e4e43-8a40-4987-80b7-b30c2761c37d" name="186e4e43-8a40-4987-80b7-b30c2761c37d.svg" />
     <icon guid="5ab028da-129d-4d26-a02d-3933885aa72b" name="5ab028da-129d-4d26-a02d-3933885aa72b.svg" />
-    <icon guid="2f76faca-cc80-48f0-8129-392c4c80e07e" name="2f76faca-cc80-48f0-8129-392c4c80e07e.svg" />
-    <icon guid="a525c05b-3164-4fea-93f9-510e586b6088" name="a525c05b-3164-4fea-93f9-510e586b6088.svg" />
-    <icon guid="09964bb2-4868-4bb5-a0cc-a4c94805dc77" name="09964bb2-4868-4bb5-a0cc-a4c94805dc77.svg" />
-    <icon guid="53443f13-eaee-4a1d-b99e-ec30d8fb9834" name="53443f13-eaee-4a1d-b99e-ec30d8fb9834.svg" />
-    <icon guid="f4d0433f-5b5f-438f-a99f-639e85ac53c8" name="f4d0433f-5b5f-438f-a99f-639e85ac53c8.svg" />
-    <icon guid="441b60c4-aa80-41ea-9424-0bf0ac03e57b" name="441b60c4-aa80-41ea-9424-0bf0ac03e57b.svg" />
-    <icon guid="26dc00b2-2f4d-4851-b239-48c45e679bfc" name="26dc00b2-2f4d-4851-b239-48c45e679bfc.svg" />
-    <icon guid="a74757c9-2e8c-4f24-b4ba-56a3030ca114" name="a74757c9-2e8c-4f24-b4ba-56a3030ca114.svg" />
-    <icon guid="1df90888-e1e0-4ab7-afdb-c5808a50576c" name="1df90888-e1e0-4ab7-afdb-c5808a50576c.svg" />
-    <icon guid="6adb5c90-3c16-4f8e-bcf3-ae24e4813d23" name="6adb5c90-3c16-4f8e-bcf3-ae24e4813d23.svg" />
-    <icon guid="2c0cb6dc-179c-4377-9c0e-6dc45cb667f8" name="2c0cb6dc-179c-4377-9c0e-6dc45cb667f8.svg" />
-    <icon guid="c81f7b09-7385-42a1-bdc4-2b08e2b05b67" name="c81f7b09-7385-42a1-bdc4-2b08e2b05b67.svg" />
-    <icon guid="867e1087-7300-41cb-9df0-d01b19494d4f" name="867e1087-7300-41cb-9df0-d01b19494d4f.svg" />
-    <icon guid="b1e63f7a-4369-461a-88e3-ef7f1792be3a" name="b1e63f7a-4369-461a-88e3-ef7f1792be3a.svg" />
-    <icon guid="1f90dff1-af0f-4f9b-82ad-f8f07e744b82" name="1f90dff1-af0f-4f9b-82ad-f8f07e744b82.svg" />
-    <icon guid="ffb23bfa-2372-4cc2-9d53-39fa71dc9cc0" name="ffb23bfa-2372-4cc2-9d53-39fa71dc9cc0.svg" />
-    <icon guid="98f86efc-c9de-4d97-8c0a-1a8d948ac5e9" name="98f86efc-c9de-4d97-8c0a-1a8d948ac5e9.svg" />
-    <icon guid="6d981bad-3523-475c-9aa6-8ff6151ee2c2" name="6d981bad-3523-475c-9aa6-8ff6151ee2c2.svg" />
-    <icon guid="fb14d7dd-8e83-4af0-923a-c043eed5afc9" name="fb14d7dd-8e83-4af0-923a-c043eed5afc9.svg" />
-    <icon guid="6f25cb86-c7b9-44fe-8c90-6fe81544edcb" name="6f25cb86-c7b9-44fe-8c90-6fe81544edcb.svg" />
-    <icon guid="f03c5d0c-c444-40ff-95aa-00de883fb581" name="f03c5d0c-c444-40ff-95aa-00de883fb581.svg" />
-    <icon guid="9586f4a3-baf0-47cf-8f6a-018ae37ccc1a" name="9586f4a3-baf0-47cf-8f6a-018ae37ccc1a.svg" />
-    <icon guid="a3491e60-bdaf-4b4d-aa3a-27529004c62e" name="a3491e60-bdaf-4b4d-aa3a-27529004c62e.svg" />
-    <icon guid="81da4b3a-6463-454d-b224-ee397a384f7e" name="81da4b3a-6463-454d-b224-ee397a384f7e.svg" />
-    <icon guid="dc55f5a5-e177-4cef-9db2-70a6160fc2f5" name="dc55f5a5-e177-4cef-9db2-70a6160fc2f5.svg" />
-    <icon guid="48f76c64-eada-46dd-9c3c-9130d416e673" name="48f76c64-eada-46dd-9c3c-9130d416e673.svg" />
-    <icon guid="4683dfbc-74ee-4d81-8819-59441c938e1c" name="4683dfbc-74ee-4d81-8819-59441c938e1c.svg" />
-    <icon guid="3e843cfb-c00b-4536-8497-f242905f8b69" name="3e843cfb-c00b-4536-8497-f242905f8b69.svg" />
-    <icon guid="204eb439-7be4-4b66-bfa9-e14eddff4f16" name="204eb439-7be4-4b66-bfa9-e14eddff4f16.svg" />
-    <icon guid="d406f64c-1c0d-40ac-b60c-a547a4dc01ce" name="d406f64c-1c0d-40ac-b60c-a547a4dc01ce.svg" />
-    <icon guid="eb0dbba0-5af2-4461-95b1-4d27499925af" name="eb0dbba0-5af2-4461-95b1-4d27499925af.svg" />
-    <icon guid="a19873e2-7f57-48c8-9b3e-b2ad07ac60d4" name="a19873e2-7f57-48c8-9b3e-b2ad07ac60d4.svg" />
-    <icon guid="ff3de8a5-1d52-4215-8d5c-7b2871d453c7" name="ff3de8a5-1d52-4215-8d5c-7b2871d453c7.svg" />
-    <icon guid="395dccd2-ef0d-4013-8ecf-6d8bae57643a" name="395dccd2-ef0d-4013-8ecf-6d8bae57643a.svg" />
-    <icon guid="31c126a2-6124-4e38-b080-e41a3dd571c9" name="31c126a2-6124-4e38-b080-e41a3dd571c9.svg" />
-    <icon guid="3ed7b37b-7bff-4449-ae8e-f49a6e07b081" name="3ed7b37b-7bff-4449-ae8e-f49a6e07b081.svg" />
-    <icon guid="00bfaea3-428a-44b7-bb84-cf7f6249623b" name="00bfaea3-428a-44b7-bb84-cf7f6249623b.svg" />
-    <icon guid="033adc0b-cff6-459e-81a4-810734ee5714" name="033adc0b-cff6-459e-81a4-810734ee5714.svg" />
-    <icon guid="7d050f86-68f7-4a0d-a1ac-f80762253b73" name="7d050f86-68f7-4a0d-a1ac-f80762253b73.svg" />
-    <icon guid="573cb755-43a0-41b4-8b65-2bf25220f15a" name="573cb755-43a0-41b4-8b65-2bf25220f15a.svg" />
-    <icon guid="79f93dc1-3f81-461c-9dc9-81ec0b9cfb76" name="79f93dc1-3f81-461c-9dc9-81ec0b9cfb76.svg" />
-    <icon guid="96af9667-d020-4ee6-be5f-f6795bf1a2eb" name="96af9667-d020-4ee6-be5f-f6795bf1a2eb.svg" />
-    <icon guid="9ef3321a-1a52-45af-872d-4752cda4fd44" name="9ef3321a-1a52-45af-872d-4752cda4fd44.svg" />
-    <icon guid="f4d079c9-4735-4584-be67-19c6700e49a7" name="f4d079c9-4735-4584-be67-19c6700e49a7.svg" />
-    <icon guid="109a2d2a-8894-431c-bcca-f20ac260c051" name="109a2d2a-8894-431c-bcca-f20ac260c051.svg" />
-    <icon guid="1265e4a1-ca5b-4076-bab3-2cc22ee31eb9" name="1265e4a1-ca5b-4076-bab3-2cc22ee31eb9.svg" />
-    <icon guid="aa222dba-ec3f-4eb3-92bb-7e5961ea534c" name="aa222dba-ec3f-4eb3-92bb-7e5961ea534c.svg" />
-    <icon guid="2fdf4dfc-d46b-4241-ae93-f94b9713daca" name="2fdf4dfc-d46b-4241-ae93-f94b9713daca.svg" />
-    <icon guid="67ef3b8a-ba97-4890-929f-81ee33640117" name="67ef3b8a-ba97-4890-929f-81ee33640117.svg" />
-    <icon guid="2058c19c-94ec-4431-a29d-7921aa656de9" name="2058c19c-94ec-4431-a29d-7921aa656de9.svg" />
-    <icon guid="f9da9db0-4712-425a-a235-d03410eaf0ab" name="f9da9db0-4712-425a-a235-d03410eaf0ab.svg" />
-    <icon guid="46965c5c-6e37-4b43-b9cd-8a4d1b599e13" name="46965c5c-6e37-4b43-b9cd-8a4d1b599e13.svg" />
-    <icon guid="ebc074bc-8f97-44e2-a1bc-77dc18a22516" name="ebc074bc-8f97-44e2-a1bc-77dc18a22516.svg" />
-    <icon guid="45c026c9-2376-44ce-a9ec-ed92d16ceb40" name="45c026c9-2376-44ce-a9ec-ed92d16ceb40.svg" />
-    <icon guid="8cefad7d-9121-4c5f-9fdd-8851d1e14497" name="8cefad7d-9121-4c5f-9fdd-8851d1e14497.svg" />
-    <icon guid="f4b4d938-1753-43ff-8d06-780565aabc0f" name="f4b4d938-1753-43ff-8d06-780565aabc0f.svg" />
-    <icon guid="85b42eea-b1c0-4768-9d3c-face88548a92" name="85b42eea-b1c0-4768-9d3c-face88548a92.svg" />
-    <icon guid="242011f5-c40c-4d5c-903f-ab321f761eae" name="242011f5-c40c-4d5c-903f-ab321f761eae.svg" />
-    <icon guid="c1eb6c78-2f2f-491d-aadc-b73cef3f2519" name="c1eb6c78-2f2f-491d-aadc-b73cef3f2519.svg" />
-    <icon guid="a6d89770-9cc2-44e4-a49e-30e070a5ee67" name="a6d89770-9cc2-44e4-a49e-30e070a5ee67.svg" />
-    <icon guid="f92a93d9-6880-4533-8054-e4398da14570" name="f92a93d9-6880-4533-8054-e4398da14570.svg" />
-    <icon guid="4964f50e-a182-4d5b-b7b8-d109e7c67c51" name="4964f50e-a182-4d5b-b7b8-d109e7c67c51.svg" />
-    <icon guid="3d8377bc-6b9a-4c4a-a88d-fff5f1b79b87" name="3d8377bc-6b9a-4c4a-a88d-fff5f1b79b87.svg" />
-    <icon guid="d2f9432b-447c-4922-8796-b4f4f430b799" name="d2f9432b-447c-4922-8796-b4f4f430b799.svg" />
-    <icon guid="174234be-ae1d-4a07-bdfb-103bd77b711d" name="174234be-ae1d-4a07-bdfb-103bd77b711d.svg" />
-    <icon guid="3f24cb03-095b-4f62-bff4-f33c3284c05d" name="3f24cb03-095b-4f62-bff4-f33c3284c05d.svg" />
-    <icon guid="73bfc85d-8592-4083-960d-00d8ea4cb8bb" name="73bfc85d-8592-4083-960d-00d8ea4cb8bb.svg" />
-    <icon guid="866b45b8-2cd3-45e7-b6f7-fb25a4adc56b" name="866b45b8-2cd3-45e7-b6f7-fb25a4adc56b.svg" />
-    <icon guid="564f1d31-ecc5-404a-92d2-bcd5ac53bfad" name="564f1d31-ecc5-404a-92d2-bcd5ac53bfad.svg" />
-    <icon guid="4856c3fa-82b3-4264-8955-6b56eefa6437" name="4856c3fa-82b3-4264-8955-6b56eefa6437.svg" />
-    <icon guid="c0c1c9fb-45b6-45b3-894e-0350168347d3" name="c0c1c9fb-45b6-45b3-894e-0350168347d3.svg" />
-    <icon guid="5ba13225-6c3d-4227-915c-f62631e9bcac" name="5ba13225-6c3d-4227-915c-f62631e9bcac.svg" />
+    <icon guid="68a6d929-8862-46e8-8da5-d821cf9bb1e9" name="68a6d929-8862-46e8-8da5-d821cf9bb1e9.svg" />
     <icon guid="7f039174-f9db-4d59-b424-0e27b025edca" name="7f039174-f9db-4d59-b424-0e27b025edca.svg" />
-    <icon guid="ec793594-8e28-4c0f-9db8-56cd61fe2efa" name="ec793594-8e28-4c0f-9db8-56cd61fe2efa.svg" />
-    <icon guid="bb55e477-433e-4e51-ad91-22db93579fdc" name="bb55e477-433e-4e51-ad91-22db93579fdc.svg" />
-    <icon guid="e110eaeb-04ac-410c-b658-0657809c3947" name="e110eaeb-04ac-410c-b658-0657809c3947.svg" />
-    <icon guid="1fe7f462-2fb0-4ef6-ac4c-8f410501b8cb" name="1fe7f462-2fb0-4ef6-ac4c-8f410501b8cb.svg" />
-    <icon guid="62f7db64-a876-4dd4-84b9-f4b76a104474" name="62f7db64-a876-4dd4-84b9-f4b76a104474.svg" />
-    <icon guid="2a4b49e6-1fff-4fd2-b543-3efca2b9002a" name="2a4b49e6-1fff-4fd2-b543-3efca2b9002a.svg" />
-    <icon guid="69c02a08-3c45-4bb0-9df1-d9d2793f71cf" name="69c02a08-3c45-4bb0-9df1-d9d2793f71cf.svg" />
-    <icon guid="cb25339b-bd7e-4cd1-8702-949589d6fa68" name="cb25339b-bd7e-4cd1-8702-949589d6fa68.svg" />
-    <icon guid="99c14e36-6aeb-405f-95ee-ea39bf8509bf" name="99c14e36-6aeb-405f-95ee-ea39bf8509bf.svg" />
-    <icon guid="f01dc570-1656-4c18-8ef2-095cbfb5264f" name="f01dc570-1656-4c18-8ef2-095cbfb5264f.svg" />
-    <icon guid="883e9b2a-9b8a-4c11-9922-571496839a24" name="883e9b2a-9b8a-4c11-9922-571496839a24.svg" />
-    <icon guid="f01f6c14-793f-47e3-9b49-c7d351c3fdd7" name="f01f6c14-793f-47e3-9b49-c7d351c3fdd7.svg" />
-    <icon guid="407befd7-6da4-4b07-aeac-9f445a8aa515" name="407befd7-6da4-4b07-aeac-9f445a8aa515.svg" />
-    <icon guid="06b58eb1-16af-45a2-8a23-a7ec934920d6" name="06b58eb1-16af-45a2-8a23-a7ec934920d6.svg" />
-    <icon guid="c32762c0-4150-4912-89e0-29038e5e881e" name="c32762c0-4150-4912-89e0-29038e5e881e.svg" />
-    <icon guid="17609f83-caac-4645-9add-8dd3be3b7f8d" name="17609f83-caac-4645-9add-8dd3be3b7f8d.svg" />
-    <icon guid="8877b9d0-c817-416b-a177-206fbbafd0e8" name="8877b9d0-c817-416b-a177-206fbbafd0e8.svg" />
-    <icon guid="f0bf76d4-2f70-4611-88ed-540208e5112b" name="f0bf76d4-2f70-4611-88ed-540208e5112b.svg" />
-    <icon guid="037c5f8f-4fb3-4460-8b4b-f89462babc88" name="037c5f8f-4fb3-4460-8b4b-f89462babc88.svg" />
-    <icon guid="bddfb29d-1b27-4cad-8c7d-337f8d0458fa" name="bddfb29d-1b27-4cad-8c7d-337f8d0458fa.svg" />
-    <icon guid="66ad6e1f-b289-4561-8ea3-33ca908aa032" name="66ad6e1f-b289-4561-8ea3-33ca908aa032.svg" />
-    <icon guid="b11fce6f-babd-440d-9d0c-31a4ded7d62f" name="b11fce6f-babd-440d-9d0c-31a4ded7d62f.svg" />
-    <icon guid="d96fff0d-72dc-4ffb-8687-f90f2bf5a38a" name="d96fff0d-72dc-4ffb-8687-f90f2bf5a38a.svg" />
-    <icon guid="665282c8-cd6d-4be8-9d8a-8a33761a8cd2" name="665282c8-cd6d-4be8-9d8a-8a33761a8cd2.svg" />
-    <icon guid="edfa845b-7da2-4528-bb6e-f9480eab86aa" name="edfa845b-7da2-4528-bb6e-f9480eab86aa.svg" />
-    <icon guid="15344168-fb90-4615-ba33-a2d97df910a0" name="15344168-fb90-4615-ba33-a2d97df910a0.svg" />
-    <icon guid="34d6b39e-9f62-48d8-9b01-91ad20b8b2ed" name="34d6b39e-9f62-48d8-9b01-91ad20b8b2ed.svg" />
-    <icon guid="22e11804-4537-44f0-82c7-d029f59887b5" name="22e11804-4537-44f0-82c7-d029f59887b5.svg" />
-    <icon guid="5c364322-4d4c-4707-a20e-dab4cbc28243" name="5c364322-4d4c-4707-a20e-dab4cbc28243.svg" />
-    <icon guid="c6f8b0d6-b565-46f9-be57-36da1aee1d98" name="c6f8b0d6-b565-46f9-be57-36da1aee1d98.svg" />
-    <icon guid="55e099f3-c7c3-4bf6-8ffb-0d066eb0d420" name="55e099f3-c7c3-4bf6-8ffb-0d066eb0d420.svg" />
-    <icon guid="ae16254a-8324-4edc-9b55-58893d174211" name="ae16254a-8324-4edc-9b55-58893d174211.svg" />
-    <icon guid="a87b94b8-b43c-4836-b7af-37e1e9d5bc49" name="a87b94b8-b43c-4836-b7af-37e1e9d5bc49.svg" />
-    <icon guid="43faa799-0908-4a6d-b966-0b425cdc1ff8" name="43faa799-0908-4a6d-b966-0b425cdc1ff8.svg" />
-    <icon guid="a6c0c634-62b2-4c02-8b33-2c3e6fedce0b" name="a6c0c634-62b2-4c02-8b33-2c3e6fedce0b.svg" />
-    <icon guid="b1f22b47-1182-443d-aa9d-a07b72f796c1" name="b1f22b47-1182-443d-aa9d-a07b72f796c1.svg" />
-    <icon guid="7766ecc9-5e52-446a-ad73-ea24f0f0088a" name="7766ecc9-5e52-446a-ad73-ea24f0f0088a.svg" />
-    <icon guid="d159785b-ec52-44e6-85ad-72fd10892930" name="d159785b-ec52-44e6-85ad-72fd10892930.svg" />
     <icon guid="681805f2-f2c9-40a2-b0cd-eac07429ad6c" name="681805f2-f2c9-40a2-b0cd-eac07429ad6c.svg" />
-    <icon guid="0306d012-2623-4cb9-a36c-f8f7301c15ab" name="0306d012-2623-4cb9-a36c-f8f7301c15ab.svg" />
-    <icon guid="7b2a460a-b73c-4345-95b9-8c1388508423" name="7b2a460a-b73c-4345-95b9-8c1388508423.svg" />
-    <icon guid="f246d560-6a0b-4727-a9f1-d04a3e3ac4c4" name="f246d560-6a0b-4727-a9f1-d04a3e3ac4c4.svg" />
-    <icon guid="f35e509b-be18-4104-8d73-33004590d1f4" name="f35e509b-be18-4104-8d73-33004590d1f4.svg" />
-    <icon guid="17910d05-6305-40b5-b164-bceb526299e5" name="17910d05-6305-40b5-b164-bceb526299e5.svg" />
-    <icon guid="f0813c2c-e8cc-4b1b-ad42-27bd4541d3f9" name="f0813c2c-e8cc-4b1b-ad42-27bd4541d3f9.svg" />
-    <icon guid="1302b9f7-d765-4d6d-a765-b141ed50c71f" name="1302b9f7-d765-4d6d-a765-b141ed50c71f.svg" />
-    <icon guid="4316e647-d2ff-4456-b60e-1ef962a85640" name="4316e647-d2ff-4456-b60e-1ef962a85640.svg" />
-    <icon guid="db764229-45d8-4456-b2c0-88844f2b6ed3" name="db764229-45d8-4456-b2c0-88844f2b6ed3.svg" />
-    <icon guid="ddad2602-f512-499a-b31e-5b0e666765f5" name="ddad2602-f512-499a-b31e-5b0e666765f5.svg" />
-    <icon guid="5ff6957c-7760-4816-b287-6f3929cc2ebf" name="5ff6957c-7760-4816-b287-6f3929cc2ebf.svg" />
-    <icon guid="850b40fd-6833-4360-8119-ed5b29034da2" name="850b40fd-6833-4360-8119-ed5b29034da2.svg" />
-    <icon guid="8a4f6073-1cfc-4ae1-8c20-5680c8a620a7" name="8a4f6073-1cfc-4ae1-8c20-5680c8a620a7.svg" />
-    <icon guid="9814efcb-993f-4fb2-8de3-381ff171fa5e" name="9814efcb-993f-4fb2-8de3-381ff171fa5e.svg" />
-    <icon guid="9dc8dfb6-d1f7-4822-8465-1d40c7d02614" name="9dc8dfb6-d1f7-4822-8465-1d40c7d02614.svg" />
-    <icon guid="40fb663b-a621-4feb-97bd-27a3d45002b0" name="40fb663b-a621-4feb-97bd-27a3d45002b0.svg" />
-    <icon guid="3e6fda75-d989-406f-a82e-e32dc1d19249" name="3e6fda75-d989-406f-a82e-e32dc1d19249.svg" />
-    <icon guid="8427d5d8-47b6-4e00-832e-8515765adbc2" name="8427d5d8-47b6-4e00-832e-8515765adbc2.svg" />
-    <icon guid="1560dbf0-5e20-4c18-8939-25cd5d4a5a5c" name="1560dbf0-5e20-4c18-8939-25cd5d4a5a5c.svg" />
-    <icon guid="dae6e7b4-d756-431d-89f3-b98c0419397f" name="dae6e7b4-d756-431d-89f3-b98c0419397f.svg" />
-    <icon guid="aa361d21-ab3e-472d-99ee-9e1a895d40c5" name="aa361d21-ab3e-472d-99ee-9e1a895d40c5.svg" />
-    <icon guid="2788da41-28b8-4f9f-b18d-2d72330487ad" name="2788da41-28b8-4f9f-b18d-2d72330487ad.svg" />
-    <icon guid="1e169bdb-9b7d-4a7a-9ba8-f8db8748f3a4" name="1e169bdb-9b7d-4a7a-9ba8-f8db8748f3a4.svg" />
-    <icon guid="5d69d3d2-7157-46bb-ab64-a0817ba4a11b" name="5d69d3d2-7157-46bb-ab64-a0817ba4a11b.svg" />
-    <icon guid="1f6ba890-1da5-40ca-b3ca-cd6068d6ec3f" name="1f6ba890-1da5-40ca-b3ca-cd6068d6ec3f.svg" />
-    <icon guid="e45b87fe-227f-4714-800a-ce49336a0e79" name="e45b87fe-227f-4714-800a-ce49336a0e79.svg" />
-    <icon guid="43391116-a80c-4e47-a311-f313bca87087" name="43391116-a80c-4e47-a311-f313bca87087.svg" />
-    <icon guid="0f7761a0-bde6-48ff-a9de-298feb578218" name="0f7761a0-bde6-48ff-a9de-298feb578218.svg" />
-    <icon guid="df91e91e-ac6e-4e31-a788-a2ab063f015b" name="df91e91e-ac6e-4e31-a788-a2ab063f015b.svg" />
-    <icon guid="9af98354-23ef-4ba5-8c01-57c50c2ec355" name="9af98354-23ef-4ba5-8c01-57c50c2ec355.svg" />
-    <icon guid="7c818a87-4470-47a9-b92e-5ac324f62a9e" name="7c818a87-4470-47a9-b92e-5ac324f62a9e.svg" />
-    <icon guid="79a4f736-a054-4a7a-b7fd-28ba72440f51" name="79a4f736-a054-4a7a-b7fd-28ba72440f51.svg" />
-    <icon guid="cc6a366a-7bfa-4f7f-982b-9db2268898fb" name="cc6a366a-7bfa-4f7f-982b-9db2268898fb.svg" />
-    <icon guid="32b4e1e2-070c-48f1-82dd-9824b12d505e" name="32b4e1e2-070c-48f1-82dd-9824b12d505e.svg" />
-    <icon guid="af6cf18f-109b-43e6-b818-9c65879e59a2" name="af6cf18f-109b-43e6-b818-9c65879e59a2.svg" />
-    <icon guid="d6bbb5be-2a2d-4dde-b86a-5cbf05a0c9de" name="d6bbb5be-2a2d-4dde-b86a-5cbf05a0c9de.svg" />
-    <icon guid="e158648b-8f93-4a77-b613-3fca3a0f3430" name="e158648b-8f93-4a77-b613-3fca3a0f3430.svg" />
-    <icon guid="62a4c3ad-5315-4615-a867-eccf6bf27631" name="62a4c3ad-5315-4615-a867-eccf6bf27631.svg" />
-    <icon guid="c10563d5-3cdf-4caf-a745-0c6e7a7e679f" name="c10563d5-3cdf-4caf-a745-0c6e7a7e679f.svg" />
-    <icon guid="717c93b2-87f2-44dd-8be9-8dbc44c85c05" name="717c93b2-87f2-44dd-8be9-8dbc44c85c05.svg" />
-    <icon guid="e6b2a33b-4dd9-49a7-9f37-bea10cdb9fb7" name="e6b2a33b-4dd9-49a7-9f37-bea10cdb9fb7.svg" />
-    <icon guid="f2a7a9a7-0f34-4029-a6de-44cba1107956" name="f2a7a9a7-0f34-4029-a6de-44cba1107956.svg" />
-    <icon guid="3ae591c5-8874-41f5-8e02-1e3ce3b5582c" name="3ae591c5-8874-41f5-8e02-1e3ce3b5582c.svg" />
-    <icon guid="4e3105ba-16f7-45aa-8c6f-2b77a0f198ae" name="4e3105ba-16f7-45aa-8c6f-2b77a0f198ae.svg" />
-    <icon guid="a88e6d36-9dfd-4579-ae0f-262f2789b960" name="a88e6d36-9dfd-4579-ae0f-262f2789b960.svg" />
-    <icon guid="ed52b342-befc-4177-985e-359131d25b02" name="ed52b342-befc-4177-985e-359131d25b02.svg" />
-    <icon guid="d54e8558-a2d4-4d2a-91c4-bb9f3bda2abd" name="d54e8558-a2d4-4d2a-91c4-bb9f3bda2abd.svg" />
-    <icon guid="4786ef9f-5d4a-4f22-9f39-8f63bab3a0b8" name="4786ef9f-5d4a-4f22-9f39-8f63bab3a0b8.svg" />
-    <icon guid="72850533-4ca4-4351-ab14-322ba2f6dee9" name="72850533-4ca4-4351-ab14-322ba2f6dee9.svg" />
-    <icon guid="cc6af465-e251-4be4-b7c5-bc586a00991e" name="cc6af465-e251-4be4-b7c5-bc586a00991e.svg" />
-    <icon guid="9450f7ad-be5f-4fec-a1bb-dbd02877f781" name="9450f7ad-be5f-4fec-a1bb-dbd02877f781.svg" />
-    <icon guid="7a9fb56c-af94-4087-8deb-589c14885cc6" name="7a9fb56c-af94-4087-8deb-589c14885cc6.svg" />
-    <icon guid="8283bac8-eb6e-4cf8-8970-ed8c5cf34b22" name="8283bac8-eb6e-4cf8-8970-ed8c5cf34b22.svg" />
-    <icon guid="c5915da2-41fc-40f4-8767-c0aacf02f2e7" name="c5915da2-41fc-40f4-8767-c0aacf02f2e7.svg" />
-    <icon guid="90f6d80e-98f7-43fe-af1c-a5ee18e27dd0" name="90f6d80e-98f7-43fe-af1c-a5ee18e27dd0.svg" />
-    <icon guid="ec5c6389-9aa4-404a-bc74-ea164b8f7918" name="ec5c6389-9aa4-404a-bc74-ea164b8f7918.svg" />
-    <icon guid="38c294cb-6fa1-4a65-9a03-2a4e06fc790a" name="38c294cb-6fa1-4a65-9a03-2a4e06fc790a.svg" />
-    <icon guid="9dadc576-3cbe-4e0d-918a-56b25aedb425" name="9dadc576-3cbe-4e0d-918a-56b25aedb425.svg" />
-    <icon guid="0a4c0aab-f3c9-4243-8e19-721dd712c7a2" name="0a4c0aab-f3c9-4243-8e19-721dd712c7a2.svg" />
-    <icon guid="49b89de0-3f57-4073-9ecb-73d3699e7213" name="49b89de0-3f57-4073-9ecb-73d3699e7213.svg" />
-    <icon guid="1bb0fd76-731d-4383-bc8a-0deca7d750a1" name="1bb0fd76-731d-4383-bc8a-0deca7d750a1.svg" />
-    <icon guid="b4aa3eb0-1539-496c-863b-6ae253585a59" name="b4aa3eb0-1539-496c-863b-6ae253585a59.svg" />
-    <icon guid="393cd5c9-02b4-4a52-a411-b6804b09f0e5" name="393cd5c9-02b4-4a52-a411-b6804b09f0e5.svg" />
-    <icon guid="db31fa70-a4c8-45bf-b949-bf271d5ab711" name="db31fa70-a4c8-45bf-b949-bf271d5ab711.svg" />
-    <icon guid="ec09d9c9-e306-4d9d-a80d-5ac7c865b5f3" name="ec09d9c9-e306-4d9d-a80d-5ac7c865b5f3.svg" />
   </icons>
   <bitmaps>
     <small_bitmap item_width="16" item_height="16">
