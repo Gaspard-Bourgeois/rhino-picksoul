@@ -1,14 +1,14 @@
-
 # -*- coding: utf-8 -*-
 """
 defineBlock.py
 --------------
 Crée ou écrase une définition de bloc à partir d'une sélection d'objets,
-en s'appuyant sur un bloc source comme origine (ou sur le World).
+en s'appuyant sur un bloc source ou un point comme origine (ou sur le World).
 
 Flux :
   1. Sélection des objets cibles.
-  2. Choix de l'origine : un bloc existant OU le World (Entrée).
+  2. Choix de l'origine : un bloc existant, un point spécifique (via l'option) 
+     OU le World (Entrée).
   3. Lecture du nom racine depuis les UserText "BlockNameLevel_*" des objets
      sélectionnés (fallback → "NewBlock").
   4. Confirmation / saisie du nom final (rs.GetString).
@@ -30,7 +30,6 @@ def _get_root_name_from_usertext(obj_ids):
     """
     Parcourt les UserText 'BlockNameLevel_N' de chaque objet et retourne
     le nom associé au niveau le plus bas (racine = minimum trouvé).
-    Retourne None si aucun UserText pertinent n'est trouvé.
     """
     best_name  = None
     best_level = None
@@ -68,15 +67,6 @@ def _clean_block_name(name):
     return name
 
 
-def _xform_from_origin_block(origin_id):
-    """Retourne le Xform du bloc origine, ou XformIdentity si None/invalide."""
-    if origin_id and rs.IsBlockInstance(origin_id):
-        xf = rs.BlockInstanceXform(origin_id)
-        if xf is not None:
-            return xf
-    return rs.XformIdentity()
-
-
 def _find_available_index_name(base_name):
     """Trouve un nom disponible sous la forme base_name#i."""
     i = 1
@@ -85,6 +75,57 @@ def _find_available_index_name(base_name):
         if not rs.IsBlock(candidate):
             return candidate
         i += 1
+
+
+def _get_origin_with_option():
+    """
+    Demande à l'utilisateur de choisir un bloc origine.
+    - Clic sur un bloc -> utilise le bloc.
+    - Clic sur l'option "ChoisirPoint" -> demande un point précis.
+    - Touche Entrée -> utilise l'origine mondiale (WorldXY).
+    Retourne : (Rhino.Geom.Transform, succes_bool)
+    """
+    go = Rhino.Input.Custom.GetObject()
+    go.SetCommandPrompt("Choisir un bloc comme origine (Entrée = Origine Mondiale)")
+    go.GeometryFilter = Rhino.DocObjects.ObjectType.InstanceReference  # Filtre uniquement les blocs
+    go.AcceptNothing(True)
+    go.DisablePreSelect()
+    
+    # Ajout de l'option cliquable en ligne de commande
+    go.AddOption("ChoisirPoint")
+    
+    while True:
+        get_rc = go.Get()
+        
+        # Cas 1 : L'utilisateur a cliqué sur un bloc de référence
+        if get_rc == Rhino.Input.GetResult.Object:
+            obj_ref = go.Object(0)
+            origin_id = obj_ref.ObjectId
+            go.Dispose()
+            xf = rs.BlockInstanceXform(origin_id)
+            if xf is not None:
+                return xf, True
+            return rs.XformIdentity(), True
+            
+        # Cas 2 : L'utilisateur a cliqué explicitement sur l'option "ChoisirPoint"
+        elif get_rc == Rhino.Input.GetResult.Option:
+            go.Dispose()
+            pt = rs.GetPoint("Sélectionner le point d'origine")
+            if pt:
+                # Crée une matrice de translation pure à partir du point
+                return rs.XformTranslation(pt), True
+            else:
+                return None, False
+                
+        # Cas 3 : L'utilisateur a pressé Entrée (sans clic sur l'option) -> Origine Mondiale
+        elif get_rc == Rhino.Input.GetResult.Nothing:
+            go.Dispose()
+            return rs.XformIdentity(), True
+            
+        # Annulation (Echap, etc.)
+        else:
+            go.Dispose()
+            return None, False
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -101,12 +142,11 @@ def defineBlock():
     if not obj_ids:
         return
 
-    # ── 2. Origine : bloc source ou World ──────────────────────────────────────
-    origin_id    = rs.GetObject(
-        "Choisir un bloc comme origine (Entrée = Origine Mondiale)",
-        rs.filter.instance
-    )
-    origin_xform = _xform_from_origin_block(origin_id)
+    # ── 2. Origine : bloc source, point personnalisé ou World ──────────────────
+    origin_xform, success = _get_origin_with_option()
+    if not success:
+        print("Opération annulée.")
+        return
 
     # ── 3. Détermination du nom racine ─────────────────────────────────────────
     raw_name  = _get_root_name_from_usertext(obj_ids)
@@ -147,7 +187,6 @@ def defineBlock():
     copied_geos = []
     
     def is_block_defined_in_block_child(_obj_ids, _final_name):
-            
         # Correction de l'auto-référence : On inspecte les objets sélectionnés AVANT la duplication
         for obj_id in _obj_ids:
             if rs.IsBlockInstance(obj_id):
@@ -188,8 +227,7 @@ def defineBlock():
             for guid in copied_geos:
                 rh_obj = sc.doc.Objects.Find(guid)
                 if rh_obj:
-                    # CORRECTION : Duplication OBLIGATOIRE de la géométrie et des attributs
-                    # pour éviter la corruption de la définition après rs.DeleteObjects()
+                    # Duplication de la géométrie et des attributs
                     geo_list.append(rh_obj.Geometry.DuplicateShallow())
                     attr_list.append(rh_obj.Attributes.Duplicate())
             
