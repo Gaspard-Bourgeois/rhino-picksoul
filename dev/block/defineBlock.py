@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 defineBlock.py
@@ -12,7 +13,8 @@ Flux :
      sélectionnés (fallback → "NewBlock").
   4. Confirmation / saisie du nom final (rs.GetString).
   5. Si le nom existe déjà → confirmation d'écrasement (rs.GetString).
-  6. Insertion de la nouvelle instance à l'origine choisie.
+  6. Gestion des conflits d'auto-référence (renommage si une instance sélectionnée porte le même nom).
+  7. Insertion de la nouvelle instance à l'origine choisie.
 """
 
 import rhinoscriptsyntax as rs
@@ -75,6 +77,16 @@ def _xform_from_origin_block(origin_id):
     return rs.XformIdentity()
 
 
+def _find_available_index_name(base_name):
+    """Trouve un nom disponible sous la forme base_name#i."""
+    i = 1
+    while True:
+        candidate = "{}#{}".format(base_name, i)
+        if not rs.IsBlock(candidate):
+            return candidate
+        i += 1
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Fonction principale
 # ──────────────────────────────────────────────────────────────────────────────
@@ -133,7 +145,19 @@ def defineBlock():
         return
 
     copied_geos = []
+    
+    # Correction de l'auto-référence : On inspecte les objets sélectionnés AVANT la duplication
     for obj_id in obj_ids:
+        if rs.IsBlockInstance(obj_id):
+            current_block_name = rs.BlockInstanceName(obj_id)
+            # Si le bloc sélectionné porte le même nom que le bloc que l'on veut créer/écraser
+            if current_block_name == final_name:
+                new_block_name = _find_available_index_name(final_name)
+                # Renommer la définition existante pour casser l'auto-référence
+                rs.RenameBlock(current_block_name, new_block_name)
+                print("⚠️ Conflit d'auto-référence évité : L'instance de bloc sélectionnée '{}' a été renommée en '{}'.".format(final_name, new_block_name))
+
+        # Copie et transformation de l'objet
         cp = rs.CopyObject(obj_id)
         if cp:
             rs.TransformObject(cp, inv_xform)
@@ -181,3 +205,4 @@ def defineBlock():
 # ──────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     defineBlock()
+
