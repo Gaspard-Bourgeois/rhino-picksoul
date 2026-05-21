@@ -60,7 +60,7 @@ def clean_name(signature):
     if len(name) > 3 and name[-3] == "_" and name[-2:].isdigit(): name = name[:-3]
     return name
 
-def rebuild_reciproque():
+def reconstructBlock():
     initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
     if not initial_objs: return
 
@@ -97,8 +97,10 @@ def rebuild_reciproque():
 
     # --- RECONSTRUCTION ---
     h_map = get_hierarchy_map(current_selection)
-    unique_levels = sorted([d["level"] for sig, d in h_map.items() if sig != "Root"], reverse=True)
-
+    # print(h_map)
+    
+    unique_levels = sorted([d["level"] for sig, d in h_map.items() if sig != "Root"], reverse=True)2
+    
     for current_lvl in unique_levels:
         current_map = get_hierarchy_map(current_selection)
         
@@ -217,10 +219,21 @@ def rebuild_reciproque():
             
             current_selection = [obj for obj in current_selection if obj not in geometries and obj != pose_obj]
             current_selection.append(new_inst)
+    
+    count = 0
+    for item in h_map:
+        if item == 'Root':
+            if 'objects' in h_map['Root']:
+                print("{} objets ignorés car sans structure. (Copier les propriétés d'un autre objet)".format(len(h_map['Root']['objects'])))
+                current_selection = [obj for obj in current_selection if obj not in h_map['Root']['objects']]
+                next
+        count += 1
+    print("{} blocs reconstruits au sein de {} instance(s)".format(count, len(current_selection)))
 
+            
     rs.EnableRedraw(True)
     if current_selection: rs.SelectObjects(current_selection)
     print("Terminé.")
 
 if __name__ == "__main__":
-    rebuild_reciproque()
+    reconstructBlock()
