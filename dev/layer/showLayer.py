@@ -1,7 +1,7 @@
 """
 Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
 Version: 2.0
-Date: 21/01/26
+Date: 20/05/2026
 """
 import rhinoscriptsyntax as rs
 import fnmatch
@@ -18,10 +18,16 @@ def RunCommand(is_interactive):
     # 2. Demander la saisie à l'utilisateur
     # Exemple : "p1::l1, p1::l2, p2::*"
     prompt = "Calques à afficher (séparés par une virgule). Ex: p1::*, p2*, Layer01"
-    user_input = rs.GetString(prompt, layer, all_layers)
+    afficherListe = 'ListeDesCalques'
+    user_input = rs.GetString(prompt, layer, [afficherListe])
     
-    if not user_input:
-        return 0
+    if not user_input:return
+        
+    if user_input == afficherListe:
+        _layers = rs.GetLayers()
+        user_input = ",".join(_layers)
+    
+    if not user_input:return
 
     # 3. Nettoyer la saisie : on sépare par les virgules et on enlève les espaces
     patterns = [p.strip() for p in user_input.split(",")]
