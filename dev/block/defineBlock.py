@@ -126,18 +126,17 @@ def defineBlock():
     # ── 6. Construction de la géométrie dans le repère local ───────────────────
     rs.EnableRedraw(False)
 
-    inv_origin = rs.XformInverse(origin_xform)
-    if inv_origin is None:
+    inv_xform = rs.XformInverse(origin_xform)
+    if inv_xform is None:
         print("Erreur : impossible d'inverser la transformation d'origine.")
         rs.EnableRedraw(True)
         return
 
-    # Copier et ramener au repère local (origine = [0,0,0])
     copied_geos = []
     for obj_id in obj_ids:
         cp = rs.CopyObject(obj_id)
         if cp:
-            rs.TransformObject(cp, inv_origin)
+            rs.TransformObject(cp, inv_xform)
             copied_geos.append(cp)
 
     if not copied_geos:
@@ -147,9 +146,6 @@ def defineBlock():
 
     # ── 7. Création / écrasement de la définition ──────────────────────────────
     if overwrite:
-        # Identique à rebuild_reciproque :
-        # récupérer Geometry et Attributes via RhinoCommon, appeler ModifyGeometry,
-        # puis supprimer les copies manuellement (delete_input=False implicite).
         idef = sc.doc.InstanceDefinitions.Find(final_name)
         if idef:
             geo_list  = []
@@ -157,14 +153,16 @@ def defineBlock():
             for guid in copied_geos:
                 rh_obj = sc.doc.Objects.Find(guid)
                 if rh_obj:
-                    geo_list.append(rh_obj.Geometry)
-                    attr_list.append(rh_obj.Attributes)
+                    # CORRECTION : Duplication OBLIGATOIRE de la géométrie et des attributs
+                    # pour éviter la corruption de la définition après rs.DeleteObjects()
+                    geo_list.append(rh_obj.Geometry.DuplicateShallow())
+                    attr_list.append(rh_obj.Attributes.Duplicate())
+            
             sc.doc.InstanceDefinitions.ModifyGeometry(idef.Index, geo_list, attr_list)
         rs.DeleteObjects(copied_geos)
         print("Définition '{}' mise à jour.".format(final_name))
 
     else:
-        # Nouveau bloc : AddBlock avec delete_input=False, suppression manuelle
         rs.AddBlock(copied_geos, [0, 0, 0], final_name, delete_input=False)
         rs.DeleteObjects(copied_geos)
         print("Bloc '{}' créé.".format(final_name))
