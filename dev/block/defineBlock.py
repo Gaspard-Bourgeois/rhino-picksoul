@@ -1,3 +1,8 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.0
+Date: 21/05/2026
+"""
 # -*- coding: utf-8 -*-
 """
 defineBlock.py
@@ -203,8 +208,9 @@ def defineBlock():
                     if is_block_defined_in_block_child(definition_objects, _final_name):
                         return True
         return False
-                    
-    overwrite = not is_block_defined_in_block_child(obj_ids, final_name)
+    
+    if overwrite:                
+        overwrite = not is_block_defined_in_block_child(obj_ids, final_name)
     
     for obj_id in obj_ids:
         # Copie et transformation de l'objet
