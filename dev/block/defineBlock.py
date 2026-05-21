@@ -146,17 +146,28 @@ def defineBlock():
 
     copied_geos = []
     
-    # Correction de l'auto-référence : On inspecte les objets sélectionnés AVANT la duplication
+    def is_block_defined_in_block_child(_obj_ids, _final_name):
+            
+        # Correction de l'auto-référence : On inspecte les objets sélectionnés AVANT la duplication
+        for obj_id in _obj_ids:
+            if rs.IsBlockInstance(obj_id):
+                current_block_name = rs.BlockInstanceName(obj_id)
+                # Si le bloc sélectionné porte le même nom que le bloc que l'on veut créer/écraser
+                if current_block_name == _final_name:
+                    new_block_name = _find_available_index_name(_final_name)
+                    # Renommer la définition existante pour casser l'auto-référence
+                    rs.RenameBlock(current_block_name, new_block_name)
+                    print("⚠️ Conflit d'auto-référence évité : L'instance de bloc sélectionnée '{}' a été renommée en '{}'.".format(_final_name, new_block_name))
+                    return True
+                else:
+                    definition_objects = rs.BlockObjects(current_block_name)
+                    if is_block_defined_in_block_child(definition_objects, _final_name):
+                        return True
+        return False
+                    
+    overwrite = not is_block_defined_in_block_child(obj_ids, final_name)
+    
     for obj_id in obj_ids:
-        if rs.IsBlockInstance(obj_id):
-            current_block_name = rs.BlockInstanceName(obj_id)
-            # Si le bloc sélectionné porte le même nom que le bloc que l'on veut créer/écraser
-            if current_block_name == final_name:
-                new_block_name = _find_available_index_name(final_name)
-                # Renommer la définition existante pour casser l'auto-référence
-                rs.RenameBlock(current_block_name, new_block_name)
-                print("⚠️ Conflit d'auto-référence évité : L'instance de bloc sélectionnée '{}' a été renommée en '{}'.".format(final_name, new_block_name))
-
         # Copie et transformation de l'objet
         cp = rs.CopyObject(obj_id)
         if cp:
@@ -205,4 +216,3 @@ def defineBlock():
 # ──────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     defineBlock()
-
