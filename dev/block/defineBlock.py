@@ -171,6 +171,7 @@ def defineBlock():
     new_inst = rs.InsertBlock(final_name, [0, 0, 0])
     if new_inst:
         rs.TransformObject(new_inst, origin_xform)
+        rs.DeleteObjects(obj_ids)
         rs.SelectObject(new_inst)
 
     rs.EnableRedraw(True)
