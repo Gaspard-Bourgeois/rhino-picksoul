@@ -33,11 +33,6 @@ def getWithOption(_message):
     return rc, _i
 
 def getOriginDestWithOption(_message):
-    """
-    Demande une sélection unique. Désélectionne les objets précédents 
-    pour éviter que l'objet 'origine' ne soit repris pour la 'destination'.
-    """
-    # On vide la sélection actuelle pour forcer un nouveau clic
     rs.UnselectAllObjects()
     
     go = Rhino.Input.Custom.GetObject()
@@ -45,9 +40,8 @@ def getOriginDestWithOption(_message):
     go.SubObjectSelect = False
     go.GroupSelect = False
     go.AcceptNothing(True)
-    go.DisablePreSelect() # Force l'utilisateur à cliquer à ce moment précis
+    go.DisablePreSelect()
     
-    # Filtres géométriques
     go.GeometryFilter = (Rhino.DocObjects.ObjectType.InstanceReference | 
                          Rhino.DocObjects.ObjectType.Surface | 
                          Rhino.DocObjects.ObjectType.Brep | 
@@ -91,7 +85,7 @@ def getClickedPlaneFromObjectEx(obj):
         moussePoint = obj[3]
         bcp = rs.BrepClosestPoint(objId, moussePoint)
         pt = bcp[0]
-        normal = - bcp[3]
+        normal = -bcp[3]
         type = bcp[2][0]
         if type == 3:
             faceIdx = bcp[2][1]
@@ -126,14 +120,14 @@ def getPlaneFromObject(objId):
         pt = pointBarycenter(corners)
         return rs.MovePlane(rs.WorldXYPlane(), pt)
 
-def RunCommand( is_interactive ):
+def RunCommand(is_interactive):
     objs = rs.SelectedObjects()
     is_relative = False
     
     if not objs:
         objs, is_relative = getWithOption("Select objects to translate")
         
-    if objs: 
+    if objs:
         # ÉTAPE 1 : ORIGINE
         resTypeFrom, objFrom = getOriginDestWithOption("Select origin (Enter for WorldXY)")
         if resTypeFrom == "object":
@@ -142,32 +136,40 @@ def RunCommand( is_interactive ):
             planeFrom = rs.ViewCPlane()
         elif resTypeFrom == "world":
             planeFrom = rs.WorldXYPlane()
-        else: return # Annulé
-        
+        else:
+            return
+
         # ÉTAPE 2 : DESTINATION
         resTypeDest, objDest = getOriginDestWithOption("Select destination (Enter for WorldXY)")
         if resTypeDest == "object":
             planeDest = getClickedPlaneFromObjectEx(objDest)
-            # Rotation 180 si ce n'est pas un bloc pour orienter vers l'extérieur
             if not rs.IsBlockInstance(objDest[0]):
                 planeDest = rs.RotatePlane(planeDest, 180, planeDest.XAxis)
         elif resTypeDest == "cplane":
             planeDest = rs.ViewCPlane()
         elif resTypeDest == "world":
             planeDest = rs.WorldXYPlane()
-        else: return # Annulé
-                
+        else:
+            return
+
         # TRANSFORMATION
         if planeFrom and planeDest:
             if is_relative:
+                # Transformation relative : on calcule le delta entre planeFrom et planeDest,
+                # puis on l'applique depuis le repère local de chaque objet
+                xform_delta = rs.XformChangeBasis(planeFrom, planeDest)
                 for obj in objs:
                     planeObj = getPlaneFromObject(obj)
-                    xform = rs.XformRotation1(planeObj, rs.PlaneTransform(planeDest, rs.XformRotation1(rs.WorldXYPlane(), planeObj)))
+                    # On exprime le delta dans le repère local de l'objet
+                    xform_to_local = rs.XformChangeBasis(rs.WorldXYPlane(), planeObj)
+                    xform_to_world = rs.XformChangeBasis(planeObj, rs.WorldXYPlane())
+                    xform = rs.XformMultiply(xform_to_world, rs.XformMultiply(xform_delta, xform_to_local))
                     rs.TransformObject(obj, xform)
             else:
-                xform = rs.XformRotation1(planeFrom, planeDest)
+                # Transformation absolue : changement de repère complet de planeFrom vers planeDest
+                xform = rs.XformChangeBasis(planeFrom, planeDest)
                 rs.TransformObjects(objs, xform)
-                    
+
             rs.SelectObjects(objs)
             print("{} objets orientés".format(len(objs)))
 
