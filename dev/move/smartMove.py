@@ -1,7 +1,12 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 2.0
+Date: 27/05/2026
+"""
 import Rhino
 import rhinoscriptsyntax as rs
 
-__commandname__ = "orientObject"
+__commandname__ = "smartMove"
 
 def getWithOption(_message):
     _i = 0
