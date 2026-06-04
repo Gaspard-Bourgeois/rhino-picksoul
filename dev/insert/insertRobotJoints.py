@@ -10,22 +10,17 @@ import Eto.Drawing as ed
 # ─────────────────────────────────────────────────────────────────────────────
 # CONSTANTES
 # ─────────────────────────────────────────────────────────────────────────────
-NB_JOINTS = 7
-KEY_ANGLE  = "JointAngle"
-KEY_JOINT  = "JointIndex"
-KEY_LEVEL0 = "BlockNameLevel_0"
-KEY_LEVEL1 = "BlockNameLevel_1"
+NB_JOINTS      = 7
+KEY_ANGLE      = "JointAngle"
+KEY_JOINT      = "JointIndex"
+KEY_LEVEL0     = "BlockNameLevel_0"
+KEY_LEVEL1     = "BlockNameLevel_1"
+KEY_REST_XFORM = "RestXform"       # 16 flottants séparés par ';'
+KEY_MIN_ANGLE  = "minAngle"
+KEY_MAX_ANGLE  = "maxAngle"
 
-# Limites angulaires par articulation [min, max] en degrés
-JOINT_LIMITS = [
-    (0,    0),      # 0 : base fixe, non utilisée
-    (-180, 180),    # 1
-    (-90,  90),     # 2
-    (-180, 180),    # 3
-    (-180, 180),    # 4
-    (-135, 135),    # 5
-    (-360, 360),    # 6
-]
+DEFAULT_MIN = -180.0
+DEFAULT_MAX =  180.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -46,13 +41,38 @@ def xform_to_list(xf):
         [xf.M30, xf.M31, xf.M32, xf.M33],
     ]
 
+def xform_to_str(xf):
+    """Sérialise un Transform en chaîne de 16 valeurs séparées par ';'."""
+    vals = [
+        xf.M00, xf.M01, xf.M02, xf.M03,
+        xf.M10, xf.M11, xf.M12, xf.M13,
+        xf.M20, xf.M21, xf.M22, xf.M23,
+        xf.M30, xf.M31, xf.M32, xf.M33,
+    ]
+    return ";".join(repr(v) for v in vals)
+
+def str_to_xform(s):
+    """Désérialise un Transform depuis une chaîne de 16 valeurs."""
+    try:
+        vals = [float(x) for x in s.split(";")]
+        if len(vals) != 16:
+            return None
+        xf = Rhino.Geometry.Transform()
+        xf.M00 = vals[0];  xf.M01 = vals[1];  xf.M02 = vals[2];  xf.M03 = vals[3]
+        xf.M10 = vals[4];  xf.M11 = vals[5];  xf.M12 = vals[6];  xf.M13 = vals[7]
+        xf.M20 = vals[8];  xf.M21 = vals[9];  xf.M22 = vals[10]; xf.M23 = vals[11]
+        xf.M30 = vals[12]; xf.M31 = vals[13]; xf.M32 = vals[14]; xf.M33 = vals[15]
+        return xf
+    except Exception:
+        return None
+
 def mul(a, b):
     return Rhino.Geometry.Transform.Multiply(a, b)
 
 def try_invert(xf):
     """
     Inversion correcte pour IronPython / RhinoCommon.
-    Transform.TryGetInverse retourne (bool, Transform) comme tuple en Python.
+    TryGetInverse retourne (bool, Transform) en Python.
     """
     ok, inv = xf.TryGetInverse()
     if ok:
@@ -113,6 +133,11 @@ def create_pose_block():
 
 
 def decompose_block_instance(obj_id, robot_name, instance_index):
+    """
+    Décompose le bloc parent et estampille chaque enfant avec KEY_LEVEL0.
+    Retourne la liste de tous les objets créés.
+    La pose de repos (RestXform) est stockée ICI, une seule fois, sur chaque enfant.
+    """
     if not rs.IsBlockInstance(obj_id):
         return []
     block_name = rs.BlockInstanceName(obj_id)
@@ -132,6 +157,12 @@ def decompose_block_instance(obj_id, robot_name, instance_index):
     targets = list(exploded) + [pose_id]
     for item in targets:
         rs.SetUserText(item, KEY_LEVEL0, "{}#{}".format(robot_name, instance_index))
+        # Stockage de la pose de repos absolue pour éviter la dérive
+        if rs.IsBlockInstance(item):
+            xf = get_instance_xform(item)
+            if xf is not None:
+                rs.SetUserText(item, KEY_REST_XFORM, xform_to_str(xf))
+
     return targets
 
 
@@ -149,6 +180,74 @@ def read_preselection():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# RECONSTRUCTION DU GROUPE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def joint_index_from_object(obj_id):
+    """
+    Détermine l'index d'articulation d'un objet selon la priorité :
+      1. UserText KEY_JOINT  (JointIndex)
+      2. Object Name  (rs.ObjectName)
+      3. Block Name   (rs.BlockInstanceName) — dernier recours
+    Retourne un int 0–(NB_JOINTS-1) ou None.
+    """
+    # Priorité 1 : clé JointIndex
+    val = rs.GetUserText(obj_id, KEY_JOINT)
+    if val is not None:
+        try:
+            return int(val)
+        except ValueError:
+            pass
+
+    # Priorité 2 : nom d'objet
+    oname = rs.ObjectName(obj_id)
+    if oname:
+        try:
+            return int(oname)
+        except ValueError:
+            pass
+
+    # Priorité 3 : nom de bloc
+    if rs.IsBlockInstance(obj_id):
+        bname = rs.BlockInstanceName(obj_id)
+        if bname and bname != "Pose":
+            try:
+                return int(bname)
+            except ValueError:
+                pass
+
+    return None
+
+
+def find_group_in_document(robot_name, instance_index):
+    """
+    Retrouve les instances ayant KEY_LEVEL0 == "<robot_name>#<instance_index>".
+    L'index d'articulation est déterminé par joint_index_from_object().
+    Retourne {joint_idx: obj_id} ou None si le groupe est incomplet.
+    """
+    target = "{}#{}".format(robot_name, instance_index)
+    group = {}
+    all_objs = rs.AllObjects()
+    if not all_objs:
+        return None
+    for obj in all_objs:
+        if not rs.IsBlockInstance(obj):
+            continue
+        if rs.GetUserText(obj, KEY_LEVEL0) != target:
+            continue
+        idx = joint_index_from_object(obj)
+        if idx is None:
+            continue
+        if 0 <= idx < NB_JOINTS:
+            group[idx] = obj
+
+    for i in range(NB_JOINTS):
+        if i not in group:
+            return None
+    return group
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # PHASE 1 – RÉSOLUTION DES ENTRÉES
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -156,12 +255,15 @@ def resolve_input():
     """
     Retourne (robot_name, instance_index, group).
 
-    Cas A – pré-sélection d'une instance avec BlockNameLevel_0 valide :
-        Retrouve le groupe complet. Pas d'insertion.
+    Cas A – pré-sélection d'une instance avec KEY_LEVEL0 valide :
+        Retrouve le groupe. Le joint 0 fournit automatiquement le point
+        d'insertion (sa RestXform ou sa xform courante).
 
     Cas B – pas de pré-sélection :
-        Demande le nom du bloc, demande un point d'insertion (Entrée = origine),
-        insère et décompose.
+        Demande le nom du bloc.
+        Si joint 0 du groupe précédent existe → utilise sa position.
+        Sinon demande un point (Entrée = origine).
+        Insère, positionne et décompose le bloc parent.
     """
     # ── Cas A ────────────────────────────────────────────────────────────────
     presel = read_preselection()
@@ -194,28 +296,31 @@ def resolve_input():
 
     instance_index = get_next_instance_index(robot_name)
 
-    # Point d'insertion (Entrée = origine)
-    gp = Rhino.Input.Custom.GetPoint()
-    gp.SetCommandPrompt(
-        "Point d'insertion du robot '{}' (Entrée = origine)".format(robot_name))
-    gp.AcceptNothing(True)
-    result = gp.Get()
+    # Cherche la xform du joint 0 du groupe précédent comme point d'insertion
+    insert_xform = _find_previous_joint0_xform(robot_name, instance_index)
 
-    if result == Rhino.Input.GetResult.Point:
-        pt = gp.Point()
-        insert_xform = Rhino.Geometry.Transform.Translation(pt.X, pt.Y, pt.Z)
-    else:
-        insert_xform = Rhino.Geometry.Transform.Identity
+    if insert_xform is None:
+        # Demande un point à l'utilisateur
+        gp = Rhino.Input.Custom.GetPoint()
+        gp.SetCommandPrompt(
+            "Point d'insertion du robot '{}' (Entrée = origine)".format(robot_name))
+        gp.AcceptNothing(True)
+        result = gp.Get()
+        if result == Rhino.Input.GetResult.Point:
+            pt = gp.Point()
+            insert_xform = Rhino.Geometry.Transform.Translation(pt.X, pt.Y, pt.Z)
+        else:
+            insert_xform = Rhino.Geometry.Transform.Identity
 
-    # Insertion à l'origine puis déplacement
+    # Insertion à l'origine puis application de la xform d'insertion
     parent_id = rs.InsertBlock(robot_name, [0, 0, 0])
     if parent_id is None:
-        rs.MessageBox("Echec de l'insertion du bloc '{}'.".format(robot_name), 0, "Erreur")
+        rs.MessageBox("Echec de l'insertion de '{}'.".format(robot_name), 0, "Erreur")
         return None, None, None
 
     rs.TransformObject(parent_id, xform_to_list(insert_xform))
 
-    # Décomposition
+    # Décomposition (stocke RestXform sur chaque enfant)
     all_items = decompose_block_instance(parent_id, robot_name, instance_index)
 
     # Reconstruction du groupe
@@ -223,20 +328,17 @@ def resolve_input():
     for item in all_items:
         if not rs.IsBlockInstance(item):
             continue
-        bname = rs.BlockInstanceName(item)
-        if bname == "Pose":
+        if rs.BlockInstanceName(item) == "Pose":
             continue
-        try:
-            joint_idx = int(bname)
-            group[joint_idx] = item
-        except ValueError:
-            pass
+        idx = joint_index_from_object(item)
+        if idx is not None and 0 <= idx < NB_JOINTS:
+            group[idx] = item
 
     for i in range(NB_JOINTS):
         if i not in group:
             rs.MessageBox(
                 "Segment {} manquant après décomposition de '{}'.\n"
-                "Vérifiez que le bloc contient des sous-blocs nommés 0 à {}.".format(
+                "Vérifiez que les sous-blocs sont nommés 0 à {}.".format(
                     i, robot_name, NB_JOINTS - 1),
                 0, "Erreur")
             return None, None, None
@@ -244,76 +346,142 @@ def resolve_input():
     return robot_name, instance_index, group
 
 
-def find_group_in_document(robot_name, instance_index):
-    target = "{}#{}".format(robot_name, instance_index)
-    group = {}
-    all_objs = rs.AllObjects()
-    if not all_objs:
+def _find_previous_joint0_xform(robot_name, instance_index):
+    """
+    Si un groupe précédent du même robot existe, retourne la RestXform
+    (ou xform courante) de son joint 0, pour réutiliser la position.
+    """
+    if instance_index <= 1:
         return None
-    for obj in all_objs:
-        if not rs.IsBlockInstance(obj):
-            continue
-        if rs.GetUserText(obj, KEY_LEVEL0) != target:
-            continue
-        bname = rs.BlockInstanceName(obj)
-        try:
-            joint_idx = int(bname)
-            group[joint_idx] = obj
-        except ValueError:
-            pass
-    for i in range(NB_JOINTS):
-        if i not in group:
-            return None
-    return group
+    prev_group = find_group_in_document(robot_name, instance_index - 1)
+    if not prev_group or 0 not in prev_group:
+        return None
+    # Préfère la RestXform stockée
+    rest_str = rs.GetUserText(prev_group[0], KEY_REST_XFORM)
+    if rest_str:
+        xf = str_to_xform(rest_str)
+        if xf is not None:
+            return xf
+    return get_instance_xform(prev_group[0])
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LECTURE DES ANGLES ET LIMITES STOCKÉS
+# ─────────────────────────────────────────────────────────────────────────────
 
 def read_stored_angles(group):
     stored = {}
     for joint_idx, obj_id in group.items():
-        angle_str = rs.GetUserText(obj_id, KEY_ANGLE)
-        if angle_str is not None:
+        val = rs.GetUserText(obj_id, KEY_ANGLE)
+        if val is not None:
             try:
-                stored[joint_idx] = float(angle_str)
+                stored[joint_idx] = float(val)
             except ValueError:
                 pass
     return stored
 
 
+def read_joint_limits(group):
+    """
+    Lit minAngle / maxAngle depuis les UserTexts de chaque instance.
+    Défaut : ±180°. Joint 0 toujours (0, 0) — fixe.
+    Retourne {joint_idx: (min_deg, max_deg)}.
+    """
+    limits = {}
+    for i in range(NB_JOINTS):
+        obj_id = group.get(i)
+        if i == 0 or obj_id is None:
+            limits[i] = (0.0, 0.0)
+            continue
+        try:
+            lo = float(rs.GetUserText(obj_id, KEY_MIN_ANGLE) or DEFAULT_MIN)
+        except (ValueError, TypeError):
+            lo = DEFAULT_MIN
+        try:
+            hi = float(rs.GetUserText(obj_id, KEY_MAX_ANGLE) or DEFAULT_MAX)
+        except (ValueError, TypeError):
+            hi = DEFAULT_MAX
+        limits[i] = (lo, hi)
+    return limits
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# CINÉMATIQUE (sans UI)
+# CINÉMATIQUE SÉRIE
 # ─────────────────────────────────────────────────────────────────────────────
 
 def compute_and_apply(group, angles_deg, T0_rest, robot_name, instance_index):
     """
-    Calcule et applique la cinématique série depuis les positions de repos T0_rest.
-    T0_rest : dict {i: Transform} — ne change jamais pendant la session de curseurs.
+    Cinématique série depuis les poses de repos T0_rest (figées à l'ouverture).
+
+    Pour chaque articulation i :
+      T_local[0] = T0_rest[0]
+      T_local[i] = inv(T0_rest[i-1]) × T0_rest[i]   (offset parent→enfant)
+
+      W[0] = T0_rest[0]
+      W[i] = W[i-1] × Rz(angle[i]) × T_local[i]
+
+    Puis delta[i] = W[i] × inv(T0_rest[i])
+    On applique delta directement — T0_rest ne bouge jamais.
+
+    NOTE : joint 0 n'a pas d'angle (fixe), W[0] = T0_rest[0].
     """
+    # Transformées locales parent→enfant (calculées depuis les repos figés)
     T_local = {0: T0_rest[0]}
     for i in range(1, NB_JOINTS):
         inv_parent = try_invert(T0_rest[i - 1])
         if inv_parent is None:
-            print("Inversion impossible T0[{}]".format(i - 1))
+            print("ERREUR : inversion impossible T0_rest[{}]".format(i - 1))
             return False
         T_local[i] = mul(inv_parent, T0_rest[i])
 
-    W = {0: T0_rest[0]}
+    # Transformées monde avec angles
+    W = {0: T0_rest[0]}   # base fixe
     for i in range(1, NB_JOINTS):
         W[i] = mul(W[i - 1], mul(rotation_z(angles_deg[i]), T_local[i]))
 
+    # Application : delta = W[i] × inv(T0_rest[i])
+    # Cela ramène chaque segment de sa pose de repos à sa pose finale EN UNE PASSE.
     for i in range(NB_JOINTS):
         obj_id = group[i]
+
         inv_T0 = try_invert(T0_rest[i])
         if inv_T0 is None:
-            print("Inversion impossible W T0[{}]".format(i))
+            print("ERREUR : inversion impossible T0_rest[{}] (delta)".format(i))
             return False
+
         delta = mul(W[i], inv_T0)
+
+        # On repart de la pose de repos avant d'appliquer delta,
+        # pour éviter toute accumulation entre deux appels successifs.
+        inv_current = try_invert(get_instance_xform(obj_id))
+        if inv_current is not None:
+            reset = mul(T0_rest[i], inv_current)
+            rs.TransformObject(obj_id, xform_to_list(reset))
+
         rs.TransformObject(obj_id, xform_to_list(delta))
+
+        # Mise à jour des UserTexts
         rs.SetUserText(obj_id, KEY_ANGLE,  str(angles_deg[i]))
         rs.SetUserText(obj_id, KEY_JOINT,  str(i))
         rs.SetUserText(obj_id, KEY_LEVEL0, "{}#{}".format(robot_name, instance_index))
         rs.SetUserText(obj_id, KEY_LEVEL1, "{}#{}".format(
             rs.BlockInstanceName(obj_id), instance_index))
+
     return True
+
+
+def restore_rest_pose(group, T0_rest):
+    """Remet chaque segment à sa pose de repos (annulation)."""
+    for i in range(NB_JOINTS):
+        obj_id = group[i]
+        xf_cur = get_instance_xform(obj_id)
+        if xf_cur is None:
+            continue
+        inv_cur = try_invert(xf_cur)
+        if inv_cur is None:
+            continue
+        reset = mul(T0_rest[i], inv_cur)
+        rs.TransformObject(obj_id, xform_to_list(reset))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -322,147 +490,148 @@ def compute_and_apply(group, angles_deg, T0_rest, robot_name, instance_index):
 
 class RobotPoseDialog(ef.Dialog):
     """
-    Formulaire Eto : un curseur + champ numérique par articulation (1–6).
-    Applique la cinématique en temps réel à chaque mouvement de curseur.
+    Formulaire Eto : un curseur + NumericStepper par articulation (1–6).
+    Applique la cinématique en temps réel.
+    Le résultat (validé ou annulé) est lu via self.validated après fermeture.
     """
 
-    def __init__(self, group, stored_angles, T0_rest, robot_name, instance_index):
+    def __init__(self, group, stored_angles, joint_limits,
+                 T0_rest, robot_name, instance_index):
         super(RobotPoseDialog, self).__init__()
 
         self._group          = group
         self._T0_rest        = T0_rest
         self._robot_name     = robot_name
         self._instance_index = instance_index
+        self._limits         = joint_limits
+        self._updating       = False
+        self.validated       = False   # résultat lisible après fermeture
 
-        # Angles courants (index 0 inutilisé mais présent pour l'alignement)
+        # Angles courants
         self._angles = [0.0] * NB_JOINTS
         for i in range(1, NB_JOINTS):
             self._angles[i] = stored_angles.get(i, 0.0)
 
-        self._sliders  = {}   # joint_idx -> Slider
-        self._spinners = {}   # joint_idx -> NumericStepper
-        self._updating = False
+        self._sliders  = {}
+        self._spinners = {}
 
         self._build_ui()
-        self._apply_kinematics()   # Affichage initial
+        self._refresh_viewport()   # Affichage initial sans toucher aux instances
 
-    # ── Construction de l'interface ──────────────────────────────────────────
+    # ── Construction UI ──────────────────────────────────────────────────────
 
     def _build_ui(self):
-        self.Title   = "Pose robot – articulations"
-        self.Padding = ed.Padding(12)
+        self.Title     = "Pose robot – {}#{}".format(
+            self._robot_name, self._instance_index)
+        self.Padding   = ed.Padding(12)
         self.Resizable = True
 
         layout = ef.TableLayout()
-        layout.Spacing = ed.Size(6, 6)
-        layout.Padding = ed.Padding(4)
+        layout.Spacing = ed.Size(6, 4)
 
-        # En-têtes
         layout.Rows.Add(ef.TableRow(
-            ef.TableCell(self._label("Articulation", bold=True)),
-            ef.TableCell(self._label("Min",          bold=True)),
-            ef.TableCell(self._label("Curseur",      bold=True)),
-            ef.TableCell(self._label("Max",          bold=True)),
-            ef.TableCell(self._label("Valeur (°)",   bold=True)),
+            ef.TableCell(self._lbl("Joint",      True)),
+            ef.TableCell(self._lbl("Min",        True)),
+            ef.TableCell(self._lbl("Curseur",    True)),
+            ef.TableCell(self._lbl("Max",        True)),
+            ef.TableCell(self._lbl("Angle (°)",  True)),
         ))
 
         for i in range(1, NB_JOINTS):
-            lo, hi = JOINT_LIMITS[i]
+            lo, hi = self._limits[i]
 
-            # Slider (entier × 10 pour avoir 0.1° de résolution)
+            # Slider : résolution 0.1° → valeurs × 10
             slider = ef.Slider()
             slider.MinValue = int(lo * 10)
             slider.MaxValue = int(hi * 10)
             slider.Value    = int(self._angles[i] * 10)
-            slider.Width    = 260
+            slider.Width    = 280
             slider.Tag      = i
-            slider.ValueChanged += self._on_slider_changed
+            slider.ValueChanged += self._on_slider
             self._sliders[i] = slider
 
             # NumericStepper
             spin = ef.NumericStepper()
-            spin.MinValue     = lo
-            spin.MaxValue     = hi
-            spin.Value        = self._angles[i]
+            spin.MinValue      = lo
+            spin.MaxValue      = hi
+            spin.Value         = self._angles[i]
             spin.DecimalPlaces = 1
-            spin.Increment    = 1.0
-            spin.Width        = 72
-            spin.Tag          = i
-            spin.ValueChanged += self._on_spin_changed
+            spin.Increment     = 1.0
+            spin.Width         = 72
+            spin.Tag           = i
+            spin.ValueChanged  += self._on_spin
             self._spinners[i] = spin
 
-            row = ef.TableRow(
-                ef.TableCell(self._label("Joint {}".format(i))),
-                ef.TableCell(self._label(str(lo))),
+            layout.Rows.Add(ef.TableRow(
+                ef.TableCell(self._lbl("J{}".format(i))),
+                ef.TableCell(self._lbl("{:.0f}".format(lo))),
                 ef.TableCell(slider),
-                ef.TableCell(self._label(str(hi))),
+                ef.TableCell(self._lbl("{:.0f}".format(hi))),
                 ef.TableCell(spin),
-            )
-            layout.Rows.Add(row)
+            ))
 
-        # Boutons
+        # Boutons OK / Annuler
         btn_ok     = ef.Button(Text="OK")
         btn_cancel = ef.Button(Text="Annuler")
         btn_ok.Click     += self._on_ok
         btn_cancel.Click += self._on_cancel
 
-        btn_row = ef.TableRow(
-            ef.TableCell(ef.Panel()),   # spacer
+        spacer = ef.TableCell(ef.Panel())
+        layout.Rows.Add(ef.TableRow())
+        layout.Rows.Add(ef.TableRow(
+            spacer,
             ef.TableCell(ef.Panel()),
             ef.TableCell(ef.Panel()),
             ef.TableCell(btn_cancel),
             ef.TableCell(btn_ok),
-        )
-        layout.Rows.Add(ef.TableRow())   # ligne vide
-        layout.Rows.Add(btn_row)
+        ))
 
-        self.Content = layout
+        self.Content       = layout
         self.DefaultButton = btn_ok
         self.AbortButton   = btn_cancel
 
     @staticmethod
-    def _label(text, bold=False):
-        lbl = ef.Label(Text=text)
+    def _lbl(text, bold=False):
+        lbl = ef.Label(Text=str(text))
         if bold:
-            lbl.Font = ed.Font(lbl.Font.Family, lbl.Font.Size,
-                               ed.FontStyle.Bold)
+            lbl.Font = ed.Font(lbl.Font.Family, lbl.Font.Size, ed.FontStyle.Bold)
         return lbl
 
     # ── Callbacks ────────────────────────────────────────────────────────────
 
-    def _on_slider_changed(self, sender, e):
+    def _on_slider(self, sender, e):
         if self._updating:
             return
-        i = sender.Tag
-        val = sender.Value / 10.0
+        i   = sender.Tag
+        val = round(sender.Value / 10.0, 1)
         self._angles[i] = val
-        self._updating = True
+        self._updating  = True
         self._spinners[i].Value = val
-        self._updating = False
-        self._apply_kinematics()
+        self._updating  = False
+        self._refresh_viewport()
 
-    def _on_spin_changed(self, sender, e):
+    def _on_spin(self, sender, e):
         if self._updating:
             return
-        i = sender.Tag
-        val = sender.Value
+        i   = sender.Tag
+        val = round(sender.Value, 1)
         self._angles[i] = val
-        self._updating = True
+        self._updating  = True
         self._sliders[i].Value = int(val * 10)
-        self._updating = False
-        self._apply_kinematics()
+        self._updating  = False
+        self._refresh_viewport()
 
     def _on_ok(self, sender, e):
-        self.Result = True
+        self.validated = True
         self.Close()
 
     def _on_cancel(self, sender, e):
-        self.Result = False
+        self.validated = False
         self.Close()
 
-    # ── Cinématique temps réel ────────────────────────────────────────────────
+    # ── Mise à jour viewport ─────────────────────────────────────────────────
 
-    def _apply_kinematics(self):
+    def _refresh_viewport(self):
         rs.EnableRedraw(False)
         compute_and_apply(
             self._group,
@@ -473,7 +642,7 @@ class RobotPoseDialog(ef.Dialog):
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
 
-    # ── Accesseur résultat ────────────────────────────────────────────────────
+    # ── Accesseur ────────────────────────────────────────────────────────────
 
     @property
     def angles(self):
@@ -490,39 +659,53 @@ def main():
     if robot_name is None:
         return
 
-    # 2. Angles stockés
+    # 2. Angles et limites stockés
     stored_angles = read_stored_angles(group)
+    joint_limits  = read_joint_limits(group)
 
-    # 3. Capture des transformées de repos UNE SEULE FOIS
-    #    (avant tout mouvement de curseur)
+    # 3. Capture des poses de repos UNE SEULE FOIS
+    #    On préfère la RestXform stockée (stable) ; sinon xform courante.
     T0_rest = {}
     for i in range(NB_JOINTS):
-        xf = get_instance_xform(group[i])
+        rest_str = rs.GetUserText(group[i], KEY_REST_XFORM)
+        xf = str_to_xform(rest_str) if rest_str else None
         if xf is None:
-            rs.MessageBox(
-                "Transformée illisible pour le segment {}.".format(i), 0, "Erreur")
-            return
+            xf = get_instance_xform(group[i])
+            if xf is None:
+                rs.MessageBox(
+                    "Transformée illisible pour le segment {}.".format(i),
+                    0, "Erreur")
+                return
+            # Stockage pour les sessions futures
+            rs.SetUserText(group[i], KEY_REST_XFORM, xform_to_str(xf))
         T0_rest[i] = xf
 
-    # 4. Affichage du formulaire Eto
-    dlg = RobotPoseDialog(group, stored_angles, T0_rest, robot_name, instance_index)
-    rc  = dlg.ShowModal(Rhino.UI.RhinoEtoApp.MainWindow)
+    # 4. Formulaire Eto
+    dlg = RobotPoseDialog(
+        group, stored_angles, joint_limits,
+        T0_rest, robot_name, instance_index)
 
-    if rc:
-        rs.UnselectAllObjects()
-        rs.SelectObjects(list(group.values()))
-        print("Robot '{}#{}' positionné. Angles : {}".format(
-            robot_name, instance_index,
-            [round(a, 1) for a in dlg.angles]))
-    else:
-        # Annulation : remettre à la pose de repos
+    dlg.ShowModal(Rhino.UI.RhinoEtoApp.MainWindow)
+
+    # 5. Résultat après fermeture (ShowModal ne retourne pas de bool fiable)
+    if dlg.validated:
+        # Appliquer une dernière fois avec les angles finaux du formulaire
         rs.EnableRedraw(False)
-        for i in range(NB_JOINTS):
-            xf_current = get_instance_xform(group[i])
-            inv_current = try_invert(xf_current)
-            if inv_current and T0_rest[i]:
-                delta = mul(T0_rest[i], inv_current)
-                rs.TransformObject(group[i], xform_to_list(delta))
+        ok = compute_and_apply(
+            group, dlg.angles, T0_rest, robot_name, instance_index)
+        rs.EnableRedraw(True)
+        sc.doc.Views.Redraw()
+
+        if ok:
+            rs.UnselectAllObjects()
+            rs.SelectObjects(list(group.values()))
+            print("Robot '{}#{}' positionné. Angles : {}".format(
+                robot_name, instance_index,
+                [round(a, 1) for a in dlg.angles]))
+    else:
+        # Annulation : restaurer la pose de repos
+        rs.EnableRedraw(False)
+        restore_rest_pose(group, T0_rest)
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
         print("Annulé – pose de repos restaurée.")
