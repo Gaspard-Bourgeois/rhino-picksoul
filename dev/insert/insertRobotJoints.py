@@ -99,7 +99,7 @@ def create_pose_block():
 def decompose_block_instance(obj_id, robot_name, instance_index):
     """
     Décompose une instance de bloc (obj_id) en appliquant les UserTexts
-    hiérarchiques BlockNameLevel_0/1 et retourne les objets issus.
+    hiérarchiques BlockNameLevel_0 et retourne les objets issus.
     Reproduit la logique de decompose_reciproque pour le niveau 0.
     """
     if not rs.IsBlockInstance(obj_id):
@@ -123,7 +123,6 @@ def decompose_block_instance(obj_id, robot_name, instance_index):
 
     for item in targets:
         rs.SetUserText(item, KEY_LEVEL0, "{}#{}".format(robot_name, instance_index))
-        rs.SetUserText(item, KEY_LEVEL1, "{}#{}".format(block_name, instance_index))
 
     return targets
 
@@ -160,6 +159,7 @@ def resolve_input():
                     ref_index = int(index_part)
                     group = find_group_in_document(name_part, ref_index)
                     if group:
+                        print(name_part, ref_index, group)
                         return name_part, ref_index, group
                 except ValueError:
                     pass
@@ -220,6 +220,7 @@ def find_group_in_document(robot_name, instance_index):
     target = "{}#{}".format(robot_name, instance_index)
     group = {}
     all_objs = rs.AllObjects()
+
     if not all_objs:
         return None
     for obj in all_objs:
@@ -227,11 +228,11 @@ def find_group_in_document(robot_name, instance_index):
             continue
         if rs.GetUserText(obj, KEY_LEVEL0) != target:
             continue
-        try:
-            joint_idx = int(rs.BlockInstanceName(obj))
-            group[joint_idx] = obj
-        except ValueError:
-            pass
+        if not (type(rs.ObjectName(obj)) is str and rs.ObjectName(obj).isdigit()):
+            continue
+
+        joint_idx = int(rs.ObjectName(obj))
+        group[joint_idx] = obj
 
     for i in range(NB_JOINTS):
         if i not in group:
