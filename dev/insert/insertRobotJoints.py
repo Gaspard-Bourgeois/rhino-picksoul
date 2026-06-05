@@ -418,7 +418,7 @@ def compute_and_apply(group, angles_deg, T0_rest, robot_name, instance_index):
       T_local[i] = inv(T0_rest[i-1]) × T0_rest[i]   (offset parent→enfant)
 
       W[0] = T0_rest[0]
-      W[i] = W[i-1] × Rz(angle[i]) × T_local[i]
+      W[i] = W[i-1] × T_local[i] × Rz(angle[i])   ← Rz POST-multiplié : repère LOCAL
 
     Puis delta[i] = W[i] × inv(T0_rest[i])
     On applique delta directement — T0_rest ne bouge jamais.
@@ -435,9 +435,12 @@ def compute_and_apply(group, angles_deg, T0_rest, robot_name, instance_index):
         T_local[i] = mul(inv_parent, T0_rest[i])
 
     # Transformées monde avec angles
+    # Post-multiplication de Rz : la rotation s'applique dans le repère LOCAL
+    # du joint i (autour de son propre axe Z), et non dans celui du parent.
+    #   W[i] = W[i-1] × T_local[i] × Rz(angle[i])
     W = {0: T0_rest[0]}   # base fixe
     for i in range(1, NB_JOINTS):
-        W[i] = mul(W[i - 1], mul(rotation_z(angles_deg[i]), T_local[i]))
+        W[i] = mul(mul(W[i - 1], T_local[i]), rotation_z(angles_deg[i]))
 
     # Application : delta = W[i] × inv(T0_rest[i])
     # Cela ramène chaque segment de sa pose de repos à sa pose finale EN UNE PASSE.
