@@ -204,7 +204,9 @@ def reconstructBlock():
                     user_action = "Annuler"
                     break
             
-            if user_action == "Annuler": continue
+            if user_action == "Annuler":
+                print("Opération annulée.")
+                return
 
             # --- MISE À JOUR DES SIGNATURES ---
             if target_name != original_name:
@@ -270,6 +272,7 @@ def reconstructBlock():
             current_selection.append(new_inst)
     
     count = 0
+    print(h_map)
     for item in h_map:
         if item == 'Root':
             if 'objects' in h_map['Root']:
