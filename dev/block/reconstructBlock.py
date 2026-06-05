@@ -192,7 +192,8 @@ def reconstructBlock():
                     overwrite_block = True
                     break 
                 elif user_action == "Renommer":
-                    new_name = rs.StringBox("Nouveau nom :", target_name, "Renommer le bloc")
+                    suggested_name = get_indexed_name(target_name)
+                    new_name = rs.StringBox("Nouveau nom :", suggested_name, "Renommer le bloc")
                     if not new_name:
                         user_action = "Annuler"
                         break
@@ -204,9 +205,7 @@ def reconstructBlock():
                     user_action = "Annuler"
                     break
             
-            if user_action == "Annuler":
-                print("Opération annulée.")
-                return
+            if user_action == "Annuler": continue
 
             # --- MISE À JOUR DES SIGNATURES ---
             if target_name != original_name:
@@ -272,7 +271,6 @@ def reconstructBlock():
             current_selection.append(new_inst)
     
     count = 0
-    print(h_map)
     for item in h_map:
         if item == 'Root':
             if 'objects' in h_map['Root']:
