@@ -60,6 +60,46 @@ def clean_name(signature):
     if len(name) > 3 and name[-3] == "_" and name[-2:].isdigit(): name = name[:-3]
     return name
 
+
+def _get_pose_origin(prompt):
+    """
+    Demande à l'utilisateur de choisir un objet comme origine.
+    - Clic sur un objet  → retourne (xform, True)
+    - Touche Entrée      → retourne (XformIdentity, True)  [origine Monde]
+    - Touche Échap       → retourne (None, False)           [annulation]
+
+    Inspiré de _get_origin_with_option() dans defineBlock.py.
+    """
+    go = Rhino.Input.Custom.GetObject()
+    go.SetCommandPrompt(prompt)
+    go.AcceptNothing(True)   # Entrée autorisée
+    go.DisablePreSelect()
+
+    while True:
+        get_rc = go.Get()
+
+        # L'utilisateur a cliqué sur un objet
+        if get_rc == Rhino.Input.GetResult.Object:
+            obj_ref = go.Object(0)
+            origin_id = obj_ref.ObjectId
+            go.Dispose()
+            if rs.IsBlockInstance(origin_id):
+                xf = rs.BlockInstanceXform(origin_id)
+            else:
+                xf = rs.XformTranslation(get_bbox_center(origin_id))
+            return xf if xf is not None else rs.XformIdentity(), True
+
+        # Entrée sans sélection → Origine Mondiale
+        elif get_rc == Rhino.Input.GetResult.Nothing:
+            go.Dispose()
+            return rs.XformIdentity(), True
+
+        # Échap ou toute autre annulation
+        else:
+            go.Dispose()
+            return None, False
+
+
 def reconstructBlock():
     initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
     if not initial_objs: return
@@ -85,21 +125,35 @@ def reconstructBlock():
         
         rs.EnableRedraw(True)
         for sig in missing:
-            ref_id = rs.GetObject("Origine pour {}. (Entrée = Monde)".format(sig))
-            xform = rs.BlockInstanceXform(ref_id) if rs.IsBlockInstance(ref_id) else rs.XformTranslation(get_bbox_center(ref_id)) if ref_id else rs.XformIdentity()
+            xform, success = _get_pose_origin(
+                "Origine pour '{}' (clic sur un objet/bloc, ou Entrée = Monde)".format(sig)
+            )
+
+            # Échap → annulation totale
+            if not success:
+                print("Opération annulée.")
+                return
+
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
+
+            # Propagation des UserText de hiérarchie
             ref_obj = h_map[sig]["objects"][0]
             for k in rs.GetUserText(ref_obj):
-                if k.startswith("BlockNameLevel_"): rs.SetUserText(temp_pose, k, rs.GetUserText(ref_obj, k))
+                if k.startswith("BlockNameLevel_"):
+                    rs.SetUserText(temp_pose, k, rs.GetUserText(ref_obj, k))
+
             current_selection.append(temp_pose)
+
         rs.EnableRedraw(False)
 
     # --- RECONSTRUCTION ---
     h_map = get_hierarchy_map(current_selection)
-    # print(h_map)
     
-    unique_levels = sorted([d["level"] for sig, d in h_map.items() if sig != "Root"], reverse=True)2
+    unique_levels = sorted(
+        [d["level"] for sig, d in h_map.items() if sig != "Root"],
+        reverse=True
+    )
     
     for current_lvl in unique_levels:
         current_map = get_hierarchy_map(current_selection)
@@ -115,7 +169,7 @@ def reconstructBlock():
             xform = rs.BlockInstanceXform(pose_obj)
             
             skip_reconstruction = False
-            overwrite_block = False # Nouveau drapeau pour gérer l'écrasement natif
+            overwrite_block = False
             user_action = "Ecraser"
 
             # --- BOUCLE DE VALIDATION DU NOM ---
@@ -178,21 +232,16 @@ def reconstructBlock():
                             if k.startswith("BlockNameLevel_"): rs.SetUserText(cp, k, "")
                     copied_geos.append(cp)
                 
-                # C'est ici que la magie de l'écrasement opère
                 if overwrite_block and rs.IsBlock(target_name):
                     idef = sc.doc.InstanceDefinitions.Find(target_name)
                     if idef:
                         geo_list = []
                         attr_list = []
-                        # On récupère les géométries bas niveau via RhinoCommon
                         for guid in copied_geos:
                             rh_obj = sc.doc.Objects.Find(guid)
                             if rh_obj:
                                 geo_list.append(rh_obj.Geometry)
                                 attr_list.append(rh_obj.Attributes)
-                        
-                        # ModifyGeometry met à jour la définition. Les instances enfants conservées 
-                        # ou les blocs parents utilisant cette définition se mettent à jour d'un coup.
                         sc.doc.InstanceDefinitions.ModifyGeometry(idef.Index, geo_list, attr_list)
                     rs.DeleteObjects(copied_geos)
                 else:
@@ -226,11 +275,9 @@ def reconstructBlock():
             if 'objects' in h_map['Root']:
                 print("{} objets ignorés car sans structure. (Copier les propriétés d'un autre objet)".format(len(h_map['Root']['objects'])))
                 current_selection = [obj for obj in current_selection if obj not in h_map['Root']['objects']]
-                next
         count += 1
     print("{} blocs reconstruits au sein de {} instance(s)".format(count, len(current_selection)))
 
-            
     rs.EnableRedraw(True)
     if current_selection: rs.SelectObjects(current_selection)
     print("Terminé.")
