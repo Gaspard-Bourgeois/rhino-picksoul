@@ -133,11 +133,13 @@ def decompose_reciproque():
             next_level, hierarchy_history = get_current_hierarchy_info(obj_id)
 
             # --- CORRECTION CLEF ---
-            # On travaille toujours sur le nom racine (sans suffixe #i éventuel)
-            base_name = get_base_name(block_name)
-            instance_index = get_next_instance_index(base_name)
-            # La valeur stockée est toujours "racine#j"
-            new_value = "{}#{}".format(base_name, instance_index)
+            # Cas particulier : si le bloc contient déjà un '#', on garde sa valeur telle quelle
+            if "#" in block_name:
+                new_value = block_name
+            else:
+                # Sinon, c'est un nom racine, on cherche l'indice suivant
+                instance_index = get_next_instance_index(block_name)
+                new_value = "{}#{}".format(block_name, instance_index)
 
             # Explosion
             exploded_items = rs.ExplodeBlockInstance(obj_id)
@@ -158,7 +160,7 @@ def decompose_reciproque():
                 for key, val in hierarchy_history.items():
                     rs.SetUserText(item, key, val)
 
-                # Ajout du niveau actuel avec la valeur normalisée
+                # Ajout du niveau actuel avec la valeur normalisée ou conservée
                 new_key = "BlockNameLevel_{}".format(next_level)
                 rs.SetUserText(item, new_key, new_value)
 
