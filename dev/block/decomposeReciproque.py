@@ -56,18 +56,22 @@ def get_next_instance_index(base_name):
     return max_index + 1
 
 def get_current_hierarchy_info(obj_id):
-    """Récupère le niveau d'imbrication (X) et l'historique des UserTexts."""
+    """Récupère le niveau d'imbrication (X) et l'historique de TOUS les UserTexts."""
     keys = rs.GetUserText(obj_id)
     max_level = -1
     existing_data = {}
     if keys:
         for key in keys:
+            # --- MODIFICATION ICI ---
+            # On extrait et sauvegarde la valeur de TOUTES les clés préexistantes
+            existing_data[key] = rs.GetUserText(obj_id, key)
+            
+            # On conserve la logique de détection du niveau pour la hiérarchie
             if key.startswith("BlockNameLevel_"):
                 try:
                     lvl = int(key.split("_")[-1])
                     if lvl > max_level:
                         max_level = lvl
-                    existing_data[key] = rs.GetUserText(obj_id, key)
                 except ValueError:
                     continue
     return max_level + 1, existing_data
@@ -129,15 +133,13 @@ def decompose_reciproque():
 
             block_xform = rs.BlockInstanceXform(obj_id)
 
-            # Récupération hiérarchie
+            # Récupération de la hiérarchie ET de l'ensemble complet des clés UserText
             next_level, hierarchy_history = get_current_hierarchy_info(obj_id)
 
             # --- CORRECTION CLEF ---
-            # Cas particulier : si le bloc contient déjà un '#', on garde sa valeur telle quelle
             if "#" in block_name:
                 new_value = block_name
             else:
-                # Sinon, c'est un nom racine, on cherche l'indice suivant
                 instance_index = get_next_instance_index(block_name)
                 new_value = "{}#{}".format(block_name, instance_index)
 
@@ -156,11 +158,11 @@ def decompose_reciproque():
                 if blocs_to_current_layer:
                     rs.ObjectLayer(item, current_layer)
 
-                # Recopie de l'historique parent
+                # Recopie de TOUTES les clés préexistantes (incluant l'historique parent)
                 for key, val in hierarchy_history.items():
                     rs.SetUserText(item, key, val)
 
-                # Ajout du niveau actuel avec la valeur normalisée ou conservée
+                # Ajout du niveau actuel
                 new_key = "BlockNameLevel_{}".format(next_level)
                 rs.SetUserText(item, new_key, new_value)
 
