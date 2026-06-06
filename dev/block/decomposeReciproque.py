@@ -56,22 +56,18 @@ def get_next_instance_index(base_name):
     return max_index + 1
 
 def get_current_hierarchy_info(obj_id):
-    """Récupère le niveau d'imbrication (X) et l'historique de TOUS les UserTexts."""
+    """Récupère le niveau d'imbrication (X) et l'historique des UserTexts du bloc parent."""
     keys = rs.GetUserText(obj_id)
     max_level = -1
     existing_data = {}
     if keys:
         for key in keys:
-            # --- MODIFICATION ICI ---
-            # On extrait et sauvegarde la valeur de TOUTES les clés préexistantes
-            existing_data[key] = rs.GetUserText(obj_id, key)
-            
-            # On conserve la logique de détection du niveau pour la hiérarchie
             if key.startswith("BlockNameLevel_"):
                 try:
                     lvl = int(key.split("_")[-1])
                     if lvl > max_level:
                         max_level = lvl
+                    existing_data[key] = rs.GetUserText(obj_id, key)
                 except ValueError:
                     continue
     return max_level + 1, existing_data
@@ -133,8 +129,14 @@ def decompose_reciproque():
 
             block_xform = rs.BlockInstanceXform(obj_id)
 
-            # Récupération de la hiérarchie ET de l'ensemble complet des clés UserText
+            # Récupération de la hiérarchie du bloc parent
             next_level, hierarchy_history = get_current_hierarchy_info(obj_id)
+
+            # --- MODIFICATION : ACCÈS AUX OBJETS INTERNES DE LA DÉFINITION ---
+            block_obj = sc.doc.Objects.Find(obj_id)
+            def_objects = []
+            if block_obj and isinstance(block_obj, Rhino.DocObjects.InstanceObject):
+                def_objects = block_obj.InstanceDefinition.GetObjects()
 
             # --- CORRECTION CLEF ---
             if "#" in block_name:
@@ -143,10 +145,20 @@ def decompose_reciproque():
                 instance_index = get_next_instance_index(block_name)
                 new_value = "{}#{}".format(block_name, instance_index)
 
-            # Explosion
+            # Explosion du bloc via Rhinoscript (génère les objets dans l'espace de travail)
             exploded_items = rs.ExplodeBlockInstance(obj_id)
             if not exploded_items:
                 exploded_items = []
+
+            # --- MODIFICATION : RÉINJECTION DES USERTEXTS INTERNES ---
+            # L'ordre des objets renvoyés par Explode correspond exactement à celui de la définition
+            if len(exploded_items) == len(def_objects):
+                for item, def_obj in zip(exploded_items, def_objects):
+                    user_strings = def_obj.Attributes.GetUserStrings()
+                    for i in range(user_strings.Count):
+                        k = user_strings.GetKey(i)
+                        v = user_strings.Get(i)
+                        rs.SetUserText(item, k, v)
 
             # Création et transformation du bloc Pose
             pose_id = rs.InsertBlock("Pose", [0,0,0])
@@ -158,7 +170,7 @@ def decompose_reciproque():
                 if blocs_to_current_layer:
                     rs.ObjectLayer(item, current_layer)
 
-                # Recopie de TOUTES les clés préexistantes (incluant l'historique parent)
+                # Recopie de l'historique de la hiérarchie parente
                 for key, val in hierarchy_history.items():
                     rs.SetUserText(item, key, val)
 
