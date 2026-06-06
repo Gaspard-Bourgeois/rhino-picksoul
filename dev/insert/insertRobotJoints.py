@@ -8,17 +8,16 @@ import Eto.Forms as ef
 import Eto.Drawing as ed
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CONSTANTES PARTAGÉES (issues de defineJoints)
+# CONSTANTES
 # ─────────────────────────────────────────────────────────────────────────────
-KEY_JOINT_TYPE   = "JointType"      # "fixed" | "slider" | "pivot"
-KEY_JOINT_PARENT = "JointParent"    # UID de l'instance parente
-KEY_INSTANCE_UID = "InstanceUID"    # UUID stable
+KEY_JOINT_TYPE   = "JointType"
+KEY_JOINT_PARENT = "JointParent"
+KEY_INSTANCE_UID = "InstanceUID"
 KEY_MIN_ANGLE    = "minAngle"
 KEY_MAX_ANGLE    = "maxAngle"
 KEY_MIN_TRANS    = "minTrans"
 KEY_MAX_TRANS    = "maxTrans"
-
-KEY_ANGLE        = "JointAngle"     # valeur courante (angle ou translation)
+KEY_ANGLE        = "JointAngle"
 KEY_LEVEL0       = "BlockNameLevel_0"
 KEY_LEVEL1       = "BlockNameLevel_1"
 KEY_REST_XFORM   = "RestXform"
@@ -103,18 +102,7 @@ def read_master_block_config(master_block_name):
     """
     Lit la configuration cinématique depuis les sous-instances du bloc maître.
     Seules les InstanceReferenceGeometry sont retenues.
-
-    Retourne une liste ordonnée de dicts :
-    {
-        'uid'      : str,           # UID stable
-        'type'     : str,           # JOINT_FIXED | JOINT_SLIDER | JOINT_PIVOT
-        'parent_uid': str,          # UID du parent ("" si aucun)
-        'min_val'  : float,         # minAngle ou minTrans selon type
-        'max_val'  : float,         # maxAngle ou maxTrans selon type
-        'obj_name' : str,
-        'block_name': str,
-    }
-    Retourne None si le bloc n'existe pas ou est vide.
+    Retourne une liste de dicts ou None.
     """
     if not rs.IsBlock(master_block_name):
         return None
@@ -126,12 +114,11 @@ def read_master_block_config(master_block_name):
             continue
         if not isinstance(obj.Geometry, Rhino.Geometry.InstanceReferenceGeometry):
             continue
-
         uid        = rs.GetUserText(obj_id, KEY_INSTANCE_UID) or ""
         jtype      = rs.GetUserText(obj_id, KEY_JOINT_TYPE)   or JOINT_FIXED
         parent_uid = rs.GetUserText(obj_id, KEY_JOINT_PARENT) or ""
-        oname      = rs.ObjectName(obj_id)          or ""
-        bname      = rs.BlockInstanceName(obj_id)   or ""
+        oname      = rs.ObjectName(obj_id)        or ""
+        bname      = rs.BlockInstanceName(obj_id) or ""
 
         if jtype == JOINT_PIVOT:
             try:    lo = float(rs.GetUserText(obj_id, KEY_MIN_ANGLE) or DEFAULT_MIN_ANGLE)
@@ -160,22 +147,17 @@ def read_master_block_config(master_block_name):
 
 
 def build_joint_order(configs):
-    """
-    Trie les configs selon l'ordre topologique (parents avant enfants).
-    Retourne la liste des indices originaux dans le nouvel ordre.
-    """
-    n = len(configs)
-    uid_to_idx = {c["uid"]: i for i, c in enumerate(configs)}
-
+    """Tri topologique : parents avant enfants."""
+    n         = len(configs)
+    uid_to_ci = {c["uid"]: i for i, c in enumerate(configs)}
     children  = {i: [] for i in range(n)}
     in_degree = {i: 0  for i in range(n)}
+
     for i, c in enumerate(configs):
-        p_uid = c["parent_uid"]
-        if p_uid and p_uid in uid_to_idx:
-            p = uid_to_idx[p_uid]
-            if p != i:
-                children[p].append(i)
-                in_degree[i] += 1
+        p = uid_to_ci.get(c["parent_uid"], -1)
+        if 0 <= p < n and p != i:
+            children[p].append(i)
+            in_degree[i] += 1
 
     queue = sorted(i for i in range(n) if in_degree[i] == 0)
     order = []
@@ -191,206 +173,217 @@ def build_joint_order(configs):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# UTILITAIRES DOCUMENT
+# RECHERCHE DU GROUPE DÉCOMPOSÉ DANS LE DOCUMENT
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_next_instance_index(block_name):
-    max_index = 0
-    all_objs = rs.AllObjects() or []
-    for obj in all_objs:
-        keys = rs.GetUserText(obj) or []
-        for key in keys:
-            if not key.startswith("BlockNameLevel_"):
-                continue
-            value = rs.GetUserText(obj, key)
-            if value and "#" in value:
-                try:
-                    name_part, index_part = value.split("#", 1)
-                    if name_part == block_name:
-                        idx = int(index_part)
-                        if idx > max_index:
-                            max_index = idx
-                except ValueError:
-                    pass
-    return max_index + 1
-
-
-def create_pose_block():
-    if not rs.IsBlock("Pose"):
-        rs.EnableRedraw(False)
-        items = []
-        items.append(rs.AddLine([0,0,0], [1,0,0]))
-        rs.ObjectColor(items[-1], [255,0,0])
-        items.append(rs.AddLine([0,0,0], [0,1,0]))
-        rs.ObjectColor(items[-1], [0,255,0])
-        items.append(rs.AddLine([0,0,0], [0,0,1]))
-        rs.ObjectColor(items[-1], [0,0,255])
-        rs.AddBlock(items, [0,0,0], "Pose", True)
-        rs.EnableRedraw(True)
-
-
-def read_preselection():
-    return [obj.Id for obj in sc.doc.Objects if obj.IsSelected(False) > 0]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# RECONSTRUCTION DU GROUPE DEPUIS KEY_LEVEL0 + UID
-# ─────────────────────────────────────────────────────────────────────────────
-
-def find_group_by_uid(master_name, instance_index, configs):
+def find_highest_level_key(obj_id):
     """
-    Retrouve les instances du document portant
-    KEY_LEVEL0 == "<master_name>#<instance_index>".
-
-    Associe chaque instance à son entrée de config via KEY_INSTANCE_UID.
-    Retourne {config_idx: obj_id} ou None si incomplet.
+    Retourne la clé BlockNameLevel_j avec le j le plus élevé
+    et la valeur associée, ou (None, None).
     """
-    target    = "{}#{}".format(master_name, instance_index)
-    uid_to_ci = {c["uid"]: i for i, c in enumerate(configs)}
-    group     = {}
+    keys = rs.GetUserText(obj_id) or []
+    best_j   = -1
+    best_key = None
+    best_val = None
+    for key in keys:
+        if not key.startswith("BlockNameLevel_"):
+            continue
+        try:
+            j = int(key[len("BlockNameLevel_"):])
+        except ValueError:
+            continue
+        if j > best_j:
+            best_j   = j
+            best_key = key
+            best_val = rs.GetUserText(obj_id, key)
+    return best_key, best_val
 
+
+def find_decomposed_group(master_name, instance_index, configs):
+    """
+    Retrouve les instances décomposées portant
+    BlockNameLevel_j == "<master_name>#<instance_index>"
+    pour le j le plus élevé présent dans le document.
+
+    Apparie chaque instance à sa config via KEY_INSTANCE_UID.
+    Retourne (group, level_key) ou (None, None).
+      group = {config_idx: obj_id}
+    """
+    target     = "{}#{}".format(master_name, instance_index)
+    uid_to_ci  = {c["uid"]: i for i, c in enumerate(configs)}
+
+    # Collecte tous les objets portant la bonne valeur au niveau j le plus élevé
+    candidates = {}   # j → {ci: obj_id}
     for obj_id in (rs.AllObjects() or []):
         if not rs.IsBlockInstance(obj_id):
             continue
-        if rs.GetUserText(obj_id, KEY_LEVEL0) != target:
+        key, val = find_highest_level_key(obj_id)
+        if val != target:
+            continue
+        try:
+            j = int(key[len("BlockNameLevel_"):])
+        except ValueError:
             continue
         uid = rs.GetUserText(obj_id, KEY_INSTANCE_UID) or ""
-        if uid in uid_to_ci:
-            group[uid_to_ci[uid]] = obj_id
-
-    if len(group) < len(configs):
-        return None
-    return group
-
-
-def decompose_and_stamp(obj_id, master_name, instance_index, configs):
-    """
-    Explose le bloc maître et estampille chaque enfant avec :
-      - KEY_LEVEL0, KEY_REST_XFORM, KEY_INSTANCE_UID (copié depuis la config).
-    Retourne {config_idx: obj_id} ou None.
-    """
-    if not rs.IsBlockInstance(obj_id):
-        return None
-
-    block_xform = rs.BlockInstanceXform(obj_id)
-    create_pose_block()
-
-    exploded = rs.ExplodeBlockInstance(obj_id) or []
-
-    # Instance Pose (repère visuel de base)
-    pose_id = rs.InsertBlock("Pose", [0, 0, 0])
-    rs.TransformObject(pose_id, block_xform)
-    rs.SetUserText(pose_id, KEY_LEVEL0,
-                   "{}#{}".format(master_name, instance_index))
-    if rs.IsBlockInstance(pose_id):
-        xf = get_instance_xform(pose_id)
-        if xf is not None:
-            rs.SetUserText(pose_id, KEY_REST_XFORM, xform_to_str(xf))
-
-    # Appariement exploded ↔ configs par UID
-    uid_to_ci = {c["uid"]: i for i, c in enumerate(configs)}
-    group = {}
-
-    for item in exploded:
-        if not rs.IsBlockInstance(item):
+        ci  = uid_to_ci.get(uid, -1)
+        if ci < 0:
             continue
-        uid = rs.GetUserText(item, KEY_INSTANCE_UID) or ""
-        ci  = uid_to_ci.get(uid)
-        if ci is None:
-            continue
-        rs.SetUserText(item, KEY_LEVEL0,
-                       "{}#{}".format(master_name, instance_index))
-        rs.SetUserText(item, KEY_LEVEL1, "{}#{}".format(
-            rs.BlockInstanceName(item), instance_index))
-        xf = get_instance_xform(item)
-        if xf is not None:
-            rs.SetUserText(item, KEY_REST_XFORM, xform_to_str(xf))
-        group[ci] = item
+        if j not in candidates:
+            candidates[j] = {}
+        candidates[j][ci] = obj_id
 
-    if len(group) < len(configs):
-        rs.MessageBox(
-            "Appariement incomplet après décomposition.\n"
-            "Vérifiez que les InstanceUID sont définis sur chaque sous-bloc.",
-            0, "Erreur")
-        return None
-    return group
+    if not candidates:
+        return None, None
+
+    # Prend le niveau le plus élevé qui contient tous les configs
+    n_configs = len(configs)
+    for j in sorted(candidates.keys(), reverse=True):
+        grp = candidates[j]
+        if len(grp) >= n_configs:
+            level_key = "BlockNameLevel_{}".format(j)
+            return grp, level_key
+
+    return None, None
+
+
+def check_group_coherence(group, configs, master_name):
+    """
+    Vérifie que chaque config_idx a bien une instance dans le groupe,
+    et que le block_name de l'instance correspond à celui de la config.
+    Retourne une liste de messages d'erreur (vide si cohérent).
+    """
+    errors = []
+    for ci, c in enumerate(configs):
+        obj_id = group.get(ci)
+        if obj_id is None:
+            errors.append("Config {} '{}' : instance introuvable.".format(
+                ci, c["obj_name"] or c["block_name"]))
+            continue
+        actual_bname = rs.BlockInstanceName(obj_id) or ""
+        expected_bname = c["block_name"]
+        if expected_bname and actual_bname != expected_bname:
+            errors.append(
+                "Config {} : attendu bloc '{}', trouvé '{}'.".format(
+                    ci, expected_bname, actual_bname))
+    return errors
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RÉSOLUTION DES ENTRÉES
 # ─────────────────────────────────────────────────────────────────────────────
 
-def resolve_input(configs):
+def read_preselection():
+    return [obj.Id for obj in sc.doc.Objects if obj.IsSelected(False) > 0]
+
+
+def resolve_input():
     """
-    Cas A – pré-sélection : retrouve le groupe via KEY_LEVEL0 + UID.
-    Cas B – saisie manuelle : insère, explose, estampille.
-    Retourne (master_name, instance_index, group) ou (None, None, None).
+    Cherche une instance décomposée dans la sélection ou demande
+    master_name + instance_index.
+
+    Si l'objet sélectionné est une instance non décomposée (pas de
+    BlockNameLevel_j), conseille de décomposer d'abord.
+
+    Retourne (master_name, instance_index, group, configs, level_key)
+    ou (None, ...) en cas d'échec.
     """
     presel = read_preselection()
+
+    # ── Cas A : pré-sélection ────────────────────────────────────────────────
     if presel:
         for obj_id in presel:
             if not rs.IsBlockInstance(obj_id):
                 continue
-            lv0 = rs.GetUserText(obj_id, KEY_LEVEL0) or ""
-            if "#" not in lv0:
+
+            key, val = find_highest_level_key(obj_id)
+
+            # Pas de BlockNameLevel → instance non décomposée
+            if key is None or val is None:
+                bname = rs.BlockInstanceName(obj_id) or "?"
+                rs.MessageBox(
+                    "L'instance sélectionnée ('{}') n'est pas décomposée.\n"
+                    "Utilisez d'abord le script de décomposition, puis "
+                    "relancez moveJoints.".format(bname),
+                    0, "Décomposition requise")
+                return None, None, None, None, None
+
+            if "#" not in val:
                 continue
-            master_name, idx_str = lv0.split("#", 1)
+            master_name, idx_str = val.split("#", 1)
             try:
-                ref_index = int(idx_str)
+                instance_index = int(idx_str)
             except ValueError:
                 continue
-            # Recharge la config depuis le bon bloc maître
-            cfg = read_master_block_config(master_name)
-            if cfg is None:
-                continue
-            grp = find_group_by_uid(master_name, ref_index, cfg)
-            if grp:
-                print("Cas A : '{}#{}' détecté.".format(master_name, ref_index))
-                return master_name, ref_index, grp, cfg
 
-    # Cas B
-    name = rs.GetString("Nom du bloc maître", "")
+            configs = read_master_block_config(master_name)
+            if configs is None:
+                rs.MessageBox(
+                    "Bloc maître '{}' introuvable ou sans configuration.\n"
+                    "Lancez defineJoints sur ce bloc.".format(master_name),
+                    0, "Erreur")
+                return None, None, None, None, None
+
+            group, level_key = find_decomposed_group(
+                master_name, instance_index, configs)
+            if group is None:
+                rs.MessageBox(
+                    "Groupe décomposé introuvable pour '{}#{}'.".format(
+                        master_name, instance_index),
+                    0, "Erreur")
+                return None, None, None, None, None
+
+            errors = check_group_coherence(group, configs, master_name)
+            if errors:
+                rs.MessageBox(
+                    "Incohérence entre le groupe et le bloc maître :\n" +
+                    "\n".join(errors), 0, "Erreur de cohérence")
+                return None, None, None, None, None
+
+            print("Groupe '{}#{}' détecté ({}).".format(
+                master_name, instance_index, level_key))
+            return master_name, instance_index, group, configs, level_key
+
+    # ── Cas B : saisie manuelle ──────────────────────────────────────────────
+    name = rs.GetString("Nom du bloc maître (ex: GP215)")
     if not name:
-        return None, None, None, None
+        return None, None, None, None, None
     master_name = name.strip()
 
-    if not rs.IsBlock(master_name):
-        rs.MessageBox("Le bloc '{}' n'existe pas.".format(master_name), 0, "Erreur")
-        return None, None, None, None
-
-    cfg = read_master_block_config(master_name)
-    if cfg is None:
+    configs = read_master_block_config(master_name)
+    if configs is None:
         rs.MessageBox(
-            "Aucune configuration cinématique trouvée dans '{}'.\n"
-            "Lancez d'abord defineJoints sur ce bloc.".format(master_name),
+            "Bloc maître '{}' introuvable ou sans configuration.\n"
+            "Lancez defineJoints sur ce bloc.".format(master_name),
             0, "Erreur")
-        return None, None, None, None
+        return None, None, None, None, None
 
-    instance_index = get_next_instance_index(master_name)
+    idx_str = rs.GetString("Index de l'instance (ex: 1)")
+    if not idx_str:
+        return None, None, None, None, None
+    try:
+        instance_index = int(idx_str.strip())
+    except ValueError:
+        rs.MessageBox("Index invalide.", 0, "Erreur")
+        return None, None, None, None, None
 
-    gp = Rhino.Input.Custom.GetPoint()
-    gp.SetCommandPrompt(
-        "Point d'insertion de '{}' (Entrée = origine)".format(master_name))
-    gp.AcceptNothing(True)
-    result = gp.Get()
-    if result == Rhino.Input.GetResult.Point:
-        pt = gp.Point()
-        insert_xf = Rhino.Geometry.Transform.Translation(pt.X, pt.Y, pt.Z)
-    else:
-        insert_xf = Rhino.Geometry.Transform.Identity
+    group, level_key = find_decomposed_group(master_name, instance_index, configs)
+    if group is None:
+        rs.MessageBox(
+            "Aucun groupe décomposé trouvé pour '{}#{}'.\n"
+            "Décomposez d'abord l'instance.".format(master_name, instance_index),
+            0, "Décomposition requise")
+        return None, None, None, None, None
 
-    parent_id = rs.InsertBlock(master_name, [0, 0, 0])
-    if parent_id is None:
-        rs.MessageBox("Echec de l'insertion de '{}'.".format(master_name), 0, "Erreur")
-        return None, None, None, None
+    errors = check_group_coherence(group, configs, master_name)
+    if errors:
+        rs.MessageBox(
+            "Incohérence entre le groupe et le bloc maître :\n" +
+            "\n".join(errors), 0, "Erreur de cohérence")
+        return None, None, None, None, None
 
-    rs.TransformObject(parent_id, xform_to_list(insert_xf))
-
-    grp = decompose_and_stamp(parent_id, master_name, instance_index, cfg)
-    if grp is None:
-        return None, None, None, None
-
-    return master_name, instance_index, grp, cfg
+    print("Groupe '{}#{}' trouvé ({}).".format(
+        master_name, instance_index, level_key))
+    return master_name, instance_index, group, configs, level_key
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -398,11 +391,11 @@ def resolve_input(configs):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def read_stored_values(group, configs):
-    """
-    Retourne {config_idx: float} — valeur courante (angle ou translation).
-    """
     stored = {}
-    for ci, obj_id in group.items():
+    for ci in range(len(configs)):
+        obj_id = group.get(ci)
+        if obj_id is None:
+            continue
         val = rs.GetUserText(obj_id, KEY_ANGLE)
         if val is not None:
             try:
@@ -413,7 +406,7 @@ def read_stored_values(group, configs):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CINÉMATIQUE GÉNÉRIQUE (pivot + slider)
+# CINÉMATIQUE GÉNÉRIQUE
 # ─────────────────────────────────────────────────────────────────────────────
 
 def compute_and_apply(group, values, configs, joint_order,
@@ -421,37 +414,41 @@ def compute_and_apply(group, values, configs, joint_order,
     """
     Cinématique en chaîne ouverte depuis T0_rest (pose neutre).
 
-    Pour chaque joint i (dans l'ordre topologique) :
-      - T_local[i] = inv(T0_rest[parent]) × T0_rest[i]
-      - W[i] = W[parent] × T_local[i] × J(val)
-        où J(val) = Rz(val)   si pivot
-                  = Tz(val)   si slider  (axe Z local)
-                  = Identité  si fixed
+    Pour chaque joint i dans l'ordre topologique :
+      - Si racine (pas de parent valide) :
+          W[i] = T0_rest[i]   (position fixe absolue)
+      - Sinon :
+          T_local[i] = inv(T0_rest[parent]) × T0_rest[i]
+          W[i] = W[parent] × T_local[i] × J(val)
 
-    delta[i] = W[i] × inv(T0_rest[i])
+    J(val) = Rz(val)  si pivot  — rotation autour de Z LOCAL
+           = Tz(val)  si slider — translation selon Z LOCAL
+           = Id       si fixed
+
+    Le mouvement est donc RELATIF à la pose courante du parent,
+    car W[parent] reflète déjà la position animée du parent.
     """
     uid_to_ci = {c["uid"]: i for i, c in enumerate(configs)}
-    n = len(configs)
-
-    # Calcul des W dans l'ordre topologique
     W = {}
+
     for ci in joint_order:
         c       = configs[ci]
         jtype   = c["type"]
         val     = values.get(ci, 0.0)
-        p_uid   = c["parent_uid"]
-        p_ci    = uid_to_ci.get(p_uid, -1)
+        p_ci    = uid_to_ci.get(c["parent_uid"], -1)
 
         if p_ci < 0 or p_ci not in T0_rest:
-            # Racine : W = T0_rest[ci] (base fixe, pas d'articulation)
+            # Racine : position fixe absolue, pas d'articulation
             W[ci] = T0_rest[ci]
         else:
-            inv_parent = try_invert(T0_rest[p_ci])
-            if inv_parent is None:
+            inv_p_rest = try_invert(T0_rest[p_ci])
+            if inv_p_rest is None:
                 print("ERREUR : inversion T0_rest[{}]".format(p_ci))
                 return False
-            T_local = mul(inv_parent, T0_rest[ci])
+            # Offset local dans la pose neutre
+            T_local = mul(inv_p_rest, T0_rest[ci])
 
+            # Articulation dans le repère local du parent ANIMÉ
             if jtype == JOINT_PIVOT:
                 J = rotation_z(val)
             elif jtype == JOINT_SLIDER:
@@ -459,6 +456,7 @@ def compute_and_apply(group, values, configs, joint_order,
             else:
                 J = Rhino.Geometry.Transform.Identity
 
+            # W[parent] est la pose ANIMÉE du parent → mouvement relatif
             W[ci] = mul(mul(W[p_ci], T_local), J)
 
     # Application des deltas
@@ -469,12 +467,12 @@ def compute_and_apply(group, values, configs, joint_order,
 
         inv_T0 = try_invert(T0_rest[ci])
         if inv_T0 is None:
-            print("ERREUR : inversion T0_rest[{}] (delta)".format(ci))
+            print("ERREUR : inversion T0_rest[{}]".format(ci))
             return False
 
         delta = mul(W[ci], inv_T0)
 
-        # Remise à la pose neutre avant application
+        # Remise à la pose neutre puis application du delta
         xf_cur = get_instance_xform(obj_id)
         if xf_cur is not None:
             inv_cur = try_invert(xf_cur)
@@ -484,7 +482,6 @@ def compute_and_apply(group, values, configs, joint_order,
 
         rs.TransformObject(obj_id, xform_to_list(delta))
 
-        # UserTexts
         rs.SetUserText(obj_id, KEY_ANGLE,  str(values.get(ci, 0.0)))
         rs.SetUserText(obj_id, KEY_LEVEL0, "{}#{}".format(master_name, instance_index))
         rs.SetUserText(obj_id, KEY_LEVEL1, "{}#{}".format(
@@ -498,10 +495,6 @@ def compute_and_apply(group, values, configs, joint_order,
 # ─────────────────────────────────────────────────────────────────────────────
 
 class RobotPoseDialog(ef.Dialog):
-    """
-    Un curseur + NumericStepper par articulation non-fixe.
-    Applique la cinématique en temps réel.
-    """
 
     def __init__(self, group, stored_values, configs, joint_order,
                  T0_rest, master_name, instance_index):
@@ -516,20 +509,16 @@ class RobotPoseDialog(ef.Dialog):
         self._updating       = False
         self.validated       = False
 
-        # Valeurs courantes indexées par config_idx
-        self._values = {}
-        for ci, c in enumerate(configs):
-            self._values[ci] = stored_values.get(ci, 0.0)
+        self._values = {ci: stored_values.get(ci, 0.0)
+                        for ci in range(len(configs))}
 
         self._sliders  = {}
         self._spinners = {}
-
         self._build_ui()
 
-    # ── Construction UI ──────────────────────────────────────────────────────
-
     def _build_ui(self):
-        self.Title     = "Pose – {}#{}".format(self._master_name, self._instance_index)
+        self.Title     = "Pose – {}#{}".format(
+            self._master_name, self._instance_index)
         self.Padding   = ed.Padding(12)
         self.Resizable = True
 
@@ -537,16 +526,15 @@ class RobotPoseDialog(ef.Dialog):
         layout.Spacing = ed.Size(6, 4)
 
         layout.Rows.Add(ef.TableRow(
-            ef.TableCell(self._lbl("Joint",     True)),
-            ef.TableCell(self._lbl("Type",      True)),
-            ef.TableCell(self._lbl("Min",       True)),
-            ef.TableCell(self._lbl("Curseur",   True)),
-            ef.TableCell(self._lbl("Max",       True)),
-            ef.TableCell(self._lbl("Valeur",    True)),
-            ef.TableCell(self._lbl("Unité",     True)),
+            ef.TableCell(self._lbl("Joint",   True)),
+            ef.TableCell(self._lbl("Type",    True)),
+            ef.TableCell(self._lbl("Min",     True)),
+            ef.TableCell(self._lbl("Curseur", True)),
+            ef.TableCell(self._lbl("Max",     True)),
+            ef.TableCell(self._lbl("Valeur",  True)),
+            ef.TableCell(self._lbl("Unité",   True)),
         ))
 
-        # Lignes dans l'ordre topologique, joints non-fixe seulement
         for ci in self._joint_order:
             c = self._configs[ci]
             if c["type"] == JOINT_FIXED:
@@ -555,14 +543,9 @@ class RobotPoseDialog(ef.Dialog):
             lo  = c["min_val"]
             hi  = c["max_val"]
             val = self._values[ci]
-
-            # Label joint : obj_name ou block_name
-            label = c["obj_name"] or c["block_name"] or "Joint {}".format(ci)
-
-            # Unité
             unit = "°" if c["type"] == JOINT_PIVOT else "mm"
+            label = c["obj_name"] or c["block_name"] or "J{}".format(ci)
 
-            # Slider : résolution 0.1 → ×10
             slider = ef.Slider()
             slider.MinValue = int(lo  * 10)
             slider.MaxValue = int(hi  * 10)
@@ -593,7 +576,6 @@ class RobotPoseDialog(ef.Dialog):
                 ef.TableCell(self._lbl(unit)),
             ))
 
-        # Boutons
         btn_ok     = ef.Button(Text="OK")
         btn_cancel = ef.Button(Text="Annuler")
         btn_ok.Click     += self._on_ok
@@ -620,8 +602,6 @@ class RobotPoseDialog(ef.Dialog):
         if bold:
             lbl.Font = ed.Font(lbl.Font.Family, lbl.Font.Size, ed.FontStyle.Bold)
         return lbl
-
-    # ── Callbacks ────────────────────────────────────────────────────────────
 
     def _on_slider(self, sender, e):
         if self._updating:
@@ -671,33 +651,33 @@ class RobotPoseDialog(ef.Dialog):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def moveJoints():
-    # 1. Résolution des entrées (configs chargées depuis le bloc maître)
-    master_name, instance_index, group, configs = resolve_input(None)
+    # 1. Résolution : groupe décomposé + config du bloc maître
+    master_name, instance_index, group, configs, level_key = resolve_input()
     if master_name is None:
         return
 
-    # 2. Ordre topologique des joints
     joint_order = build_joint_order(configs)
 
-    # 3. T0_rest depuis KEY_REST_XFORM — obligatoire
+    # 2. T0_rest depuis KEY_REST_XFORM (pose neutre obligatoire)
     T0_rest = {}
     for ci in range(len(configs)):
         obj_id = group.get(ci)
         if obj_id is None:
-            rs.MessageBox("Instance manquante pour config {}.".format(ci), 0, "Erreur")
+            rs.MessageBox(
+                "Instance manquante pour config {}.".format(ci), 0, "Erreur")
             return
         rest_str = rs.GetUserText(obj_id, KEY_REST_XFORM)
         xf = str_to_xform(rest_str) if rest_str else None
         if xf is None:
             rs.MessageBox(
                 "RestXform manquante pour '{}' (config {}).\n"
-                "Réinsérez le bloc pour initialiser la pose neutre.".format(
+                "Réinsérez et décomposez le bloc.".format(
                     configs[ci]["obj_name"] or configs[ci]["block_name"], ci),
                 0, "Erreur")
             return
         T0_rest[ci] = xf
 
-    # 4. Valeurs stockées + capture état avant édition
+    # 3. Valeurs stockées + capture état avant édition
     stored_values = read_stored_values(group, configs)
     values_before = {ci: stored_values.get(ci, 0.0) for ci in range(len(configs))}
 
@@ -706,25 +686,25 @@ def moveJoints():
         xf = get_instance_xform(group[ci])
         if xf is None:
             rs.MessageBox(
-                "Transformée courante illisible pour config {}.".format(ci),
+                "Transformée courante illisible (config {}).".format(ci),
                 0, "Erreur")
             return
         T0_before[ci] = xf
 
-    # 5. Application des valeurs stockées avant ouverture du dialogue
+    # 4. Application des valeurs stockées avant ouverture du dialogue
     rs.EnableRedraw(False)
     compute_and_apply(group, values_before, configs, joint_order,
                       T0_rest, master_name, instance_index)
     rs.EnableRedraw(True)
     sc.doc.Views.Redraw()
 
-    # 6. Dialogue
+    # 5. Dialogue
     dlg = RobotPoseDialog(
         group, stored_values, configs, joint_order,
         T0_rest, master_name, instance_index)
     dlg.ShowModal(Rhino.UI.RhinoEtoApp.MainWindow)
 
-    # 7. Résultat
+    # 6. Résultat
     if dlg.validated:
         rs.EnableRedraw(False)
         ok = compute_and_apply(group, dlg.values, configs, joint_order,
@@ -734,6 +714,7 @@ def moveJoints():
 
         if ok:
             rs.UnselectAllObjects()
+            # Sélection : groupe + instances Pose de même KEY_LEVEL0
             target_lv0   = "{}#{}".format(master_name, instance_index)
             all_selected = list(group.values())
             for obj in (rs.AllObjects() or []):
@@ -748,7 +729,7 @@ def moveJoints():
                  for ci, v in dlg.values.items()
                  if configs[ci]["type"] != JOINT_FIXED}))
     else:
-        # Annulation : restauration exacte
+        # Annulation : restauration exacte de l'état avant édition
         rs.EnableRedraw(False)
         for ci in range(len(configs)):
             obj_id = group[ci]
