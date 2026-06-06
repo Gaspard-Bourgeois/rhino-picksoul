@@ -5,12 +5,14 @@ import Rhino.UI
 import scriptcontext as sc
 import Eto.Forms as ef
 import Eto.Drawing as ed
+import uuid
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONSTANTES
 # ─────────────────────────────────────────────────────────────────────────────
 KEY_JOINT_TYPE   = "JointType"     # "fixed" | "slider" | "pivot"
-KEY_JOINT_PARENT = "JointParent"   # index positionnel 0-based dans le bloc (int str)
+KEY_JOINT_PARENT = "JointParent"   # UID de l'instance parente
+KEY_INSTANCE_UID = "InstanceUID"   # UUID stable généré une fois
 KEY_MIN_ANGLE    = "minAngle"
 KEY_MAX_ANGLE    = "maxAngle"
 KEY_MIN_TRANS    = "minTrans"
@@ -25,6 +27,18 @@ DEFAULT_SLIDER_MAX = 100.0
 DEFAULT_PIVOT_MIN  =   0.0
 DEFAULT_PIVOT_MAX  = 360.0
 
+# Largeurs de colonnes (px) — partagées header et lignes
+COL_WIDTHS = {
+    "idx":    30,
+    "oname": 120,
+    "bname": 130,
+    "type":   90,
+    "parent":210,
+    "min":    80,
+    "max":    80,
+    "unit":   30,
+}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UTILITAIRES DOCUMENT
@@ -36,65 +50,60 @@ def resolve_block_name(raw_name):
     return raw_name
 
 
+def ensure_uid(obj_id):
+    """
+    Retourne l'UID stable de l'objet.
+    S'il n'existe pas encore, en génère un et le stocke.
+    """
+    uid = rs.GetUserText(obj_id, KEY_INSTANCE_UID)
+    if not uid:
+        uid = str(uuid.uuid4())
+        rs.SetUserText(obj_id, KEY_INSTANCE_UID, uid)
+    return uid
+
+
 def get_block_instance_sub_infos(block_name):
     """
-    Retourne uniquement les sous-objets de type InstanceReferenceGeometry.
-    Chaque entrée : { 'id', 'obj_name', 'block_name', 'pos_index' }
-    pos_index = index dans la liste filtrée (0-based), stable comme clé de parenté.
+    Retourne uniquement les sous-objets de type InstanceReferenceGeometry,
+    chacun enrichi d'un UID stable.
+    { 'id', 'uid', 'obj_name', 'block_name' }
     """
     if not rs.IsBlock(block_name):
         return []
     all_ids = rs.BlockObjects(block_name) or []
-    infos   = []
+    infos = []
     for obj_id in all_ids:
         obj = sc.doc.Objects.FindId(obj_id)
         if obj is None:
             continue
         if not isinstance(obj.Geometry, Rhino.Geometry.InstanceReferenceGeometry):
             continue
-        oname = rs.ObjectName(obj_id) or ""
+        uid   = ensure_uid(obj_id)
+        oname = rs.ObjectName(obj_id)   or ""
         bname = rs.BlockInstanceName(obj_id) or ""
         infos.append({
             "id":         obj_id,
+            "uid":        uid,
             "obj_name":   oname,
             "block_name": bname,
         })
-    # Ajout de pos_index après filtrage
-    for i, info in enumerate(infos):
-        info["pos_index"] = i
     return infos
 
 
-def read_existing_keys(block_name, n_instances):
+def read_existing_keys(sub_infos):
     """
     Lit les UserTexts sur les sous-instances filtrées.
-    KEY_JOINT_PARENT est un index positionnel (int str) — indépendant des noms.
-    Retourne une liste de dicts, un par instance filtrée.
+    KEY_JOINT_PARENT est un UID — résolu en index local pour l'UI.
+    Retourne une liste de dicts.
     """
-    if not rs.IsBlock(block_name):
-        return []
-    all_ids = rs.BlockObjects(block_name) or []
-    # On refiltre dans le même ordre que get_block_instance_sub_infos
-    filtered = []
-    for obj_id in all_ids:
-        obj = sc.doc.Objects.FindId(obj_id)
-        if obj is None:
-            continue
-        if not isinstance(obj.Geometry, Rhino.Geometry.InstanceReferenceGeometry):
-            continue
-        filtered.append(obj_id)
-
+    uid_to_idx = {info["uid"]: i for i, info in enumerate(sub_infos)}
     result = []
-    for obj_id in filtered:
-        jtype = rs.GetUserText(obj_id, KEY_JOINT_TYPE) or JOINT_FIXED
-        # Parent stocké comme index positionnel (str d'un int)
-        parent_raw = rs.GetUserText(obj_id, KEY_JOINT_PARENT) or ""
-        try:
-            parent_idx = int(parent_raw)
-            if parent_idx < 0 or parent_idx >= n_instances:
-                parent_idx = -1
-        except (ValueError, TypeError):
-            parent_idx = -1
+    for info in sub_infos:
+        obj_id = info["id"]
+        jtype  = rs.GetUserText(obj_id, KEY_JOINT_TYPE) or JOINT_FIXED
+
+        parent_uid = rs.GetUserText(obj_id, KEY_JOINT_PARENT) or ""
+        parent_idx = uid_to_idx.get(parent_uid, -1)
 
         try:    lo_a = float(rs.GetUserText(obj_id, KEY_MIN_ANGLE) or DEFAULT_PIVOT_MIN)
         except: lo_a = DEFAULT_PIVOT_MIN
@@ -107,7 +116,7 @@ def read_existing_keys(block_name, n_instances):
 
         result.append({
             "type":       jtype,
-            "parent_idx": parent_idx,   # int, -1 = aucun
+            "parent_idx": parent_idx,
             "min_a": lo_a, "max_a": hi_a,
             "min_t": lo_t, "max_t": hi_t,
         })
@@ -115,10 +124,8 @@ def read_existing_keys(block_name, n_instances):
 
 
 def collect_existing_instances(block_name):
-    """Sauvegarde toutes les instances du bloc dans le document pour réinsertion."""
     instances = []
-    all_objs  = rs.AllObjects() or []
-    for obj_id in all_objs:
+    for obj_id in (rs.AllObjects() or []):
         if not rs.IsBlockInstance(obj_id):
             continue
         if rs.BlockInstanceName(obj_id) != block_name:
@@ -133,20 +140,23 @@ def collect_existing_instances(block_name):
 
 def write_keys_and_rebuild(block_name, sub_infos, joint_data):
     """
-    Écrit les UserTexts (parent = index positionnel),
+    Écrit les UserTexts (KEY_JOINT_PARENT = UID du parent),
     reconstruit le bloc et réinsère les instances existantes.
     """
-    obj_ids = [info["id"] for info in sub_infos]
-    if len(obj_ids) != len(joint_data):
+    if len(sub_infos) != len(joint_data):
         return False
 
     existing = collect_existing_instances(block_name)
 
-    for obj_id, data in zip(obj_ids, joint_data):
+    for info, data in zip(sub_infos, joint_data):
+        obj_id = info["id"]
         rs.SetUserText(obj_id, KEY_JOINT_TYPE, data["type"])
-        # Stockage de l'index positionnel (indépendant des noms)
+
         pidx = data["parent_idx"]
-        rs.SetUserText(obj_id, KEY_JOINT_PARENT, str(pidx) if pidx >= 0 else "")
+        if 0 <= pidx < len(sub_infos):
+            rs.SetUserText(obj_id, KEY_JOINT_PARENT, sub_infos[pidx]["uid"])
+        else:
+            rs.SetUserText(obj_id, KEY_JOINT_PARENT, "")
 
         if data["type"] == JOINT_PIVOT:
             rs.SetUserText(obj_id, KEY_MIN_ANGLE, str(data["min_a"]))
@@ -164,12 +174,10 @@ def write_keys_and_rebuild(block_name, sub_infos, joint_data):
             rs.SetUserText(obj_id, KEY_MIN_TRANS, "")
             rs.SetUserText(obj_id, KEY_MAX_TRANS, "")
 
-    # Reconstruction
     all_block_objs = rs.BlockObjects(block_name) or []
     rs.DeleteBlock(block_name)
     rs.AddBlock(all_block_objs, Rhino.Geometry.Point3d.Origin, block_name, False)
 
-    # Réinsertion aux emplacements d'origine
     for inst in existing:
         new_id = rs.InsertBlock(block_name, [0, 0, 0])
         if new_id is None:
@@ -189,20 +197,14 @@ def write_keys_and_rebuild(block_name, sub_infos, joint_data):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def topological_sort(n, data_list):
-    """
-    Trie les indices 0..n-1 selon l'ordre topologique (parents avant enfants).
-    data_list[i]['parent_idx'] = int index du parent, -1 si aucun.
-    """
     children  = {i: [] for i in range(n)}
     in_degree = {i: 0  for i in range(n)}
-
     for i, data in enumerate(data_list):
         p = data.get("parent_idx", -1)
         if 0 <= p < n and p != i:
             children[p].append(i)
             in_degree[i] += 1
-
-    queue = sorted([i for i in range(n) if in_degree[i] == 0])
+    queue = sorted(i for i in range(n) if in_degree[i] == 0)
     order = []
     while queue:
         node = queue.pop(0)
@@ -211,8 +213,6 @@ def topological_sort(n, data_list):
             in_degree[child] -= 1
             if in_degree[child] == 0:
                 queue.append(child)
-
-    # Cycle éventuel
     order.extend(i for i in range(n) if i not in order)
     return order
 
@@ -231,7 +231,6 @@ class JointDefDialog(ef.Dialog):
         self._n          = len(sub_infos)
         self.validated   = False
 
-        # État interne indexé par pos_index original
         self._data = []
         for i in range(self._n):
             if i < len(existing_data):
@@ -245,7 +244,6 @@ class JointDefDialog(ef.Dialog):
 
         self._order = list(range(self._n))
 
-        # Widgets par index original
         self._type_drops   = [None] * self._n
         self._parent_drops = [None] * self._n
         self._min_spins    = [None] * self._n
@@ -253,8 +251,8 @@ class JointDefDialog(ef.Dialog):
         self._unit_labels  = [None] * self._n
         self._idx_labels   = [None] * self._n
         self._row_panels   = [None] * self._n
+        self._scroll       = None
 
-        self._scroll = None
         self._build_ui()
         self._refresh_order()
 
@@ -264,27 +262,15 @@ class JointDefDialog(ef.Dialog):
         self.Title       = "Liaisons cinématiques – {}".format(self._block_name)
         self.Padding     = ed.Padding(10)
         self.Resizable   = True
-        self.MinimumSize = ed.Size(900, 400)
+        self.MinimumSize = ed.Size(820, 400)
 
         outer = ef.DynamicLayout()
-        outer.Spacing = ed.Size(0, 6)
+        outer.Spacing = ed.Size(0, 4)
 
-        # En-têtes
-        header = ef.TableLayout()
-        header.Spacing = ed.Size(6, 0)
-        header.Rows.Add(ef.TableRow(
-            ef.TableCell(self._lbl("#",           True), False),
-            ef.TableCell(self._lbl("Nom objet",   True), False),
-            ef.TableCell(self._lbl("Nom bloc",    True), True),
-            ef.TableCell(self._lbl("Liaison",     True), False),
-            ef.TableCell(self._lbl("Parent (#)",  True), False),
-            ef.TableCell(self._lbl("Min",         True), False),
-            ef.TableCell(self._lbl("Max",         True), False),
-            ef.TableCell(self._lbl("Unité",       True), False),
-        ))
-        outer.AddRow(header)
+        # ── En-tête : même structure de cellules que les lignes ──────────────
+        outer.AddRow(self._build_header())
 
-        # Lignes dans un ScrollArea
+        # ── Lignes dans scroll ───────────────────────────────────────────────
         self._rows_layout = ef.DynamicLayout()
         self._rows_layout.Spacing = ed.Size(0, 2)
         for i in range(self._n):
@@ -295,68 +281,102 @@ class JointDefDialog(ef.Dialog):
         scroll = ef.Scrollable()
         scroll.Content             = self._rows_layout
         scroll.ExpandContentHeight = False
-        scroll.Height              = min(40 * self._n + 20, 520)
+        scroll.Height              = min(36 * self._n + 16, 520)
         self._scroll = scroll
         outer.AddRow(scroll)
 
-        # Boutons
+        # ── Boutons ───────────────────────────────────────────────────────────
         btn_ok     = ef.Button(Text="OK")
         btn_cancel = ef.Button(Text="Annuler")
         btn_ok.Click     += self._on_ok
         btn_cancel.Click += self._on_cancel
 
-        btn_row = ef.TableLayout()
-        btn_row.Spacing = ed.Size(6, 0)
-        btn_row.Rows.Add(ef.TableRow(
-            ef.TableCell(ef.Panel(), True),
-            ef.TableCell(btn_cancel, False),
-            ef.TableCell(btn_ok,     False),
-        ))
-        outer.AddRow(btn_row)
+        btn_panel = ef.DynamicLayout()
+        btn_panel.Spacing = ed.Size(6, 0)
+        btn_panel.BeginHorizontal()
+        btn_panel.AddSpace()
+        btn_panel.Add(btn_cancel)
+        btn_panel.Add(btn_ok)
+        btn_panel.EndHorizontal()
+        outer.AddRow(btn_panel)
 
         self.Content       = outer
         self.DefaultButton = btn_ok
         self.AbortButton   = btn_cancel
 
+    def _make_row_layout(self, cells):
+        """
+        Construit un TableLayout horizontal à partir d'une liste de contrôles,
+        en appliquant COL_WIDTHS dans l'ordre des colonnes.
+        cells : liste de (contrôle, clé_largeur)
+        """
+        tl = ef.TableLayout()
+        tl.Spacing = ed.Size(6, 0)
+        tl.Padding = ed.Padding(2, 1)
+        row = ef.TableRow()
+        for ctrl, wkey in cells:
+            w = COL_WIDTHS.get(wkey, 80)
+            ctrl.Width = w
+            row.Cells.Add(ef.TableCell(ctrl, False))
+        tl.Rows.Add(row)
+        panel = ef.Panel()
+        panel.Content = tl
+        return panel
+
+    def _build_header(self):
+        labels = [
+            ("#",           "idx"),
+            ("Nom objet",   "oname"),
+            ("Nom bloc",    "bname"),
+            ("Liaison",     "type"),
+            ("Parent",      "parent"),
+            ("Min",         "min"),
+            ("Max",         "max"),
+            ("Unité",       "unit"),
+        ]
+        cells = []
+        for text, wkey in labels:
+            lbl = ef.Label(Text=text)
+            lbl.Font = ed.Font(lbl.Font.Family, lbl.Font.Size, ed.FontStyle.Bold)
+            cells.append((lbl, wkey))
+        return self._make_row_layout(cells)
+
     def _build_row(self, i):
         info = self._sub_infos[i]
         d    = self._data[i]
 
-        # Label numéro (mis à jour par _refresh_order)
-        idx_lbl = ef.Label(Text="")
-        idx_lbl.Width       = 24
+        # Colonne #
+        idx_lbl      = ef.Label(Text="")
         self._idx_labels[i] = idx_lbl
 
-        # Colonnes nom objet / nom bloc séparées
+        # Nom objet / Nom bloc
         lbl_oname = ef.Label(Text=info["obj_name"]   or "—")
         lbl_bname = ef.Label(Text=info["block_name"] or "—")
-        lbl_oname.Width = 120
-        lbl_bname.Width = 140
 
-        # DropDown type
+        # Type
         drop = ef.DropDown()
         for t in [JOINT_FIXED, JOINT_SLIDER, JOINT_PIVOT]:
             drop.Items.Add(t)
         drop.SelectedKey = d["type"]
-        drop.Width       = 80
         drop.Tag         = i
         drop.SelectedIndexChanged += self._on_type_changed
         self._type_drops[i] = drop
 
-        # DropDown parent : affiche "#pos_index  obj_name (block_name)"
+        # Parent — exclut self
         pdrop = ef.DropDown()
         pdrop.Items.Add("— aucun —")
         for j, other in enumerate(self._sub_infos):
-            label = "#{} {} ({})".format(
-                j,
+            if j == i:
+                continue   # une instance ne peut pas être son propre parent
+            label = "{} / {}".format(
                 other["obj_name"]   or "—",
                 other["block_name"] or "—")
             pdrop.Items.Add(label)
-        # Sélection initiale depuis parent_idx stocké
+        # Mapping : SelectedIndex dans pdrop → index original
+        # pdrop index 0 = aucun ; 1..n-1 = les autres dans ordre naturel sans i
         pidx = d["parent_idx"]
-        pdrop.SelectedIndex = (pidx + 1) if 0 <= pidx < self._n else 0
-        pdrop.Width = 200
-        pdrop.Tag   = i
+        pdrop.SelectedIndex = self._orig_to_pdrop(i, pidx)
+        pdrop.Tag = i
         pdrop.SelectedIndexChanged += self._on_parent_changed
         self._parent_drops[i] = pdrop
 
@@ -366,44 +386,58 @@ class JointDefDialog(ef.Dialog):
         for sp in (min_spin, max_spin):
             sp.DecimalPlaces = 2
             sp.Increment     = 1.0
-            sp.Width         = 80
         self._min_spins[i] = min_spin
         self._max_spins[i] = max_spin
         self._apply_limits_to_spinners(i)
 
         # Unité
         unit_lbl = ef.Label(Text=self._unit_for(d["type"]))
-        unit_lbl.Width       = 24
         self._unit_labels[i] = unit_lbl
 
         self._set_row_enabled(i, d["type"])
 
-        row_tl = ef.TableLayout()
-        row_tl.Spacing = ed.Size(6, 0)
-        row_tl.Rows.Add(ef.TableRow(
-            ef.TableCell(idx_lbl,   False),
-            ef.TableCell(lbl_oname, False),
-            ef.TableCell(lbl_bname, True),
-            ef.TableCell(drop,      False),
-            ef.TableCell(pdrop,     False),
-            ef.TableCell(min_spin,  False),
-            ef.TableCell(max_spin,  False),
-            ef.TableCell(unit_lbl,  False),
-        ))
+        cells = [
+            (idx_lbl,  "idx"),
+            (lbl_oname,"oname"),
+            (lbl_bname,"bname"),
+            (drop,     "type"),
+            (pdrop,    "parent"),
+            (min_spin, "min"),
+            (max_spin, "max"),
+            (unit_lbl, "unit"),
+        ]
+        return self._make_row_layout(cells)
 
-        panel = ef.Panel()
-        panel.Content = row_tl
-        panel.Tag     = i
-        return panel
+    # ── Mapping DropDown parent ↔ index original ─────────────────────────────
+
+    def _pdrop_entries(self, self_idx):
+        """
+        Retourne la liste des index originaux dans l'ordre du DropDown parent
+        de la ligne self_idx (index 0 du drop = aucun, donc décalé de 1).
+        """
+        return [j for j in range(self._n) if j != self_idx]
+
+    def _orig_to_pdrop(self, self_idx, orig_idx):
+        """orig_idx → SelectedIndex dans le DropDown (0 = aucun)."""
+        if orig_idx < 0:
+            return 0
+        entries = self._pdrop_entries(self_idx)
+        try:
+            return entries.index(orig_idx) + 1
+        except ValueError:
+            return 0
+
+    def _pdrop_to_orig(self, self_idx, selected_index):
+        """SelectedIndex dans le DropDown → orig_idx (-1 si aucun)."""
+        if selected_index <= 0:
+            return -1
+        entries = self._pdrop_entries(self_idx)
+        idx = selected_index - 1
+        if 0 <= idx < len(entries):
+            return entries[idx]
+        return -1
 
     # ── Helpers ──────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _lbl(text, bold=False):
-        lbl = ef.Label(Text=str(text))
-        if bold:
-            lbl.Font = ed.Font(lbl.Font.Family, lbl.Font.Size, ed.FontStyle.Bold)
-        return lbl
 
     @staticmethod
     def _unit_for(jtype):
@@ -432,13 +466,11 @@ class JointDefDialog(ef.Dialog):
 
     def _refresh_order(self):
         self._order = topological_sort(self._n, self._data)
-
         new_layout = ef.DynamicLayout()
         new_layout.Spacing = ed.Size(0, 2)
         for pos, orig_idx in enumerate(self._order):
             self._idx_labels[orig_idx].Text = str(pos + 1)
             new_layout.AddRow(self._row_panels[orig_idx])
-
         self._scroll.Content = new_layout
 
     # ── Callbacks ────────────────────────────────────────────────────────────
@@ -460,16 +492,16 @@ class JointDefDialog(ef.Dialog):
 
     def _on_parent_changed(self, sender, e):
         i    = sender.Tag
-        sidx = sender.SelectedIndex   # 0 = aucun, 1-based sinon
-        self._data[i]["parent_idx"] = (sidx - 1) if sidx > 0 else -1
+        orig = self._pdrop_to_orig(i, sender.SelectedIndex)
+        self._data[i]["parent_idx"] = orig
         self._refresh_order()
 
     def _on_ok(self, sender, e):
         for i in range(self._n):
             jtype = self._type_drops[i].SelectedKey or JOINT_FIXED
-            sidx  = self._parent_drops[i].SelectedIndex
+            orig  = self._pdrop_to_orig(i, self._parent_drops[i].SelectedIndex)
             self._data[i]["type"]       = jtype
-            self._data[i]["parent_idx"] = (sidx - 1) if sidx > 0 else -1
+            self._data[i]["parent_idx"] = orig
             if jtype == JOINT_PIVOT:
                 self._data[i]["min_a"] = self._min_spins[i].Value
                 self._data[i]["max_a"] = self._max_spins[i].Value
@@ -479,17 +511,15 @@ class JointDefDialog(ef.Dialog):
 
         errors = []
         for i in range(self._n):
-            d = self._data[i]
+            d    = self._data[i]
+            name = self._sub_infos[i]["obj_name"] or self._sub_infos[i]["block_name"] or str(i)
             if d["type"] != JOINT_FIXED and d["parent_idx"] < 0:
-                errors.append("Instance {} '{}' : parent requis pour liaison '{}'.".format(
-                    i, self._sub_infos[i]["obj_name"] or self._sub_infos[i]["block_name"],
-                    d["type"]))
+                errors.append("'{}' : parent requis pour liaison '{}'.".format(name, d["type"]))
             if d["type"] != JOINT_FIXED:
                 lo = d["min_a"] if d["type"] == JOINT_PIVOT else d["min_t"]
                 hi = d["max_a"] if d["type"] == JOINT_PIVOT else d["max_t"]
                 if lo >= hi:
-                    errors.append("Instance {} '{}' : Min doit être < Max.".format(
-                        i, self._sub_infos[i]["obj_name"] or self._sub_infos[i]["block_name"]))
+                    errors.append("'{}' : Min doit être < Max.".format(name))
         if errors:
             rs.MessageBox("\n".join(errors), 0, "Erreurs de validation")
             return
@@ -535,7 +565,7 @@ def main():
             0, "Erreur")
         return
 
-    existing_data = read_existing_keys(block_name, len(sub_infos))
+    existing_data = read_existing_keys(sub_infos)
 
     dlg = JointDefDialog(block_name, sub_infos, existing_data)
     dlg.ShowModal(Rhino.UI.RhinoEtoApp.MainWindow)
@@ -550,18 +580,18 @@ def main():
         print("Bloc '{}' mis à jour.".format(block_name))
         for i, d in enumerate(dlg.joint_data):
             pidx = d["parent_idx"]
-            parent_str = " → #{}".format(pidx) if pidx >= 0 else ""
+            pname = (sub_infos[pidx]["obj_name"] or sub_infos[pidx]["block_name"]) \
+                    if pidx >= 0 else "—"
             if d["type"] == JOINT_PIVOT:
                 limit_str = " [{:.1f}°…{:.1f}°]".format(d["min_a"], d["max_a"])
             elif d["type"] == JOINT_SLIDER:
                 limit_str = " [{:.1f}…{:.1f} mm]".format(d["min_t"], d["max_t"])
             else:
                 limit_str = ""
-            print("  [{}] {} / {} : {}{}{}".format(
-                i,
+            print("  {} / {} : {} → {}{}".format(
                 sub_infos[i]["obj_name"]   or "—",
                 sub_infos[i]["block_name"] or "—",
-                d["type"], parent_str, limit_str))
+                d["type"], pname, limit_str))
     else:
         rs.MessageBox(
             "Erreur lors de la reconstruction du bloc '{}'.".format(block_name),
