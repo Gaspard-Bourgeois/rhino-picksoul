@@ -3,13 +3,39 @@ Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
 Version: 1.1
 Date: 16/06/2026
 """
+# -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
 def update_annotations():
+    styles = rs.DimStyleNames()
+    if not styles:
+        print(u"Aucun style d'annotation trouv\xe9.")
+        return
+
+    current_default = rs.CurrentDimStyle()
+
+    # Utilise le style passé par sc.sticky, sinon demande à l'utilisateur
     chosen_style = sc.sticky.get("dimstyle_target", None)
+    sc.sticky["dimstyle_target"] = None  # reset immédiat pour ne pas polluer les appels suivants
+
     if not chosen_style:
-        print(u"Aucun style d\xe9fini.")
+        options = [s.replace(" ", "_") for s in styles if s is not None]
+        msg = u"Style actuel : " + current_default + u". Choisir le nouveau style"
+        res = rs.GetString(msg, current_default, options)
+        if res is None:
+            return
+
+        if res in styles:
+            chosen_style = res
+        else:
+            for s in styles:
+                if s.replace(" ", "_") == res or s == res:
+                    chosen_style = s
+                    break
+
+    if not chosen_style:
+        print(u"Style invalide.")
         return
 
     undo_was_enabled = sc.doc.UndoRecordingEnabled
