@@ -15,10 +15,10 @@ def update_annotations():
 
     current_default = rs.CurrentDimStyle()
 
-    # Utilise le style passé par sc.sticky, sinon demande à l'utilisateur
-    chosen_style = sc.sticky.get("dimstyle_target", None)
-    sc.sticky["dimstyle_target"] = None  # reset immédiat pour ne pas polluer les appels suivants
+    # Lecture et nettoyage immédiat du paramètre éventuel
+    chosen_style = sc.sticky.pop("dimstyle_target", None)
 
+    # Si aucun paramètre, demander à l'utilisateur
     if not chosen_style:
         options = [s.replace(" ", "_") for s in styles if s is not None]
         msg = u"Style actuel : " + current_default + u". Choisir le nouveau style"
@@ -30,7 +30,7 @@ def update_annotations():
             chosen_style = res
         else:
             for s in styles:
-                if s.replace(" ", "_") == res or s == res:
+                if s is not None and (s.replace(" ", "_") == res or s == res):
                     chosen_style = s
                     break
 
@@ -43,6 +43,7 @@ def update_annotations():
 
     try:
         selected_objs = rs.SelectedObjects()
+
         if selected_objs:
             rs.EnableRedraw(False)
             anno_count = 0
