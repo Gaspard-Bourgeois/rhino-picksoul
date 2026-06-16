@@ -36,8 +36,14 @@ def _is_repeated_excluded_call():
     return any(last == ex for ex in EXCLUSION_LIST) and any(previous == ex for ex in EXCLUSION_LIST)
 
 def run(func):
+    history = _get_command_history()
+    print("### silenced.run appele ###")
+    print("history[-5:] : " + str(history[-5:]))
+    print("_is_repeated : " + str(_is_repeated_excluded_call()))
+    
     if _is_repeated_excluded_call():
         fallback = _last_non_excluded()
+        print("fallback : " + str(fallback))
         if fallback:
             Rhino.RhinoApp.RunScript(fallback, False)
         return
