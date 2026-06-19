@@ -61,6 +61,161 @@ def clean_name(signature):
     return name
 
 
+def get_existing_level_signature_pairs(obj_ids):
+    """
+    Parcourt les objets et collecte tous les couples (level, signature complète)
+    rencontrés dans les clés BlockNameLevel_X, ainsi que le mapping
+    nom_affiche -> signature complète pour pouvoir fusionner exactement.
+
+    Retourne une liste de tuples (level, clean_display_name, full_signature)
+    dédupliquée et triée par level croissant puis nom.
+    """
+    pairs = {}  # (level, full_signature) -> clean_display_name
+    for obj in obj_ids:
+        if not rs.IsObject(obj): continue
+        keys = rs.GetUserText(obj)
+        if not keys: continue
+        for k in keys:
+            if k.startswith("BlockNameLevel_"):
+                try:
+                    lvl = int(k.split("_")[-1])
+                except:
+                    continue
+                sig = rs.GetUserText(obj, k)
+                if not sig: continue
+                pairs[(lvl, sig)] = clean_name(sig)
+
+    result = [(lvl, disp, sig) for (lvl, sig), disp in pairs.items()]
+    result.sort(key=lambda t: (t[0], t[1]))
+    return result
+
+
+def _pick_new_orphan_name(existing_triplets):
+    """
+    Demande un nouveau nom de bloc (niveau 0 par défaut, signature indexée
+    pour éviter toute collision). Retourne (level, signature) ou (None, None)
+    si annulé.
+    """
+    new_name = rs.StringBox("Nom du nouveau bloc :", "", "Nouveau bloc")
+    if not new_name:
+        return None, None
+    level = 0
+    i = 1
+    existing_sigs = set(sig for (_, _, sig) in existing_triplets)
+    while "{}#{}".format(new_name, i) in existing_sigs:
+        i += 1
+    signature = "{}#{}".format(new_name, i)
+    return level, signature
+
+
+def _pick_orphan_name_from_listbox(existing_triplets):
+    """
+    Ouvre une ListBox complète: <Nouveau nom...> + tous les couples
+    level/nom existants. Retourne (level, signature) ou (None, None)
+    si annulé.
+    """
+    NEW_NAME_LABEL = "<Nouveau nom...>"
+    choices = [NEW_NAME_LABEL]
+    choice_map = {}  # label -> (level, full_signature)
+
+    for lvl, disp, sig in existing_triplets:
+        label = "{}  (Level {})".format(disp, lvl)
+        choices.append(label)
+        choice_map[label] = (lvl, sig)
+
+    picked = rs.ListBox(choices, "Choisissez un nom de bloc à attribuer", "Attribution de bloc manquante")
+    if not picked:
+        return None, None
+
+    if picked == NEW_NAME_LABEL:
+        return _pick_new_orphan_name(existing_triplets)
+    else:
+        level, signature = choice_map[picked]
+        return level, signature
+
+
+def assign_orphan_blockname(orphan_objs, existing_triplets):
+    """
+    Demande à l'utilisateur d'attribuer un (level, signature) aux objets
+    orphelins (sans aucune clé BlockNameLevel_X).
+
+    - Affiche/sélectionne les objets concernés pour que l'utilisateur voie
+      de quoi il s'agit.
+    - Propose un GetString avec en raccourci le premier couple level/nom
+      trouvé dans la sélection, plus une option "Liste..." qui ouvre la
+      ListBox complète (tous les couples existants + "Nouveau nom").
+    - Choix d'un nom existant -> fusion directe avec la signature exacte
+      (même level, même signature complète, ex. "Bloc01#1").
+    - Choix "Nouveau nom" -> demande le nom, niveau 0 par défaut, nouvelle
+      signature indexée "<nom>#1".
+
+    Retourne (level, signature) ou (None, None) si annulé.
+    """
+    rs.UnselectAllObjects()
+    rs.SelectObjects(orphan_objs)
+    rs.EnableRedraw(True)
+
+    LIST_LABEL = "Liste..."
+
+    if existing_triplets:
+        first_lvl, first_disp, first_sig = existing_triplets[0]
+        default_label = "{}  (Level {})".format(first_disp, first_lvl)
+        choices = [default_label, LIST_LABEL]
+        msg = "{} objet(s) sans attribution de bloc. Nom à attribuer :".format(len(orphan_objs))
+        picked = rs.GetString(msg, default_label, choices)
+
+        if picked is None:
+            return None, None
+        elif picked == default_label:
+            return first_lvl, first_sig
+        elif picked == LIST_LABEL:
+            return _pick_orphan_name_from_listbox(existing_triplets)
+        else:
+            # L'utilisateur a tapé autre chose que les choix proposés
+            # -> traité comme un nouveau nom direct, niveau 0.
+            i = 1
+            existing_sigs = set(sig for (_, _, sig) in existing_triplets)
+            while "{}#{}".format(picked, i) in existing_sigs:
+                i += 1
+            return 0, "{}#{}".format(picked, i)
+    else:
+        # Aucun couple existant dans la sélection: pas de raccourci possible,
+        # on demande directement le nouveau nom (niveau 0).
+        msg = "{} objet(s) sans attribution de bloc. Aucun nom existant détecté.".format(len(orphan_objs))
+        print(msg)
+        return _pick_new_orphan_name(existing_triplets)
+
+
+def handle_orphan_objects(current_selection):
+    """
+    Détecte les objets "Root" (sans aucune clé BlockNameLevel_X) dans la
+    sélection courante. Si trouvés, demande à l'utilisateur de leur
+    attribuer un (level, signature), écrit la UserText correspondante sur
+    chacun, puis retourne la sélection (inchangée en contenu, mise à jour
+    en UserText).
+
+    Retourne current_selection si succès (ou si rien à faire),
+    None si l'utilisateur annule.
+    """
+    h_map = get_hierarchy_map(current_selection)
+    if "Root" not in h_map or not h_map["Root"]["objects"]:
+        return current_selection
+
+    orphan_objs = h_map["Root"]["objects"]
+    existing_triplets = get_existing_level_signature_pairs(current_selection)
+
+    level, signature = assign_orphan_blockname(orphan_objs, existing_triplets)
+    if level is None:
+        print("Opération annulée.")
+        return None
+
+    key = "BlockNameLevel_{}".format(level)
+    for obj in orphan_objs:
+        rs.SetUserText(obj, key, signature)
+
+    return current_selection
+
+
 def _get_pose_origin(prompt):
     """
     Demande à l'utilisateur de choisir un objet comme origine.
@@ -107,7 +262,14 @@ def reconstructBlock():
     rs.EnableRedraw(False)
     ensure_pose_block()
     current_selection = list(initial_objs)
-    
+
+    # --- ATTRIBUTION DES OBJETS ORPHELINS (sans BlockNameLevel_X) ---
+    rs.EnableRedraw(True)
+    current_selection = handle_orphan_objects(current_selection)
+    if current_selection is None:
+        return
+    rs.EnableRedraw(False)
+
     # --- VÉRIFICATION ORIGINES ---
     h_map = get_hierarchy_map(current_selection)
     missing = [sig for sig, d in h_map.items() if sig != "Root" and d["pose"] is None]
