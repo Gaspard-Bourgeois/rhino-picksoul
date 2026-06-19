@@ -34,11 +34,13 @@ def get_hierarchy_map(obj_ids, virtual_overrides=None):
     """
     Construit la cartographie signature -> {level, objects, pose}.
 
-    virtual_overrides: dict optionnel {obj_id: (level, signature)} permettant
-    de simuler l'appartenance d'un objet à un niveau/signature SANS lire ni
-    écrire de UserText réelle sur l'objet. Utilisé pour les objets orphelins
-    en attente de confirmation (afin de rester réversible avec Ctrl+Z, qui
-    n'a aucune prise sur une donnée gardée en mémoire Python).
+    virtual_overrides: dict optionnel {obj_id: {level: signature, ...}}
+    permettant de simuler l'appartenance d'un objet à une chaîne complète de
+    niveaux/signatures SANS lire ni écrire de UserText réelle sur l'objet.
+    Utilisé pour les objets orphelins en attente de confirmation (afin de
+    rester réversible avec Ctrl+Z, qui n'a aucune prise sur une donnée
+    gardée en mémoire Python). Le regroupement se fait sur le niveau le
+    plus profond de la chaîne, comme pour les UserText réelles.
     """
     if virtual_overrides is None:
         virtual_overrides = {}
@@ -48,7 +50,9 @@ def get_hierarchy_map(obj_ids, virtual_overrides=None):
         if not rs.IsObject(obj): continue
 
         if obj in virtual_overrides:
-            max_lvl, signature = virtual_overrides[obj]
+            chain = virtual_overrides[obj]
+            max_lvl = max(chain.keys())
+            signature = chain[max_lvl]
         else:
             keys = rs.GetUserText(obj)
             max_lvl = -1
@@ -107,11 +111,50 @@ def get_existing_level_signature_pairs(obj_ids):
     return result
 
 
+def get_blocklevel_chain(obj_id):
+    """
+    Retourne le dict complet {level: signature} de toutes les clés
+    BlockNameLevel_X portées par un objet (sa chaîne de parenté complète,
+    de la racine jusqu'à son niveau le plus profond).
+    """
+    chain = {}
+    keys = rs.GetUserText(obj_id)
+    if not keys:
+        return chain
+    for k in keys:
+        if k.startswith("BlockNameLevel_"):
+            try:
+                lvl = int(k.split("_")[-1])
+            except:
+                continue
+            sig = rs.GetUserText(obj_id, k)
+            if sig:
+                chain[lvl] = sig
+    return chain
+
+
+def find_reference_object_for_signature(obj_ids, level, signature):
+    """
+    Cherche, parmi obj_ids, un objet réel (UserText déjà écrite, pas virtuel)
+    qui porte BlockNameLevel_<level> == signature, afin de récupérer sa
+    chaîne complète de parenté (les niveaux inférieurs inclus).
+
+    Retourne l'obj_id trouvé, ou None si aucun.
+    """
+    key = "BlockNameLevel_{}".format(level)
+    for obj in obj_ids:
+        if not rs.IsObject(obj): continue
+        if rs.GetUserText(obj, key) == signature:
+            return obj
+    return None
+
+
 def _pick_new_orphan_name(existing_triplets):
     """
     Demande un nouveau nom de bloc (niveau 0 par défaut, signature indexée
     pour éviter toute collision). Retourne (level, signature) ou (None, None)
-    si annulé.
+    si annulé. Un nouveau nom n'a, par définition, aucun parent: sa chaîne
+    se limitera à {0: signature}.
     """
     new_name = rs.StringBox("Nom du nouveau bloc :", "", "Nouveau bloc")
     if not new_name:
@@ -219,7 +262,13 @@ def handle_orphan_objects(current_selection):
     """
     Détecte les objets "Root" (sans aucune clé BlockNameLevel_X) dans la
     sélection courante. Si trouvés, demande à l'utilisateur de leur
-    attribuer un (level, signature).
+    attribuer un nom/niveau.
+
+    Si l'utilisateur choisit de fusionner avec un groupe existant, la
+    CHAÎNE COMPLÈTE de parenté de ce groupe est récupérée (tous les niveaux
+    inférieurs inclus, ex. Level_0, Level_1, Level_2) en cherchant un objet
+    réel qui porte déjà cette signature -- pas seulement le niveau choisi --
+    afin que la reconstruction hiérarchique complète fonctionne ensuite.
 
     IMPORTANT: aucune UserText n'est écrite ici. L'attribution reste
     purement en mémoire (dict virtual_overrides) tant que la reconstruction
@@ -229,8 +278,8 @@ def handle_orphan_objects(current_selection):
     au moment de la création du Pose temporaire pour l'origine -- exactement
     comme pour n'importe quel autre groupe découvert dans le flux normal.
 
-    Retourne un dict {obj_id: (level, signature)} si succès (vide si rien à
-    faire), ou None si l'utilisateur annule.
+    Retourne un dict {obj_id: {level: signature, ...}} si succès (vide si
+    rien à faire), ou None si l'utilisateur annule.
     """
     h_map = get_hierarchy_map(current_selection)
     if "Root" not in h_map or not h_map["Root"]["objects"]:
@@ -244,7 +293,18 @@ def handle_orphan_objects(current_selection):
         print("Opération annulée.")
         return None
 
-    return {obj: (level, signature) for obj in orphan_objs}
+    # Récupère la chaîne complète si ce nom/niveau correspond à un groupe
+    # existant réel dans la sélection (fusion). Pour un nouveau nom, aucun
+    # objet réel ne porte encore cette signature -> chaîne réduite à elle-même.
+    ref_obj = find_reference_object_for_signature(current_selection, level, signature)
+    if ref_obj is not None:
+        chain = get_blocklevel_chain(ref_obj)
+        if level not in chain:
+            chain[level] = signature
+    else:
+        chain = {level: signature}
+
+    return {obj: dict(chain) for obj in orphan_objs}
 
 
 
@@ -287,6 +347,29 @@ def _get_pose_origin(prompt):
             return None, False
 
 
+def materialize_virtual_chain(obj, virtual_overrides):
+    """
+    Écrit réellement (SetUserText) TOUTE la chaîne de niveaux connue pour
+    un objet virtuel donné (ex: Level_0, Level_1, Level_2 si la fusion
+    portait sur un groupe à 3 niveaux de profondeur), puis retire l'objet
+    de virtual_overrides (il n'est plus virtuel, il est réel).
+    """
+    if obj not in virtual_overrides:
+        return
+    chain = virtual_overrides[obj]
+    for lvl, sig in chain.items():
+        key = "BlockNameLevel_{}".format(lvl)
+        rs.SetUserText(obj, key, sig)
+    del virtual_overrides[obj]
+
+
+def materialize_group(group_objs, virtual_overrides):
+    """Matérialise tous les objets virtuels d'un groupe en une fois."""
+    for obj in group_objs:
+        if obj in virtual_overrides:
+            materialize_virtual_chain(obj, virtual_overrides)
+
+
 def reconstructBlock():
     initial_objs = rs.GetObjects("Sélectionnez les objets à reconstruire", preselect=True)
     if not initial_objs: return
@@ -304,6 +387,13 @@ def reconstructBlock():
         return
     rs.EnableRedraw(False)
 
+    # Toute écriture de UserText à partir d'ici doit être annulable en un
+    # seul Ctrl+Z. On encadre explicitement dans un undo record dédié au
+    # lieu de compter sur le regroupement implicite de Rhino, qui ne
+    # semble pas garanti pour des SetUserText émis depuis Python.
+    doc = sc.doc
+    undo_serial = doc.BeginUndoRecord("Attribution BlockNameLevel (orphelins)")
+
     # --- VÉRIFICATION ORIGINES ---
     h_map = get_hierarchy_map(current_selection, virtual_overrides)
     missing = [sig for sig, d in h_map.items() if sig != "Root" and d["pose"] is None]
@@ -316,12 +406,7 @@ def reconstructBlock():
         for sig, data in h_map.items():
             if sig == "Root": continue
             if data["pose"] is None: continue  # sera traité dans la boucle missing
-            group_objs = data["objects"]
-            if any(o in virtual_overrides for o in group_objs):
-                key = "BlockNameLevel_{}".format(data["level"])
-                for obj in group_objs:
-                    if obj in virtual_overrides:
-                        rs.SetUserText(obj, key, sig)
+            materialize_group(data["objects"], virtual_overrides)
     
     if missing:
         levels = [h_map[sig]["level"] for sig in missing]
@@ -332,6 +417,7 @@ def reconstructBlock():
             rs.SelectObjects(objs_to_fix)
             rs.EnableRedraw(True)
             print("Origine manquante au niveau {}.".format(low_lvl))
+            doc.EndUndoRecord(undo_serial)
             return
         
         rs.EnableRedraw(True)
@@ -343,18 +429,16 @@ def reconstructBlock():
             # Échap → annulation totale
             if not success:
                 print("Opération annulée.")
+                doc.EndUndoRecord(undo_serial)
                 return
 
             # Matérialisation tardive: si ce groupe provient d'objets
             # orphelins virtuels, on écrit maintenant la vraie UserText
-            # (action normale, donc annulable par Ctrl+Z), juste avant de
-            # créer le Pose qui en dépend pour la suite du pipeline.
+            # complète (chaîne entière), action normale donc annulable par
+            # Ctrl+Z, juste avant de créer le Pose qui en dépend.
             group_objs = h_map[sig]["objects"]
-            key = "BlockNameLevel_{}".format(h_map[sig]["level"])
             ref_obj = group_objs[0]
-            if ref_obj in virtual_overrides:
-                for obj in group_objs:
-                    rs.SetUserText(obj, key, sig)
+            materialize_group(group_objs, virtual_overrides)
 
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
@@ -500,6 +584,7 @@ def reconstructBlock():
         count += 1
     print("{} blocs reconstruits au sein de {} instance(s)".format(count, len(current_selection)))
 
+    doc.EndUndoRecord(undo_serial)
     rs.EnableRedraw(True)
     if current_selection: rs.SelectObjects(current_selection)
     print("Terminé.")
