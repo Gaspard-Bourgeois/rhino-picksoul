@@ -30,22 +30,39 @@ def ensure_pose_block():
         rs.EnableRedraw(True)
     return "Pose"
 
-def get_hierarchy_map(obj_ids):
+def get_hierarchy_map(obj_ids, virtual_overrides=None):
+    """
+    Construit la cartographie signature -> {level, objects, pose}.
+
+    virtual_overrides: dict optionnel {obj_id: (level, signature)} permettant
+    de simuler l'appartenance d'un objet à un niveau/signature SANS lire ni
+    écrire de UserText réelle sur l'objet. Utilisé pour les objets orphelins
+    en attente de confirmation (afin de rester réversible avec Ctrl+Z, qui
+    n'a aucune prise sur une donnée gardée en mémoire Python).
+    """
+    if virtual_overrides is None:
+        virtual_overrides = {}
+
     mapping = {}
     for obj in obj_ids:
         if not rs.IsObject(obj): continue
-        keys = rs.GetUserText(obj)
-        max_lvl = -1
-        signature = "Root"
-        if keys:
-            for k in keys:
-                if k.startswith("BlockNameLevel_"):
-                    try:
-                        lvl = int(k.split("_")[-1])
-                        if lvl > max_lvl:
-                            max_lvl = lvl
-                            signature = rs.GetUserText(obj, k)
-                    except: continue
+
+        if obj in virtual_overrides:
+            max_lvl, signature = virtual_overrides[obj]
+        else:
+            keys = rs.GetUserText(obj)
+            max_lvl = -1
+            signature = "Root"
+            if keys:
+                for k in keys:
+                    if k.startswith("BlockNameLevel_"):
+                        try:
+                            lvl = int(k.split("_")[-1])
+                            if lvl > max_lvl:
+                                max_lvl = lvl
+                                signature = rs.GetUserText(obj, k)
+                        except: continue
+
         if signature not in mapping:
             mapping[signature] = {"level": max_lvl, "objects": [], "pose": None}
         if rs.IsBlockInstance(obj) and rs.BlockInstanceName(obj) == "Pose":
@@ -141,34 +158,46 @@ def assign_orphan_blockname(orphan_objs, existing_triplets):
 
     - Affiche/sélectionne les objets concernés pour que l'utilisateur voie
       de quoi il s'agit.
-    - Propose un GetString avec en raccourci le premier couple level/nom
-      trouvé dans la sélection, plus une option "Liste..." qui ouvre la
-      ListBox complète (tous les couples existants + "Nouveau nom").
+    - Propose un GetString avec en raccourci (mot-clé court, sans espace)
+      le premier nom trouvé dans la sélection, plus un mot-clé "Liste" qui
+      ouvre la ListBox complète (tous les couples existants + "Nouveau nom").
     - Choix d'un nom existant -> fusion directe avec la signature exacte
       (même level, même signature complète, ex. "Bloc01#1").
     - Choix "Nouveau nom" -> demande le nom, niveau 0 par défaut, nouvelle
       signature indexée "<nom>#1".
 
     Retourne (level, signature) ou (None, None) si annulé.
+
+    IMPORTANT: cette fonction ne modifie AUCUNE UserText sur les objets.
+    Elle se contente de retourner le couple choisi; c'est à l'appelant de
+    décider comment l'appliquer (en mémoire ou via SetUserText).
     """
     rs.UnselectAllObjects()
     rs.SelectObjects(orphan_objs)
     rs.EnableRedraw(True)
 
-    LIST_LABEL = "Liste..."
+    LIST_KEYWORD = "Liste"
 
     if existing_triplets:
         first_lvl, first_disp, first_sig = existing_triplets[0]
-        default_label = "{}  (Level {})".format(first_disp, first_lvl)
-        choices = [default_label, LIST_LABEL]
-        msg = "{} objet(s) sans attribution de bloc. Nom à attribuer :".format(len(orphan_objs))
-        picked = rs.GetString(msg, default_label, choices)
+        # Mot-clé court, sans espace, sans parenthèses, pour rester
+        # cliquable/tapable dans le mode liste de GetString.
+        default_keyword = first_disp.replace(" ", "_")
+
+        print("Objet(s) sans attribution de bloc: {} -> proposition '{}' (Level {})".format(
+            len(orphan_objs), first_disp, first_lvl))
+        for lvl, disp, sig in existing_triplets:
+            print("  - disponible: {} (Level {})".format(disp, lvl))
+
+        choices = [default_keyword, LIST_KEYWORD]
+        msg = "Nom à attribuer aux {} objet(s) orphelin(s)".format(len(orphan_objs))
+        picked = rs.GetString(msg, default_keyword, choices)
 
         if picked is None:
             return None, None
-        elif picked == default_label:
+        elif picked == default_keyword:
             return first_lvl, first_sig
-        elif picked == LIST_LABEL:
+        elif picked == LIST_KEYWORD:
             return _pick_orphan_name_from_listbox(existing_triplets)
         else:
             # L'utilisateur a tapé autre chose que les choix proposés
@@ -190,16 +219,22 @@ def handle_orphan_objects(current_selection):
     """
     Détecte les objets "Root" (sans aucune clé BlockNameLevel_X) dans la
     sélection courante. Si trouvés, demande à l'utilisateur de leur
-    attribuer un (level, signature), écrit la UserText correspondante sur
-    chacun, puis retourne la sélection (inchangée en contenu, mise à jour
-    en UserText).
+    attribuer un (level, signature).
 
-    Retourne current_selection si succès (ou si rien à faire),
-    None si l'utilisateur annule.
+    IMPORTANT: aucune UserText n'est écrite ici. L'attribution reste
+    purement en mémoire (dict virtual_overrides) tant que la reconstruction
+    n'a pas réellement besoin de matérialiser un bloc, afin que l'opération
+    reste annulable avec Ctrl+Z comme n'importe quelle autre action native.
+    La matérialisation réelle (SetUserText) n'intervient que plus tard,
+    au moment de la création du Pose temporaire pour l'origine -- exactement
+    comme pour n'importe quel autre groupe découvert dans le flux normal.
+
+    Retourne un dict {obj_id: (level, signature)} si succès (vide si rien à
+    faire), ou None si l'utilisateur annule.
     """
     h_map = get_hierarchy_map(current_selection)
     if "Root" not in h_map or not h_map["Root"]["objects"]:
-        return current_selection
+        return {}
 
     orphan_objs = h_map["Root"]["objects"]
     existing_triplets = get_existing_level_signature_pairs(current_selection)
@@ -209,11 +244,8 @@ def handle_orphan_objects(current_selection):
         print("Opération annulée.")
         return None
 
-    key = "BlockNameLevel_{}".format(level)
-    for obj in orphan_objs:
-        rs.SetUserText(obj, key, signature)
+    return {obj: (level, signature) for obj in orphan_objs}
 
-    return current_selection
 
 
 def _get_pose_origin(prompt):
@@ -264,15 +296,32 @@ def reconstructBlock():
     current_selection = list(initial_objs)
 
     # --- ATTRIBUTION DES OBJETS ORPHELINS (sans BlockNameLevel_X) ---
+    # Reste purement en mémoire (aucune UserText écrite) pour que
+    # l'opération soit annulable avec Ctrl+Z comme tout le reste.
     rs.EnableRedraw(True)
-    current_selection = handle_orphan_objects(current_selection)
-    if current_selection is None:
+    virtual_overrides = handle_orphan_objects(current_selection)
+    if virtual_overrides is None:
         return
     rs.EnableRedraw(False)
 
     # --- VÉRIFICATION ORIGINES ---
-    h_map = get_hierarchy_map(current_selection)
+    h_map = get_hierarchy_map(current_selection, virtual_overrides)
     missing = [sig for sig, d in h_map.items() if sig != "Root" and d["pose"] is None]
+
+    # Matérialisation tardive des orphelins qui ont fusionné avec un groupe
+    # déjà pourvu d'une origine (donc absent de `missing`, jamais traité
+    # par la boucle ci-dessous). On l'écrit maintenant, juste avant toute
+    # opération de reconstruction qui en dépend.
+    if virtual_overrides:
+        for sig, data in h_map.items():
+            if sig == "Root": continue
+            if data["pose"] is None: continue  # sera traité dans la boucle missing
+            group_objs = data["objects"]
+            if any(o in virtual_overrides for o in group_objs):
+                key = "BlockNameLevel_{}".format(data["level"])
+                for obj in group_objs:
+                    if obj in virtual_overrides:
+                        rs.SetUserText(obj, key, sig)
     
     if missing:
         levels = [h_map[sig]["level"] for sig in missing]
@@ -296,11 +345,21 @@ def reconstructBlock():
                 print("Opération annulée.")
                 return
 
+            # Matérialisation tardive: si ce groupe provient d'objets
+            # orphelins virtuels, on écrit maintenant la vraie UserText
+            # (action normale, donc annulable par Ctrl+Z), juste avant de
+            # créer le Pose qui en dépend pour la suite du pipeline.
+            group_objs = h_map[sig]["objects"]
+            key = "BlockNameLevel_{}".format(h_map[sig]["level"])
+            ref_obj = group_objs[0]
+            if ref_obj in virtual_overrides:
+                for obj in group_objs:
+                    rs.SetUserText(obj, key, sig)
+
             temp_pose = rs.InsertBlock("Pose", [0,0,0])
             rs.TransformObject(temp_pose, xform)
 
             # Propagation des UserText de hiérarchie
-            ref_obj = h_map[sig]["objects"][0]
             for k in rs.GetUserText(ref_obj):
                 if k.startswith("BlockNameLevel_"):
                     rs.SetUserText(temp_pose, k, rs.GetUserText(ref_obj, k))
