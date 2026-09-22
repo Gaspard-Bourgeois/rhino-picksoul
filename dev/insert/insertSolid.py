@@ -2,8 +2,8 @@
 Extend surfaces (standalone or extracted from a polysurface) until
 neighbors touch, then create a solid.
 Failure-safe: keeps whatever surfaces were successfully extended,
-colors them in a distinctive blue, and leaves them selected so the
-script can be re-run after adding one more surface.
+colors them blue, and remembers them (via sc.sticky) across script
+runs so you can just add one more surface and re-run.
 
 IronPython 2.7 - Rhino 8
 """
@@ -15,38 +15,73 @@ import System
 
 TOL = sc.doc.ModelAbsoluteTolerance
 EXTENDED_COLOR = (0, 102, 255)  # bleu unique pour identifier les surfaces générées par ce script
+STICKY_KEY = "ExtendCreateSolid_pending_ids"
 
 
 # ---------------------------------------------------------------------------
-# SELECTION + OPTIONS (pattern inspiré de getWithOption dans smartMove.py)
+# GESTION DE L'ETAT PERSISTANT (sc.sticky) ENTRE DEUX EXECUTIONS
+# ---------------------------------------------------------------------------
+def get_pending_entries():
+    """Récupère les surfaces laissées en bleu par une exécution précédente."""
+    ids = sc.sticky.get(STICKY_KEY, [])
+    entries = []
+    valid_ids = []
+    for id_ in ids:
+        obj = sc.doc.Objects.Find(id_)
+        if obj is None:
+            continue  # objet supprimé entre-temps par l'utilisateur
+        brep = rs.coercebrep(id_)
+        if brep is not None:
+            entries.append({"brep": brep, "orig_id": id_, "is_extracted": False})
+            valid_ids.append(id_)
+    sc.sticky[STICKY_KEY] = valid_ids  # nettoie les ids devenus invalides
+    return entries
+
+
+def set_pending_ids(ids):
+    sc.sticky[STICKY_KEY] = list(ids)
+
+
+def clear_pending():
+    sc.sticky[STICKY_KEY] = []
+
+
+# ---------------------------------------------------------------------------
+# SELECTION + OPTIONS - uniquement pour les NOUVELLES surfaces à ajouter
 # Accepte des surfaces standalone ET des faces individuelles de polysurfaces
-# (équivalent à un ExtractSrf à la volée, sans toucher la polysurface source)
 # ---------------------------------------------------------------------------
-def getSurfacesWithOptions(_message, extend_step_default=5.0, max_iter_default=40):
+def getSurfacesWithOptions(_message, extend_step_default=5.0, max_iter_default=40, min_count=0):
     go = Rhino.Input.Custom.GetObject()
     go.SetCommandPrompt(_message)
     go.SubObjectSelect = True   # permet de cliquer une face d'une polysurface
     go.GroupSelect = True
     go.AcceptNothing(True)
+    # Ignore toute présélection existante : force un pick interactif propre,
+    # c'est ce qui règle le problème d'exécution "automatique" au relancement.
+    go.EnablePreSelect(False, True)
     go.GeometryFilter = (Rhino.DocObjects.ObjectType.Surface |
                           Rhino.DocObjects.ObjectType.Brep |
                           Rhino.DocObjects.ObjectType.Extrusion)
 
     extendStepOpt = Rhino.Input.Custom.OptionDouble(extend_step_default, 0.0001, 1.0e6)
     maxIterOpt = Rhino.Input.Custom.OptionInteger(max_iter_default, 1, 1000)
+    resetOpt = Rhino.Input.Custom.OptionToggle(False, "False", "True")
     go.AddOptionDouble("Increment", extendStepOpt)
     go.AddOptionInteger("MaxIter", maxIterOpt)
+    go.AddOptionToggle("ResetPending", resetOpt)
 
     while True:
-        get_rc = go.GetMultiple(2, 0)
+        get_rc = go.GetMultiple(min_count, 0)
         if get_rc == Rhino.Input.GetResult.Object:
+            break
+        if get_rc == Rhino.Input.GetResult.Nothing:
             break
         if go.CommandResult() != Rhino.Commands.Result.Success:
             break
         if get_rc == Rhino.Input.GetResult.Option:
             continue
 
-    entries = []  # liste de dict: brep, orig_id, is_extracted
+    entries = []
     count = go.ObjectCount
     for i in range(count):
         objref = go.Object(i)
@@ -64,8 +99,9 @@ def getSurfacesWithOptions(_message, extend_step_default=5.0, max_iter_default=4
 
     extend_step = extendStepOpt.CurrentValue
     max_iter = maxIterOpt.CurrentValue
+    do_reset = resetOpt.CurrentValue
     go.Dispose()
-    return entries, extend_step, max_iter
+    return entries, extend_step, max_iter, do_reset
 
 
 # ---------------------------------------------------------------------------
@@ -143,12 +179,6 @@ def extend_all_edges(brep, extend_step):
 # COMMIT DES RESULTATS DANS LE DOCUMENT
 # ---------------------------------------------------------------------------
 def commit_extended_surfaces(entries, mark_blue):
-    """
-    Ajoute les breps étendus comme nouveaux objets.
-    - Si is_extracted: l'objet source (polysurface) n'est PAS supprimé.
-    - Si standalone: l'objet source est supprimé (remplacé par sa version étendue).
-    Retourne la liste des nouveaux ids créés.
-    """
     new_ids = []
     for entry in entries:
         new_id = sc.doc.Objects.AddBrep(entry["brep"])
@@ -172,6 +202,7 @@ def commit_extended_surfaces(entries, mark_blue):
 def extendAndCreateSolid(entries, extend_step=5.0, max_iter=40):
     if len(entries) < 2:
         print("Il faut au moins 2 surfaces.")
+        set_pending_ids([e["orig_id"] for e in entries])
         return
 
     breps = [e["brep"] for e in entries]
@@ -204,13 +235,13 @@ def extendAndCreateSolid(entries, extend_step=5.0, max_iter=40):
         print("Echec: certains voisins ne se touchent pas apres {} iterations "
               "(prolongement max: {}).".format(max_iter, max_iter * extend_step))
         new_ids = commit_extended_surfaces(entries, mark_blue=True)
+        set_pending_ids(new_ids)
         rs.SelectObjects(new_ids)
         sc.doc.Views.Redraw()
-        print("{} surfaces conservees en bleu et selectionnees. "
-              "Ajoutez une surface et relancez le script.".format(len(new_ids)))
+        print("{} surfaces conservees en bleu (memorisees). "
+              "Relancez le script pour ajouter une surface.".format(len(new_ids)))
         return
 
-    # Toutes les surfaces se touchent : commit temporaire puis tentative de CreateSolid
     new_ids = commit_extended_surfaces(entries, mark_blue=False)
     sc.doc.Views.Redraw()
 
@@ -230,30 +261,45 @@ def extendAndCreateSolid(entries, extend_step=5.0, max_iter=40):
             break
 
     if solid_created:
-        # Nettoyage: on supprime les surfaces étendues temporaires, seul le solide reste
         for nid in new_ids:
             sc.doc.Objects.Delete(nid, True)
+        clear_pending()
         sc.doc.Views.Redraw()
         print("Solide cree avec succes.")
     else:
-        # CreateSolid n'a pas produit de solide malgre les intersections : on garde
-        # les surfaces etendues, en bleu, selectionnees, pour retravailler
         for nid in new_ids:
             rs.ObjectColorSource(nid, 1)
             rs.ObjectColor(nid, EXTENDED_COLOR)
+        set_pending_ids(new_ids)
         rs.SelectObjects(new_ids)
         sc.doc.Views.Redraw()
         print("CreateSolid n'a pas abouti malgre le contact des voisins. "
-              "Surfaces conservees en bleu et selectionnees.")
+              "Surfaces conservees en bleu (memorisees). Relancez le script pour ajouter une surface.")
 
 
 # ---------------------------------------------------------------------------
 # ENTREE INTERACTIVE
 # ---------------------------------------------------------------------------
 def RunCommand(is_interactive):
-    entries, extend_step, max_iter = getSurfacesWithOptions(
-        "Selectionner les surfaces a prolonger (Ctrl+clic sur une face de polysurface, "
-        "options: Increment / MaxIter)")
+    pending_entries = get_pending_entries()
+
+    if pending_entries:
+        msg = ("{} surface(s) memorisee(s) depuis le dernier essai. "
+               "Cliquer pour en ajouter, ou Entree pour relancer tel quel "
+               "(options: Increment / MaxIter / ResetPending)").format(len(pending_entries))
+        min_count = 0
+    else:
+        msg = "Selectionner les surfaces a prolonger (options: Increment / MaxIter)"
+        min_count = 2
+
+    new_entries, extend_step, max_iter, do_reset = getSurfacesWithOptions(msg, min_count=min_count)
+
+    if do_reset:
+        print("Surfaces memorisees effacees.")
+        clear_pending()
+        pending_entries = []
+
+    entries = pending_entries + new_entries
 
     if not entries:
         print("Aucune surface selectionnee.")
