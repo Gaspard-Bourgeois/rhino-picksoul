@@ -1,7 +1,11 @@
 """
-Extend surfaces (neighbors only) until they touch, then create a solid.
+Extend surfaces (standalone or extracted from a polysurface) until
+neighbors touch, then create a solid.
+Failure-safe: keeps whatever surfaces were successfully extended,
+colors them in a distinctive blue, and leaves them selected so the
+script can be re-run after adding one more surface.
+
 IronPython 2.7 - Rhino 8
-Inspiré du pattern d'options interactives de smartMove.py
 """
 import Rhino
 import rhinoscriptsyntax as rs
@@ -10,19 +14,23 @@ import scriptcontext as sc
 import System
 
 TOL = sc.doc.ModelAbsoluteTolerance
+EXTENDED_COLOR = (0, 102, 255)  # bleu unique pour identifier les surfaces générées par ce script
 
 
 # ---------------------------------------------------------------------------
 # SELECTION + OPTIONS (pattern inspiré de getWithOption dans smartMove.py)
+# Accepte des surfaces standalone ET des faces individuelles de polysurfaces
+# (équivalent à un ExtractSrf à la volée, sans toucher la polysurface source)
 # ---------------------------------------------------------------------------
 def getSurfacesWithOptions(_message, extend_step_default=5.0, max_iter_default=40):
     go = Rhino.Input.Custom.GetObject()
     go.SetCommandPrompt(_message)
-    go.SubObjectSelect = False
+    go.SubObjectSelect = True   # permet de cliquer une face d'une polysurface
     go.GroupSelect = True
     go.AcceptNothing(True)
     go.GeometryFilter = (Rhino.DocObjects.ObjectType.Surface |
-                          Rhino.DocObjects.ObjectType.Brep)
+                          Rhino.DocObjects.ObjectType.Brep |
+                          Rhino.DocObjects.ObjectType.Extrusion)
 
     extendStepOpt = Rhino.Input.Custom.OptionDouble(extend_step_default, 0.0001, 1.0e6)
     maxIterOpt = Rhino.Input.Custom.OptionInteger(max_iter_default, 1, 1000)
@@ -38,23 +46,32 @@ def getSurfacesWithOptions(_message, extend_step_default=5.0, max_iter_default=4
         if get_rc == Rhino.Input.GetResult.Option:
             continue
 
-    ids = []
+    entries = []  # liste de dict: brep, orig_id, is_extracted
     count = go.ObjectCount
     for i in range(count):
         objref = go.Object(i)
-        ids.append(objref.ObjectId)
+        face = objref.Face()  # non-None si une face de polysurface a été cliquée
+
+        if face is not None:
+            dup_brep = face.DuplicateFace(False)
+            entries.append({"brep": dup_brep, "orig_id": objref.ObjectId, "is_extracted": True})
+        else:
+            dup_brep = objref.Brep()
+            if dup_brep is None:
+                dup_brep = rs.coercebrep(objref.ObjectId)
+            if dup_brep is not None:
+                entries.append({"brep": dup_brep, "orig_id": objref.ObjectId, "is_extracted": False})
 
     extend_step = extendStepOpt.CurrentValue
     max_iter = maxIterOpt.CurrentValue
     go.Dispose()
-    return ids, extend_step, max_iter
+    return entries, extend_step, max_iter
 
 
 # ---------------------------------------------------------------------------
 # ADJACENCE - Arbre couvrant minimal sur la distance des bounding box
 # ---------------------------------------------------------------------------
 def bbox_distance(bbox_a, bbox_b):
-    """Distance min entre deux bounding box alignées (0 si elles se recouvrent)."""
     dx = max(bbox_a.Min.X - bbox_b.Max.X, bbox_b.Min.X - bbox_a.Max.X, 0)
     dy = max(bbox_a.Min.Y - bbox_b.Max.Y, bbox_b.Min.Y - bbox_a.Max.Y, 0)
     dz = max(bbox_a.Min.Z - bbox_b.Max.Z, bbox_b.Min.Z - bbox_a.Max.Z, 0)
@@ -62,11 +79,6 @@ def bbox_distance(bbox_a, bbox_b):
 
 
 def build_neighbor_pairs(breps):
-    """
-    Construit la liste des couples 'voisins' via un arbre couvrant minimal
-    (Prim) sur la distance des bounding box. Chaque surface est reliée à
-    ses voisines les plus proches, pas à toutes les autres.
-    """
     n = len(breps)
     bboxes = [b.GetBoundingBox(True) for b in breps]
 
@@ -128,21 +140,43 @@ def extend_all_edges(brep, extend_step):
 
 
 # ---------------------------------------------------------------------------
+# COMMIT DES RESULTATS DANS LE DOCUMENT
+# ---------------------------------------------------------------------------
+def commit_extended_surfaces(entries, mark_blue):
+    """
+    Ajoute les breps étendus comme nouveaux objets.
+    - Si is_extracted: l'objet source (polysurface) n'est PAS supprimé.
+    - Si standalone: l'objet source est supprimé (remplacé par sa version étendue).
+    Retourne la liste des nouveaux ids créés.
+    """
+    new_ids = []
+    for entry in entries:
+        new_id = sc.doc.Objects.AddBrep(entry["brep"])
+        if new_id == System.Guid.Empty:
+            continue
+        new_ids.append(new_id)
+
+        if not entry["is_extracted"]:
+            sc.doc.Objects.Delete(entry["orig_id"], True)
+
+        if mark_blue:
+            rs.ObjectColorSource(new_id, 1)  # 1 = ColorFromObject
+            rs.ObjectColor(new_id, EXTENDED_COLOR)
+
+    return new_ids
+
+
+# ---------------------------------------------------------------------------
 # COEUR DU SCRIPT
 # ---------------------------------------------------------------------------
-def extendAndCreateSolid(ids, extend_step=5.0, max_iter=40):
-    breps = []
-    for id_ in ids:
-        obj = rs.coercebrep(id_)
-        if obj:
-            breps.append(obj.Duplicate())
-
-    if len(breps) < 2:
+def extendAndCreateSolid(entries, extend_step=5.0, max_iter=40):
+    if len(entries) < 2:
         print("Il faut au moins 2 surfaces.")
         return
 
+    breps = [e["brep"] for e in entries]
     neighbor_pairs = build_neighbor_pairs(breps)
-    print("{} couples voisins détectés (sur {} surfaces).".format(
+    print("{} couples voisins detectes (sur {} surfaces).".format(
         len(neighbor_pairs), len(breps)))
 
     sc.doc.Objects.UnselectAll()
@@ -160,40 +194,72 @@ def extendAndCreateSolid(ids, extend_step=5.0, max_iter=40):
             if not surfaces_intersect(breps[i], breps[j]):
                 all_neighbors_touch = False
 
-        print("Itération {} - prolongement total: {} - voisins tous en contact: {}".format(
+        print("Iteration {} - prolongement total: {} - voisins tous en contact: {}".format(
             iteration, iteration * extend_step, all_neighbors_touch))
+
+    for i, entry in enumerate(entries):
+        entry["brep"] = breps[i]
 
     if not all_neighbors_touch:
         print("Echec: certains voisins ne se touchent pas apres {} iterations "
-              "(prolongement max: {}). Augmenter extend_step ou max_iter.".format(
-                  max_iter, max_iter * extend_step))
+              "(prolongement max: {}).".format(max_iter, max_iter * extend_step))
+        new_ids = commit_extended_surfaces(entries, mark_blue=True)
+        rs.SelectObjects(new_ids)
+        sc.doc.Views.Redraw()
+        print("{} surfaces conservees en bleu et selectionnees. "
+              "Ajoutez une surface et relancez le script.".format(len(new_ids)))
         return
 
-    new_ids = []
-    for id_, brep in zip(ids, breps):
-        new_id = sc.doc.Objects.AddBrep(brep)
-        if new_id != System.Guid.Empty:
-            new_ids.append(new_id)
-            sc.doc.Objects.Delete(id_, True)
-
+    # Toutes les surfaces se touchent : commit temporaire puis tentative de CreateSolid
+    new_ids = commit_extended_surfaces(entries, mark_blue=False)
     sc.doc.Views.Redraw()
+
+    ids_before = set(obj.Id for obj in sc.doc.Objects)
 
     rs.SelectObjects(new_ids)
     rs.Command("_CreateSolid _Enter", echo=False)
+
+    ids_after = set(obj.Id for obj in sc.doc.Objects)
+    created_ids = list(ids_after - ids_before - set(new_ids))
+
+    solid_created = False
+    for cid in created_ids:
+        obj = sc.doc.Objects.Find(cid)
+        if obj and obj.Geometry and isinstance(obj.Geometry, rg.Brep) and obj.Geometry.IsSolid:
+            solid_created = True
+            break
+
+    if solid_created:
+        # Nettoyage: on supprime les surfaces étendues temporaires, seul le solide reste
+        for nid in new_ids:
+            sc.doc.Objects.Delete(nid, True)
+        sc.doc.Views.Redraw()
+        print("Solide cree avec succes.")
+    else:
+        # CreateSolid n'a pas produit de solide malgre les intersections : on garde
+        # les surfaces etendues, en bleu, selectionnees, pour retravailler
+        for nid in new_ids:
+            rs.ObjectColorSource(nid, 1)
+            rs.ObjectColor(nid, EXTENDED_COLOR)
+        rs.SelectObjects(new_ids)
+        sc.doc.Views.Redraw()
+        print("CreateSolid n'a pas abouti malgre le contact des voisins. "
+              "Surfaces conservees en bleu et selectionnees.")
 
 
 # ---------------------------------------------------------------------------
 # ENTREE INTERACTIVE
 # ---------------------------------------------------------------------------
 def RunCommand(is_interactive):
-    ids, extend_step, max_iter = getSurfacesWithOptions(
-        "Selectionner les surfaces a prolonger (options: Increment / MaxIter)")
+    entries, extend_step, max_iter = getSurfacesWithOptions(
+        "Selectionner les surfaces a prolonger (Ctrl+clic sur une face de polysurface, "
+        "options: Increment / MaxIter)")
 
-    if not ids:
+    if not entries:
         print("Aucune surface selectionnee.")
         return 0
 
-    extendAndCreateSolid(ids, extend_step, max_iter)
+    extendAndCreateSolid(entries, extend_step, max_iter)
     return 0
 
 
