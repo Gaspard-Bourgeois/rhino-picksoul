@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import Rhino
 import rhinoscriptsyntax as rs
 
 # Constante : hauteur de texte des styles créés automatiquement (mm)
@@ -15,9 +16,21 @@ def parse_style_mm(name):
 def creer_style_mm(name, echelle):
     """Crée le style 'name' avec hauteur de texte constante et échelle de texte donnée."""
     rs.AddDimStyle(name)
-    rs.DimStyleTextHeight(name, HAUTEUR_TEXTE_MM)
-    rs.DimStyleAnnotationScale(name, echelle)
-    print("Style '{}' créé (hauteur {} mm, échelle {}).".format(name, HAUTEUR_TEXTE_MM, echelle))
+
+    doc = Rhino.RhinoDoc.ActiveDoc
+    existant = doc.DimStyles.FindName(name)
+    if existant is None:
+        print("Impossible de créer le style '{}'.".format(name))
+        return
+
+    # On modifie une copie du style puis on la réinjecte dans le document
+    ds = Rhino.DocObjects.DimensionStyle(existant)
+    ds.TextHeight = HAUTEUR_TEXTE_MM
+    ds.DimensionScale = echelle
+    ok = doc.DimStyles.Modify(ds, existant.Id, False)
+
+    print("Style '{}' créé (hauteur {} mm, échelle {}) : {}".format(
+        name, HAUTEUR_TEXTE_MM, echelle, "OK" if ok else "échec de la modification"))
 
 def update_annotations_with_options():
     # 1. Récupérer les styles et le style actuel
