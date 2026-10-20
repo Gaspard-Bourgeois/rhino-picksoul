@@ -1,3 +1,8 @@
+"""
+Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
+Version: 1.1
+Date: 20/10/2026
+"""
 # -*- coding: utf-8 -*-
 import re
 import Rhino
@@ -24,7 +29,7 @@ def creer_style_mm(name, echelle):
         return
 
     # On modifie une copie du style puis on la réinjecte dans le document
-    ds = Rhino.DocObjects.DimensionStyle(existant)
+    ds = Rhino.DocObjects.DimensionStyle()
     ds.TextHeight = HAUTEUR_TEXTE_MM
     ds.DimensionScale = echelle
     ok = doc.DimStyles.Modify(ds, existant.Id, False)
@@ -52,11 +57,6 @@ def update_annotations_with_options():
     chosen_style = None
     if res in styles:
         chosen_style = res
-    else:
-        for s in styles:
-            if s.replace(" ", "_") == res or s == res:
-                chosen_style = s
-                break
 
     # 2b. Style inexistant : création automatique si le nom est du type mmXX
     if not chosen_style:
