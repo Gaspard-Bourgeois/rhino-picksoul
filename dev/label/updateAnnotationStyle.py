@@ -1,10 +1,23 @@
-"""
-Author: Gaspard BOURGEOIS <gaspard.github.io@free.fr>
-Version: 1.0
-Date: 16/02/2026
-"""
 # -*- coding: utf-8 -*-
+import re
 import rhinoscriptsyntax as rs
+
+# Constante : hauteur de texte des styles créés automatiquement (mm)
+HAUTEUR_TEXTE_MM = 2.5
+
+def parse_style_mm(name):
+    """Retourne l'échelle (float) si le nom est du type mm10, mm5, mm2.5... sinon None."""
+    m = re.match(r"^mm(\d+(?:[.,]\d+)?)$", name.strip(), re.IGNORECASE)
+    if m:
+        return float(m.group(1).replace(",", "."))
+    return None
+
+def creer_style_mm(name, echelle):
+    """Crée le style 'name' avec hauteur de texte constante et échelle de texte donnée."""
+    rs.AddDimStyle(name)
+    rs.DimStyleTextHeight(name, HAUTEUR_TEXTE_MM)
+    rs.DimStyleAnnotationScale(name, echelle)
+    print("Style '{}' créé (hauteur {} mm, échelle {}).".format(name, HAUTEUR_TEXTE_MM, echelle))
 
 def update_annotations_with_options():
     # 1. Récupérer les styles et le style actuel
@@ -14,36 +27,36 @@ def update_annotations_with_options():
         return
 
     current_default = rs.CurrentDimStyle()
-    
-    # Nettoyage des noms de styles pour l'affichage en options (Rhino n'aime pas les espaces dans les mots-clés)
-    # On crée un dictionnaire pour faire la correspondance si besoin, 
-    # mais rs.GetString accepte généralement les listes directes.
     options = [s.replace(" ", "_") for s in styles if s != None]
 
     # 2. Demander le style via la barre de commande
-    msg = "Style actuel : {}. Choisir le nouveau style".format(current_default)
+    msg = "Style actuel : {}. Choisir le nouveau style (ou saisir mmXX)".format(current_default)
     res = rs.GetString(msg, current_default, options)
 
     if res is None: return # Annulation
-    
-    # Retrouver le nom original du style (si on a remplacé les espaces par des underscores)
+
+    # Retrouver le nom original du style
     chosen_style = None
     if res in styles:
         chosen_style = res
     else:
-        # Recherche de correspondance pour gérer les espaces/underscores
         for s in styles:
             if s.replace(" ", "_") == res or s == res:
                 chosen_style = s
                 break
-    
+
+    # 2b. Style inexistant : création automatique si le nom est du type mmXX
     if not chosen_style:
-        print("Style invalide.")
-        return
+        echelle = parse_style_mm(res)
+        if echelle is None:
+            print("Style invalide.")
+            return
+        chosen_style = res.strip()
+        creer_style_mm(chosen_style, echelle)
 
     # 3. Traiter la sélection
     selected_objs = rs.SelectedObjects()
-    
+
     if selected_objs:
         rs.EnableRedraw(False)
         anno_count = 0
@@ -53,7 +66,7 @@ def update_annotations_with_options():
                 rs.DimensionStyle(obj_id, chosen_style)
                 anno_count += 1
         rs.EnableRedraw(True)
-        
+
         if anno_count > 0:
             print("Succès : {} annotation(s) mise(s) à jour sur '{}'.".format(anno_count, chosen_style))
         else:
