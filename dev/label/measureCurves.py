@@ -20,6 +20,7 @@ Affichage :
   - Resume dans la ligne de commande
 """
 import math
+import time
 import fnmatch
 import Rhino
 import scriptcontext as sc
@@ -117,11 +118,25 @@ def sample_params(crv, n):
     return [dom.ParameterAt(i / float(n)) for i in range(n + 1)]
 
 
-def closest_on(crvs, pt):
-    """Point le plus proche de pt sur un ensemble de courbes."""
+def bbox_gap(b1, b2):
+    """Distance minimale entre deux boites englobantes (0 si elles se chevauchent)."""
+    dx = max(0.0, b1.Min.X - b2.Max.X, b2.Min.X - b1.Max.X)
+    dy = max(0.0, b1.Min.Y - b2.Max.Y, b2.Min.Y - b1.Max.Y)
+    dz = max(0.0, b1.Min.Z - b2.Max.Z, b2.Min.Z - b1.Max.Z)
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+
+
+def closest_on(tgt, pt):
+    """Point le plus proche de pt sur un ensemble de courbes.
+    tgt = liste de (courbe, boite englobante). Les courbes dont la boite est deja
+    plus loin que le meilleur candidat sont ignorees (pas de ClosestPoint couteux)."""
+    cands = sorted(((bb.ClosestPoint(pt).DistanceTo(pt), crv) for crv, bb in tgt),
+                   key=lambda x: x[0])
     best = None
     bd = None
-    for crv in crvs:
+    for gap, crv in cands:
+        if bd is not None and gap >= bd:
+            break
         res = crv.ClosestPoint(pt)  # (bool, t)
         if not res[0]:
             continue
@@ -132,33 +147,62 @@ def closest_on(crvs, pt):
     return best
 
 
-def compute(src, tgt, step_doc):
-    """Distances des points echantillonnes de `src` (liste de courbes) vers `tgt`.
+def compute(src, tgt_curves, step_doc):
+    """Distances des points echantillonnes de `src` (liste de courbes) vers `tgt_curves`.
     Retourne (resultats, minimum_affine) ; resultat = (distance, point src, point tgt)."""
     counts = [max(10, int(math.ceil(c.GetLength() / step_doc))) if step_doc > 0 else 10 for c in src]
     total = sum(counts)
     if total > MAX_POINTS:
         counts = [max(10, int(n * MAX_POINTS / float(total))) for n in counts]
+
+    tgt = [(c, c.GetBoundingBox(True)) for c in tgt_curves]
     results = []
+    k = 0
     for crv, n in zip(src, counts):
         for t in sample_params(crv, n):
             p1 = crv.PointAt(t)
             p2 = closest_on(tgt, p1)
             if p2 is not None:
                 results.append((p1.DistanceTo(p2), p1, p2))
-    # Affinage du minimum avec les vraies courbes (si disponible)
+            k += 1
+            if k % 500 == 0 and sc.escape_test(False):   # Echap pour annuler
+                raise KeyboardInterrupt()
+
+    # Affinage du minimum avec les vraies courbes, uniquement pour les paires
+    # de courbes dont les boites englobantes peuvent encore battre le minimum.
     refined = None
+    limit = min(r[0] for r in results) if results else None
     try:
         for ca in src:
-            for cb in tgt:
+            ba = ca.GetBoundingBox(True)
+            for cb, bb in tgt:
+                if limit is not None and bbox_gap(ba, bb) >= limit:
+                    continue
                 res = Rhino.Geometry.Curve.ClosestPoints(ca, cb)
                 if res[0]:
                     d = res[1].DistanceTo(res[2])
                     if refined is None or d < refined[0]:
                         refined = (d, res[1], res[2])
+                        limit = min(limit, d) if limit is not None else d
     except Exception:
         pass
     return results, refined
+
+
+def run_compute(mode, groups1, c2, step_doc):
+    if mode == "entre elles":
+        # chaque objet est mesure vers l'ensemble des autres
+        results = []
+        best = None
+        for i, src in enumerate(groups1):
+            tgt = [c for j, g in enumerate(groups1) if j != i for c in g]
+            r, ref = compute(src, tgt, step_doc)
+            results += r
+            if ref and (best is None or ref[0] < best[0]):
+                best = ref
+        return results, best
+    src = [c for g in groups1 for c in g]
+    return compute(src, c2, step_doc)
 
 
 def main():
@@ -226,19 +270,13 @@ def main():
     step_doc = step_mm * scale
 
     # --- Calcul ---------------------------------------------------------
-    results = []
-    refined_best = None
-    if mode == "entre elles":
-        # chaque objet est mesure vers l'ensemble des autres
-        for i, src in enumerate(groups1):
-            tgt = [c for j, g in enumerate(groups1) if j != i for c in g]
-            r, ref = compute(src, tgt, step_doc)
-            results += r
-            if ref and (refined_best is None or ref[0] < refined_best[0]):
-                refined_best = ref
-    else:
-        src = [c for g in groups1 for c in g]
-        results, refined_best = compute(src, c2, step_doc)
+    t0 = time.time()
+    try:
+        results, refined_best = run_compute(mode, groups1, c2 if mode != "entre elles" else None, step_doc)
+    except KeyboardInterrupt:
+        print("Calcul annule (Echap).")
+        return
+    print("Calcul termine en {:.1f} s".format(time.time() - t0))
 
     if not results:
         print("Aucune distance calculee.")
