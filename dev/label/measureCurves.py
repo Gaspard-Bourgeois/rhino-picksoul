@@ -3,6 +3,9 @@
 """
 Distance entre deux courbes - Rhino 8 (Python 3 ou IronPython)
 
+Les courbes peuvent etre dans des blocs : clic sur le bloc = toutes ses courbes,
+Ctrl+Maj+clic = une courbe precise a l'interieur du bloc (blocs imbriques geres).
+
 Principe :
   - La courbe 1 est echantillonnee en N points.
   - Pour chaque point, on cherche le point le plus proche sur la courbe 2
@@ -60,6 +63,48 @@ def choose_layer(default_layer):
     return matched
 
 
+def collect_curves(robj, xf, out):
+    """Ajoute a `out` les courbes de robj (en coordonnees monde).
+    Descend recursivement dans les blocs (blocs imbriques inclus)."""
+    if isinstance(robj, Rhino.DocObjects.InstanceObject):
+        xf2 = Rhino.Geometry.Transform.Multiply(xf, robj.InstanceXform)
+        for sub in robj.InstanceDefinition.GetObjects():
+            collect_curves(sub, xf2, out)
+    else:
+        g = robj.Geometry
+        if isinstance(g, Rhino.Geometry.Curve):
+            d = g.DuplicateCurve()
+            d.Transform(xf)
+            out.append(d)
+
+
+def curves_from_objref(objref):
+    """Courbes (monde) d'un objet choisi : courbe simple, sous-objet d'un bloc
+    (Ctrl+Maj+clic) ou bloc entier (toutes ses courbes)."""
+    obj = objref.Object()
+    out = []
+    if isinstance(obj, Rhino.DocObjects.InstanceObject):
+        ci = objref.GeometryComponentIndex
+        sub = None
+        try:
+            if ci.ComponentIndexType == Rhino.Geometry.ComponentIndexType.InstanceDefinitionPart and ci.Index >= 0:
+                sub = obj.SubObjectFromComponentIndex(ci)
+        except Exception:
+            sub = None
+        if sub is not None:
+            collect_curves(sub, obj.InstanceXform, out)
+        else:
+            collect_curves(obj, Rhino.Geometry.Transform.Identity, out)
+    else:
+        crv = objref.Curve()
+        if crv is not None:
+            out.append(crv.DuplicateCurve())
+    return out
+
+
+CURVE_OR_BLOCK = Rhino.DocObjects.ObjectType.Curve | Rhino.DocObjects.ObjectType.InstanceReference
+
+
 def sample_params(crv, n):
     """Parametres repartis uniformement en longueur (repli : en parametre)."""
     try:
@@ -72,13 +117,19 @@ def sample_params(crv, n):
     return [dom.ParameterAt(i / float(n)) for i in range(n + 1)]
 
 
-def closest_on(crv, pt):
-    res = crv.ClosestPoint(pt)
-    # res = (bool, t) en Python 3 comme en IronPython
-    ok, t = res[0], res[1]
-    if not ok:
-        return None
-    return crv.PointAt(t)
+def closest_on(crvs, pt):
+    """Point le plus proche de pt sur un ensemble de courbes."""
+    best = None
+    bd = None
+    for crv in crvs:
+        res = crv.ClosestPoint(pt)  # (bool, t)
+        if not res[0]:
+            continue
+        q = crv.PointAt(res[1])
+        d = pt.DistanceTo(q)
+        if bd is None or d < bd:
+            best, bd = q, d
+    return best
 
 
 def main():
@@ -89,8 +140,8 @@ def main():
     layer_name = rs.CurrentLayer()  # calque par defaut = calque actuel
 
     go = Rhino.Input.Custom.GetObject()
-    go.GeometryFilter = Rhino.DocObjects.ObjectType.Curve
-    go.SubObjectSelect = False
+    go.GeometryFilter = CURVE_OR_BLOCK
+    go.SubObjectSelect = True   # Ctrl+Maj+clic : courbe a l'interieur d'un bloc
     go.AddOptionDouble("Pas_mm", opt_step)
     go.AddOption("Calque")
     while True:
@@ -105,39 +156,40 @@ def main():
         if res == Rhino.Input.GetResult.Object:
             break
         return
-    id1 = go.Object(0).ObjectId
+    c1 = curves_from_objref(go.Object(0))
     step_mm = opt_step.CurrentValue
     sc.sticky[STICKY_KEY] = step_mm
 
-    id2 = rs.GetObject("Courbe 2 (arrivee)", rs.filter.curve)
-    if not id2:
+    go2 = Rhino.Input.Custom.GetObject()
+    go2.SetCommandPrompt("Courbe 2 (arrivee)")
+    go2.GeometryFilter = CURVE_OR_BLOCK
+    go2.SubObjectSelect = True
+    if go2.Get() != Rhino.Input.GetResult.Object:
+        return
+    c2 = curves_from_objref(go2.Object(0))
+
+    if not c1 or not c2:
+        print("Aucune courbe trouvee dans la selection.")
         return
 
-    c1 = rs.coercecurve(id1)
-    c2 = rs.coercecurve(id2)
-    if c1 is None or c2 is None:
-        print("Selection de courbes invalide.")
-        return
-
-    # Pas converti dans l'unite du document -> nombre de points
+    # Pas converti dans l'unite du document -> nombre de points par courbe
     scale = Rhino.RhinoMath.UnitScale(Rhino.UnitSystem.Millimeters, sc.doc.ModelUnitSystem)
     step_doc = step_mm * scale
-    length = c1.GetLength()
-    n = int(math.ceil(length / step_doc)) if step_doc > 0 else MAX_POINTS
-    n = max(n, 10)
-    if n > MAX_POINTS:
-        print("Pas trop fin : limite a {} points (pas reel {:.4f} mm).".format(
-            MAX_POINTS, length / MAX_POINTS / scale))
-        n = MAX_POINTS
+    counts = [max(10, int(math.ceil(c.GetLength() / step_doc))) if step_doc > 0 else 10 for c in c1]
+    total = sum(counts)
+    if total > MAX_POINTS:
+        print("Pas trop fin : limite a {} points.".format(MAX_POINTS))
+        counts = [max(10, int(n * MAX_POINTS / float(total))) for n in counts]
 
     # --- Calcul ---------------------------------------------------------
     results = []  # (distance, point sur c1, point sur c2)
-    for t in sample_params(c1, n):
-        p1 = c1.PointAt(t)
-        p2 = closest_on(c2, p1)
-        if p2 is None:
-            continue
-        results.append((p1.DistanceTo(p2), p1, p2))
+    for crv, n in zip(c1, counts):
+        for t in sample_params(crv, n):
+            p1 = crv.PointAt(t)
+            p2 = closest_on(c2, p1)
+            if p2 is None:
+                continue
+            results.append((p1.DistanceTo(p2), p1, p2))
 
     if not results:
         print("Aucune distance calculee.")
@@ -148,12 +200,14 @@ def main():
 
     # Affinage du minimum global avec les vraies courbes (si disponible)
     try:
-        res = Rhino.Geometry.Curve.ClosestPoints(c1, c2)
-        if res[0]:
-            pa, pb = res[1], res[2]
-            d = pa.DistanceTo(pb)
-            if d < d_min:
-                d_min, a_min, b_min = d, pa, pb
+        for ca in c1:
+            for cb in c2:
+                res = Rhino.Geometry.Curve.ClosestPoints(ca, cb)
+                if res[0]:
+                    pa, pb = res[1], res[2]
+                    d = pa.DistanceTo(pb)
+                    if d < d_min:
+                        d_min, a_min, b_min = d, pa, pb
     except Exception:
         pass
 
