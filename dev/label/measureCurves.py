@@ -12,34 +12,21 @@ Principe :
     (distance de Hausdorff orientee courbe 1 -> courbe 2).
 
 Affichage :
-  - Segment MIN en vert (calque Distance_MIN), segment MAX en rouge (calque Distance_MAX)
+  - Segment MIN en vert, segment MAX en rouge, sur le calque choisi (defaut : calque actuel)
   - Pastilles de texte (TextDot) avec les valeurs, de la meme couleur
   - Resume dans la ligne de commande
 """
+import math
 import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 import System.Drawing as sd
 
-LAYER_MIN = "Distance_MIN"
-LAYER_MAX = "Distance_MAX"
 COLOR_MIN = sd.Color.FromArgb(0, 170, 70)    # vert
 COLOR_MAX = sd.Color.FromArgb(220, 30, 30)   # rouge
-STICKY_KEY = "dist_courbes_nb_points"
-DEFAULT_N = 200
-
-
-def ensure_layer(name, color):
-    if not rs.IsLayer(name):
-        rs.AddLayer(name, color)
-    else:
-        rs.LayerColor(name, color)
-
-
-def clear_layer(name):
-    objs = rs.ObjectsByLayer(name)
-    if objs:
-        rs.DeleteObjects(objs)
+STICKY_KEY = "dist_courbes_pas_mm"
+DEFAULT_STEP_MM = 0.1      # pas d'echantillonnage par defaut (mm)
+MAX_POINTS = 100000        # garde-fou
 
 
 def sample_params(crv, n):
@@ -64,9 +51,34 @@ def closest_on(crv, pt):
 
 
 def main():
-    id1 = rs.GetObject("Courbe 1 (depart)", rs.filter.curve, preselect=True)
-    if not id1:
+    # --- Choix de la courbe 1 + option "Pas" (distance d'echantillonnage, en mm)
+    step_mm = sc.sticky.get(STICKY_KEY, DEFAULT_STEP_MM)
+    opt_step = Rhino.Input.Custom.OptionDouble(step_mm, True, 0.0001)
+
+    layer_name = rs.CurrentLayer()  # calque par defaut = calque actuel
+
+    go = Rhino.Input.Custom.GetObject()
+    go.GeometryFilter = Rhino.DocObjects.ObjectType.Curve
+    go.SubObjectSelect = False
+    go.AddOptionDouble("Pas_mm", opt_step)
+    go.AddOption("Calque")
+    while True:
+        go.SetCommandPrompt("Courbe 1 (depart) [calque : {}]".format(layer_name))
+        res = go.Get()
+        if res == Rhino.Input.GetResult.Option:
+            if go.Option().EnglishName == "Calque":
+                name = rs.GetString("Nom du calque (vide = calque actuel)", layer_name)
+                if name is not None:
+                    name = name.strip()
+                    layer_name = name if name else rs.CurrentLayer()
+            continue  # opt_step est deja mis a jour par Rhino
+        if res == Rhino.Input.GetResult.Object:
+            break
         return
+    id1 = go.Object(0).ObjectId
+    step_mm = opt_step.CurrentValue
+    sc.sticky[STICKY_KEY] = step_mm
+
     id2 = rs.GetObject("Courbe 2 (arrivee)", rs.filter.curve)
     if not id2:
         return
@@ -77,11 +89,16 @@ def main():
         print("Selection de courbes invalide.")
         return
 
-    n_default = sc.sticky.get(STICKY_KEY, DEFAULT_N)
-    n = rs.GetInteger("Nombre de points d'echantillonnage sur la courbe 1", n_default, 10, 20000)
-    if n is None:
-        return
-    sc.sticky[STICKY_KEY] = n
+    # Pas converti dans l'unite du document -> nombre de points
+    scale = Rhino.RhinoMath.UnitScale(Rhino.UnitSystem.Millimeters, sc.doc.ModelUnitSystem)
+    step_doc = step_mm * scale
+    length = c1.GetLength()
+    n = int(math.ceil(length / step_doc)) if step_doc > 0 else MAX_POINTS
+    n = max(n, 10)
+    if n > MAX_POINTS:
+        print("Pas trop fin : limite a {} points (pas reel {:.4f} mm).".format(
+            MAX_POINTS, length / MAX_POINTS / scale))
+        n = MAX_POINTS
 
     # --- Calcul ---------------------------------------------------------
     results = []  # (distance, point sur c1, point sur c2)
@@ -113,32 +130,37 @@ def main():
     mean = sum(r[0] for r in results) / float(len(results))
 
     # --- Affichage ------------------------------------------------------
-    ensure_layer(LAYER_MIN, COLOR_MIN)
-    ensure_layer(LAYER_MAX, COLOR_MAX)
-    clear_layer(LAYER_MIN)
-    clear_layer(LAYER_MAX)
+    if not rs.IsLayer(layer_name):
+        rs.AddLayer(layer_name)
 
     rs.EnableRedraw(False)
     try:
-        def draw(a, b, d, layer, label):
+        def draw(a, b, d, color, label):
             seg = rs.AddLine(a, b)
-            rs.ObjectLayer(seg, layer)
-            rs.ObjectColor(seg, rs.LayerColor(layer))
+            rs.ObjectLayer(seg, layer_name)
+            rs.ObjectColor(seg, color)
             mid = Rhino.Geometry.Point3d((a.X + b.X) / 2.0, (a.Y + b.Y) / 2.0, (a.Z + b.Z) / 2.0)
             dot = rs.AddTextDot("{} = {:.3f}".format(label, d), mid)
-            rs.ObjectLayer(dot, layer)
-            rs.ObjectColor(dot, rs.LayerColor(layer))
+            rs.ObjectLayer(dot, layer_name)
+            rs.ObjectColor(dot, color)
+            return [seg, dot]
 
-        draw(a_min, b_min, d_min, LAYER_MIN, "MIN")
-        draw(a_max, b_max, d_max, LAYER_MAX, "MAX")
+        created = draw(a_min, b_min, d_min, COLOR_MIN, "MIN")
+        created += draw(a_max, b_max, d_max, COLOR_MAX, "MAX")
+
+        # Groupe unique contenant les 2 segments et les 2 pastilles
+        grp = rs.AddGroup()
+        rs.AddObjectsToGroup(created, grp)
     finally:
         rs.EnableRedraw(True)
 
     unit = str(sc.doc.ModelUnitSystem)
     print("-" * 44)
-    print("Distance courbe 1 -> courbe 2 ({} points, unite : {})".format(len(results), unit))
-    print("  MIN  : {:.4f}   (vert, calque {})".format(d_min, LAYER_MIN))
-    print("  MAX  : {:.4f}   (rouge, calque {})".format(d_max, LAYER_MAX))
+    print("Distance courbe 1 -> courbe 2 ({} points, pas {:g} mm, unite : {})".format(
+        len(results), step_mm, unit))
+    print("  MIN  : {:.4f}   (vert)".format(d_min))
+    print("  MAX  : {:.4f}   (rouge)".format(d_max))
+    print("  Calque : {}".format(layer_name))
     print("  Moy. : {:.4f}".format(mean))
     print("  Ecart MAX - MIN : {:.4f}".format(d_max - d_min))
     print("-" * 44)
