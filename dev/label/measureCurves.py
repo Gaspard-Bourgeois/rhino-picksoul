@@ -220,7 +220,14 @@ def main():
     rs.EnableRedraw(False)
     try:
         def draw(a, b, d, color, label):
-            seg = rs.AddLine(a, b)
+            # Distance nulle (courbes qui se touchent/se croisent) : une ligne de
+            # longueur 0 est refusee par Rhino -> on place un point a la place.
+            if a.DistanceTo(b) > sc.doc.ModelAbsoluteTolerance * 1e-3:
+                seg = rs.AddLine(a, b)
+            else:
+                seg = rs.AddPoint(a)
+            if not seg:
+                return []
             rs.ObjectLayer(seg, layer_name)
             rs.ObjectColor(seg, color)
             mid = Rhino.Geometry.Point3d((a.X + b.X) / 2.0, (a.Y + b.Y) / 2.0, (a.Z + b.Z) / 2.0)
@@ -233,8 +240,9 @@ def main():
         created += draw(a_max, b_max, d_max, COLOR_MAX, "MAX")
 
         # Groupe unique contenant les 2 segments et les 2 pastilles
-        grp = rs.AddGroup()
-        rs.AddObjectsToGroup(created, grp)
+        if created:
+            grp = rs.AddGroup()
+            rs.AddObjectsToGroup(created, grp)
     finally:
         rs.EnableRedraw(True)
 
