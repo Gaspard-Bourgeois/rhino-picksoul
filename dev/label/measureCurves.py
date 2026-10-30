@@ -132,6 +132,35 @@ def closest_on(crvs, pt):
     return best
 
 
+def compute(src, tgt, step_doc):
+    """Distances des points echantillonnes de `src` (liste de courbes) vers `tgt`.
+    Retourne (resultats, minimum_affine) ; resultat = (distance, point src, point tgt)."""
+    counts = [max(10, int(math.ceil(c.GetLength() / step_doc))) if step_doc > 0 else 10 for c in src]
+    total = sum(counts)
+    if total > MAX_POINTS:
+        counts = [max(10, int(n * MAX_POINTS / float(total))) for n in counts]
+    results = []
+    for crv, n in zip(src, counts):
+        for t in sample_params(crv, n):
+            p1 = crv.PointAt(t)
+            p2 = closest_on(tgt, p1)
+            if p2 is not None:
+                results.append((p1.DistanceTo(p2), p1, p2))
+    # Affinage du minimum avec les vraies courbes (si disponible)
+    refined = None
+    try:
+        for ca in src:
+            for cb in tgt:
+                res = Rhino.Geometry.Curve.ClosestPoints(ca, cb)
+                if res[0]:
+                    d = res[1].DistanceTo(res[2])
+                    if refined is None or d < refined[0]:
+                        refined = (d, res[1], res[2])
+    except Exception:
+        pass
+    return results, refined
+
+
 def main():
     # --- Choix de la courbe 1 + option "Pas" (distance d'echantillonnage, en mm)
     step_mm = sc.sticky.get(STICKY_KEY, DEFAULT_STEP_MM)
@@ -145,8 +174,8 @@ def main():
     go.AddOptionDouble("Pas_mm", opt_step)
     go.AddOption("Calque")
     while True:
-        go.SetCommandPrompt("Courbe 1 (depart) [calque : {}]".format(layer_name))
-        res = go.Get()
+        go.SetCommandPrompt("Courbe(s) 1 (depart) [calque : {}]".format(layer_name))
+        res = go.GetMultiple(1, 0)
         if res == Rhino.Input.GetResult.Option:
             if go.Option().EnglishName == "Calque":
                 chosen = choose_layer(layer_name)
@@ -156,40 +185,60 @@ def main():
         if res == Rhino.Input.GetResult.Object:
             break
         return
-    c1 = curves_from_objref(go.Object(0))
+    groups1 = []   # une liste de courbes par objet selectionne
+    for r in go.Objects():
+        cs = curves_from_objref(r)
+        if cs:
+            groups1.append(cs)
     step_mm = opt_step.CurrentValue
     sc.sticky[STICKY_KEY] = step_mm
-
-    go2 = Rhino.Input.Custom.GetObject()
-    go2.SetCommandPrompt("Courbe 2 (arrivee)")
-    go2.GeometryFilter = CURVE_OR_BLOCK
-    go2.SubObjectSelect = True
-    if go2.Get() != Rhino.Input.GetResult.Object:
-        return
-    c2 = curves_from_objref(go2.Object(0))
-
-    if not c1 or not c2:
+    if not groups1:
         print("Aucune courbe trouvee dans la selection.")
         return
 
-    # Pas converti dans l'unite du document -> nombre de points par courbe
+    # La selection de depart ne doit pas etre reprise comme "courbe 2"
+    rs.UnselectAllObjects()
+
+    go2 = Rhino.Input.Custom.GetObject()
+    go2.SetCommandPrompt("Courbe(s) 2 (arrivee) - Entree = mesurer les courbes entre elles")
+    go2.GeometryFilter = CURVE_OR_BLOCK
+    go2.SubObjectSelect = True
+    go2.EnablePreSelect(False, True)
+    go2.AcceptNothing(True)
+    res2 = go2.GetMultiple(1, 0)
+    if res2 == Rhino.Input.GetResult.Object:
+        mode = "vers courbe(s) 2"
+        c2 = []
+        for r in go2.Objects():
+            c2 += curves_from_objref(r)
+        if not c2:
+            print("Aucune courbe trouvee dans la 2e selection.")
+            return
+    elif res2 == Rhino.Input.GetResult.Nothing:
+        mode = "entre elles"
+        if len(groups1) < 2:
+            print("Mode 'entre elles' : selectionnez au moins 2 objets au depart.")
+            return
+    else:
+        return
+
     scale = Rhino.RhinoMath.UnitScale(Rhino.UnitSystem.Millimeters, sc.doc.ModelUnitSystem)
     step_doc = step_mm * scale
-    counts = [max(10, int(math.ceil(c.GetLength() / step_doc))) if step_doc > 0 else 10 for c in c1]
-    total = sum(counts)
-    if total > MAX_POINTS:
-        print("Pas trop fin : limite a {} points.".format(MAX_POINTS))
-        counts = [max(10, int(n * MAX_POINTS / float(total))) for n in counts]
 
     # --- Calcul ---------------------------------------------------------
-    results = []  # (distance, point sur c1, point sur c2)
-    for crv, n in zip(c1, counts):
-        for t in sample_params(crv, n):
-            p1 = crv.PointAt(t)
-            p2 = closest_on(c2, p1)
-            if p2 is None:
-                continue
-            results.append((p1.DistanceTo(p2), p1, p2))
+    results = []
+    refined_best = None
+    if mode == "entre elles":
+        # chaque objet est mesure vers l'ensemble des autres
+        for i, src in enumerate(groups1):
+            tgt = [c for j, g in enumerate(groups1) if j != i for c in g]
+            r, ref = compute(src, tgt, step_doc)
+            results += r
+            if ref and (refined_best is None or ref[0] < refined_best[0]):
+                refined_best = ref
+    else:
+        src = [c for g in groups1 for c in g]
+        results, refined_best = compute(src, c2, step_doc)
 
     if not results:
         print("Aucune distance calculee.")
@@ -197,19 +246,8 @@ def main():
 
     d_min, a_min, b_min = min(results, key=lambda r: r[0])
     d_max, a_max, b_max = max(results, key=lambda r: r[0])
-
-    # Affinage du minimum global avec les vraies courbes (si disponible)
-    try:
-        for ca in c1:
-            for cb in c2:
-                res = Rhino.Geometry.Curve.ClosestPoints(ca, cb)
-                if res[0]:
-                    pa, pb = res[1], res[2]
-                    d = pa.DistanceTo(pb)
-                    if d < d_min:
-                        d_min, a_min, b_min = d, pa, pb
-    except Exception:
-        pass
+    if refined_best and refined_best[0] < d_min:
+        d_min, a_min, b_min = refined_best
 
     mean = sum(r[0] for r in results) / float(len(results))
 
@@ -248,8 +286,8 @@ def main():
 
     unit = str(sc.doc.ModelUnitSystem)
     print("-" * 44)
-    print("Distance courbe 1 -> courbe 2 ({} points, pas {:g} mm, unite : {})".format(
-        len(results), step_mm, unit))
+    print("Distance courbe(s) 1 {} ({} points, pas {:g} mm, unite : {})".format(
+        mode, len(results), step_mm, unit))
     print("  MIN  : {:.4f}   (vert)".format(d_min))
     print("  MAX  : {:.4f}   (rouge)".format(d_max))
     print("  Calque : {}".format(layer_name))
