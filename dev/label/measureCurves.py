@@ -32,6 +32,17 @@ COLOR_MAX = sd.Color.FromArgb(220, 30, 30)   # rouge
 STICKY_KEY = "dist_courbes_pas_mm"
 DEFAULT_STEP_MM = 0.1      # pas d'echantillonnage par defaut (mm)
 MAX_POINTS = 100000        # garde-fou
+ESC_STATE = {"on": True}   # annulation par Echap (desactivee si l'etat Echap est bloque)
+
+
+def init_escape():
+    """Efface l'etat Echap residuel ; si Rhino le signale encore, on desactive la
+    fonction pour ne jamais interrompre le calcul a tort."""
+    try:
+        sc.escape_test(False, True)       # reset de l'etat
+        ESC_STATE["on"] = not sc.escape_test(False)
+    except Exception:
+        ESC_STATE["on"] = False
 
 
 def choose_layer(default_layer):
@@ -165,7 +176,7 @@ def compute(src, tgt_curves, step_doc):
             if p2 is not None:
                 results.append((p1.DistanceTo(p2), p1, p2))
             k += 1
-            if k % 500 == 0 and sc.escape_test(False):   # Echap pour annuler
+            if ESC_STATE["on"] and k % 500 == 0 and sc.escape_test(False):   # Echap
                 raise KeyboardInterrupt()
 
     # Affinage du minimum avec les vraies courbes, uniquement pour les paires
@@ -270,6 +281,7 @@ def main():
     step_doc = step_mm * scale
 
     # --- Calcul ---------------------------------------------------------
+    init_escape()
     t0 = time.time()
     try:
         results, refined_best = run_compute(mode, groups1, c2 if mode != "entre elles" else None, step_doc)
