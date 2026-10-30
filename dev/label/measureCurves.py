@@ -17,6 +17,7 @@ Affichage :
   - Resume dans la ligne de commande
 """
 import math
+import fnmatch
 import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
@@ -27,6 +28,36 @@ COLOR_MAX = sd.Color.FromArgb(220, 30, 30)   # rouge
 STICKY_KEY = "dist_courbes_pas_mm"
 DEFAULT_STEP_MM = 0.1      # pas d'echantillonnage par defaut (mm)
 MAX_POINTS = 100000        # garde-fou
+
+
+def choose_layer(default_layer):
+    """Saisie du calque : nom exact, motif avec * (virgules possibles) ou liste.
+    Propose de creer le calque s'il est introuvable. Retourne le nom, ou None."""
+    show_list = "ListeDesCalques"
+    user_input = rs.GetString("Calque de destination", default_layer, [show_list])
+    if not user_input:
+        return None
+    if user_input == show_list:
+        user_input = rs.GetLayer()
+        if not user_input:
+            return None
+
+    patterns = [p.strip().lower() for p in user_input.split(",") if p.strip()]
+    matched = None
+    for lay in rs.LayerNames() or []:
+        for pat in patterns:
+            if fnmatch.fnmatch(lay.lower(), pat):
+                matched = lay
+                break
+        if matched:
+            break
+
+    if not matched:
+        rep = rs.GetString('Calque introuvable, voulez-vous creer "' + user_input + '"', "oui", ["oui", "non"])
+        if rep == "oui":
+            rs.AddLayer(user_input)
+            matched = user_input
+    return matched
 
 
 def sample_params(crv, n):
@@ -67,10 +98,9 @@ def main():
         res = go.Get()
         if res == Rhino.Input.GetResult.Option:
             if go.Option().EnglishName == "Calque":
-                name = rs.GetString("Nom du calque (vide = calque actuel)", layer_name)
-                if name is not None:
-                    name = name.strip()
-                    layer_name = name if name else rs.CurrentLayer()
+                chosen = choose_layer(layer_name)
+                if chosen:
+                    layer_name = chosen
             continue  # opt_step est deja mis a jour par Rhino
         if res == Rhino.Input.GetResult.Object:
             break
