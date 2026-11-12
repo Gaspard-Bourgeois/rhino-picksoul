@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import rhinoscriptsyntax as rs
+import Rhino
+import scriptcontext as sc
 import os
 import re
 import unicodedata
@@ -11,7 +13,41 @@ def slugify(value):
     value = re.sub(r'[^\w\s-]', '', value).strip().lower()
     return re.sub(r'[-\s]+', '-', value)
 
-class LayerStateContext:
+class DisplayModeContext(object):
+    """Passe temporairement toutes les vues en filaire, puis restaure leur mode d'affichage."""
+    def __init__(self, english_name="Wireframe"):
+        self.english_name = english_name
+        self.saved = []  # liste de (vue, mode d'origine)
+
+    def _find_mode(self):
+        # Recherche par nom anglais : fonctionne quelle que soit la langue de Rhino
+        for m in Rhino.Display.DisplayModeDescription.GetDisplayModes():
+            if m.EnglishName == self.english_name:
+                return m
+        return None
+
+    def __enter__(self):
+        mode = self._find_mode()
+        if mode is None:
+            print("Mode d'affichage '{}' introuvable, affichage inchangé.".format(self.english_name))
+            return self
+        for view in sc.doc.Views:
+            vp = view.ActiveViewport
+            self.saved.append((view, vp.DisplayMode))
+            vp.DisplayMode = mode
+            view.Redraw()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for view, original in self.saved:
+            try:
+                view.ActiveViewport.DisplayMode = original
+                view.Redraw()
+            except Exception:
+                pass  # vue fermée entre-temps
+        return False
+
+class LayerStateContext(object):
     """Gestionnaire de contexte pour sauvegarder/restaurer l'état des calques."""
     def __init__(self):
         self.layers = rs.LayerNames()
@@ -34,6 +70,7 @@ class LayerStateContext:
             if rs.IsLayer(layer):
                 rs.LayerVisible(layer, state["visible"])
                 rs.LayerLocked(layer, state["locked"])
+        return False
 
 class RhinoExportManager:
     def __init__(self, export_path):
@@ -44,9 +81,8 @@ class RhinoExportManager:
         """Crée un dictionnaire associant chaque définition de bloc aux calques qu'elle contient."""
         mapping = {}
         block_names = rs.BlockNames()
-        
-        # CORRECTION : Vérifie que des blocs existent bien avant d'itérer
-        if block_names: 
+
+        if block_names:
             for block_name in block_names:
                 objs = rs.BlockObjects(block_name)
                 if objs:
@@ -60,7 +96,7 @@ class RhinoExportManager:
 
     def export_layer(self, layer_name, include_children=True, include_blocks=True):
         rs.UnselectAllObjects()
-        
+
         # 1. Sélection des objets directs
         layers_to_process = [layer_name]
         if include_children:
@@ -70,10 +106,9 @@ class RhinoExportManager:
         for l in layers_to_process:
             if rs.IsLayer(l):
                 rs.ObjectsByLayer(l, True)
-            
+
         # 2. Sélection des instances de blocs liées
         if include_blocks:
-            # CORRECTION : On vérifie les blocs pour le calque ET ses enfants
             for l in layers_to_process:
                 related_blocks = self.get_blocks_using_layer(l)
                 for bn in related_blocks:
@@ -85,7 +120,7 @@ class RhinoExportManager:
             clean_name = layer_name.replace("::", "_")
             file_name = "{}.3dm".format(slugify(clean_name))
             full_path = os.path.join(self.export_path, file_name)
-            
+
             # Export
             rs.Command('-_Export "{}" _Enter'.format(full_path), echo=False)
             print("Exporté : {}".format(file_name))
@@ -95,8 +130,7 @@ class RhinoExportManager:
 def main():
     # 1. Récupération du chemin
     doc_path = rs.DocumentPath()
-    
-    # CORRECTION : Ouvre toujours la boîte de dialogue, en utilisant doc_path comme dossier de départ
+
     folder = rs.BrowseForFolder(doc_path, "Dossier d'export")
     if not folder: return
 
@@ -105,15 +139,16 @@ def main():
     if not layers_to_export: return
 
     # 3. Options
-    # CORRECTION GETBOOLEAN : Liste de chaînes de caractères simples (ou tuples à 3 éléments)
-    items = ["Inclure les enfants", "Inclure les blocs"]
+    items = [("Enfants", "Non", "Oui"), ("Blocs", "Non", "Oui")]
     options = rs.GetBoolean("Options d'export", items, [True, True])
     if not options: return
 
     # 4. Processus d'export
     manager = RhinoExportManager(folder)
-    
-    with LayerStateContext():
+
+    # Ordre : filaire d'abord, puis calques visibles.
+    # À la sortie (même en cas d'erreur) : calques restaurés, puis mode d'affichage restauré.
+    with DisplayModeContext("Wireframe"), LayerStateContext():
         for layer in layers_to_export:
             manager.export_layer(layer, options[0], options[1])
 
